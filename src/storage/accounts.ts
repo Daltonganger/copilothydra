@@ -176,15 +176,40 @@ export async function updateAccounts(
 // ---------------------------------------------------------------------------
 
 function validateAccountsFile(data: unknown): AccountsFile {
-  if (
-    typeof data !== "object" ||
-    data === null ||
-    (data as Record<string, unknown>)["version"] !== 1 ||
-    !Array.isArray((data as Record<string, unknown>)["accounts"])
-  ) {
+  if (!isRecord(data) || data["version"] !== 1 || !Array.isArray(data["accounts"])) {
     throw new Error("[copilothydra] accounts file is corrupt or has an unexpected format");
   }
-  return data as AccountsFile;
+
+  const accounts = data["accounts"];
+  const seenIds = new Set<string>();
+  const seenProviderIds = new Set<string>();
+
+  for (const account of accounts) {
+    if (!isRecord(account)) {
+      throw new Error("[copilothydra] accounts file contains a non-object account entry");
+    }
+
+    const id = requireString(account, "id", "account");
+    const providerId = requireString(account, "providerId", "account");
+    requireString(account, "label", "account");
+    requireString(account, "githubUsername", "account");
+    requireString(account, "plan", "account");
+    requireString(account, "capabilityState", "account");
+    requireString(account, "lifecycleState", "account");
+    requireString(account, "addedAt", "account");
+
+    if (seenIds.has(id)) {
+      throw new Error(`[copilothydra] accounts file contains duplicate account id: ${id}`);
+    }
+    if (seenProviderIds.has(providerId)) {
+      throw new Error(`[copilothydra] accounts file contains duplicate provider id: ${providerId}`);
+    }
+
+    seenIds.add(id);
+    seenProviderIds.add(providerId);
+  }
+
+  return data as unknown as AccountsFile;
 }
 
 // ---------------------------------------------------------------------------
@@ -195,10 +220,26 @@ function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return typeof err === "object" && err !== null && "code" in err;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function requireString(obj: Record<string, unknown>, key: string, label: string): string {
+  const value = obj[key];
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`[copilothydra] ${label} is missing required string field: ${key}`);
+  }
+  return value;
+}
+
 function isCorruptionError(err: unknown): boolean {
   return (
     err instanceof SyntaxError ||
-    (err instanceof Error && err.message.includes("accounts file is corrupt or has an unexpected format"))
+    (err instanceof Error && (
+      err.message.includes("accounts file is corrupt or has an unexpected format") ||
+      err.message.includes("accounts file contains") ||
+      err.message.includes("account is missing required string field")
+    ))
   );
 }
 

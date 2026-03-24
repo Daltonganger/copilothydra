@@ -13,6 +13,7 @@ Implemented so far:
 - Phase 2 storage hardening (first transaction/locking pass)
 - Phase 2 storage hardening (corruption recovery pass)
 - Phase 2 storage hardening (account removal + orphan cleanup pass)
+- Phase 2 storage hardening (schema validation + duplicate detection pass)
 
 ## What works now
 
@@ -32,6 +33,7 @@ Implemented so far:
 - Secret transaction test coverage and corruption recovery tests
 - Orphan secret cleanup is available
 - `copilothydra remove-account <account-id|provider-id>` removes account metadata, secrets, and synced provider config
+- Malformed or duplicate account/secret entries are treated as corruption and quarantined before recovery
 
 ## Important behavior
 
