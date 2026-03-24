@@ -23,7 +23,11 @@ import { join, dirname } from "node:path";
 import type { AccountId, CopilotAccountMeta, AccountsFile } from "../types.js";
 import { debugStorage, warn } from "../log.js";
 import { withLock } from "./locking.js";
-import { isRecord, requireString } from "./validation.js";
+import { isRecord, requireEnumValue, requireIsoTimestamp, requireOptionalString, requireString } from "./validation.js";
+
+const PLAN_TIERS = ["free", "student", "pro", "pro+"] as const;
+const CAPABILITY_STATES = ["user-declared", "verified", "mismatch"] as const;
+const LIFECYCLE_STATES = ["active", "pending-removal"] as const;
 
 // ---------------------------------------------------------------------------
 // Config dir resolution
@@ -215,10 +219,19 @@ function validateAccountsFile(data: unknown): AccountsFile {
     const providerId = requireString(account, "providerId", "account");
     requireString(account, "label", "account");
     const githubUsername = requireString(account, "githubUsername", "account");
-    requireString(account, "plan", "account");
-    requireString(account, "capabilityState", "account");
-    requireString(account, "lifecycleState", "account");
-    requireString(account, "addedAt", "account");
+    const plan = requireString(account, "plan", "account");
+    const capabilityState = requireString(account, "capabilityState", "account");
+    const lifecycleState = requireString(account, "lifecycleState", "account");
+    const addedAt = requireString(account, "addedAt", "account");
+    const lastValidatedAt = requireOptionalString(account, "lastValidatedAt", "account");
+
+    requireEnumValue(plan, PLAN_TIERS, "account", "plan");
+    requireEnumValue(capabilityState, CAPABILITY_STATES, "account", "capabilityState");
+    requireEnumValue(lifecycleState, LIFECYCLE_STATES, "account", "lifecycleState");
+    requireIsoTimestamp(addedAt, "account", "addedAt");
+    if (lastValidatedAt !== undefined) {
+      requireIsoTimestamp(lastValidatedAt, "account", "lastValidatedAt");
+    }
 
     if (seenIds.has(id)) {
       throw new Error(`[copilothydra] accounts file contains duplicate account id: ${id}`);
@@ -258,6 +271,9 @@ function isCorruptionError(err: unknown): boolean {
       err.message.includes("accounts file is corrupt or has an unexpected format") ||
       err.message.includes("accounts file contains") ||
       err.message.includes("account is missing required string field") ||
+      err.message.includes("account has invalid optional string field") ||
+      err.message.includes("account has invalid enum value") ||
+      err.message.includes("account has invalid ISO timestamp") ||
       err.message.includes("duplicate github username")
     ))
   );
