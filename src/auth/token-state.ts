@@ -70,6 +70,13 @@ export function clearTokenState(accountId: AccountId): void {
   tokenRegistry.delete(accountId);
 }
 
+export function resetTokenRuntimeState(accountId: AccountId): void {
+  debugAuth(`resetTokenRuntimeState for account ${accountId}`);
+  tokenRegistry.delete(accountId);
+  tokenLifecycleTails.delete(accountId);
+  tokenRecoveryInFlight.delete(accountId);
+}
+
 export function getTokenIsolationSnapshot(): Array<{
   accountId: AccountId;
   hasToken: boolean;
@@ -102,7 +109,7 @@ export function syncTokenStateFromStoredAuth(
   auth: StoredAuthInfo | undefined,
 ): TokenState | undefined {
   if (!auth || auth.type !== "oauth") {
-    clearTokenState(accountId);
+    resetTokenRuntimeState(accountId);
     return undefined;
   }
 

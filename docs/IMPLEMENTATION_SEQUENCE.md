@@ -48,12 +48,16 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
     - edge-case validation pass done: enum/timestamp/optional secret field validation now fail-closes malformed persisted state
 
 ### Nu bezig
-11. ▶️ **Phase 3 — multi-account routing**
-   - routing foundation started: lease-based provider→account resolution now tracks in-flight requests and blocks new work for pending-removal accounts
-   - routed token pass done: auth loader now syncs provider→account→token state and fails closed when routed oauth state is missing
-   - drain-on-remove pass done: account removal now persists pending-removal state and final cleanup only happens after drain-complete checks
-   - token lifecycle serialization pass done: same-account token sync path is now serialized ahead of future refresh/exchange logic
-   - recovery gating pass done: expired routed token state now gets one per-account single-flight recovery attempt before fail-closed erroring
+11. ✅ **Phase 3 — multi-account routing**
+    - routing foundation started: lease-based provider→account resolution now tracks in-flight requests and blocks new work for pending-removal accounts
+    - routed token pass done: auth loader now syncs provider→account→token state and fails closed when routed oauth state is missing
+    - drain-on-remove pass done: account removal now persists pending-removal state and final cleanup only happens after drain-complete checks
+    - token lifecycle serialization pass done: same-account token sync path is now serialized ahead of future refresh/exchange logic
+    - recovery gating pass done: expired routed token state now gets one per-account single-flight recovery attempt before fail-closed erroring
+    - lifecycle/runtime finish done: ownership mismatch now fails closed and final cleanup clears all runtime token/recovery state
+
+### Nu bezig
+12. ▶️ **Phase 4 — capability/model exposure**
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -314,10 +318,19 @@ Doel: correcte isolatie tussen accounts bij parallel gebruik.
 - tests toegevoegd voor single-flight recovery en routed expired-token recovery
 - `getTokenIsolationSnapshot()` toegevoegd als veilige runtime-inspectie zonder tokenwaarden te loggen
 - tests toegevoegd voor cross-account parallelle fetch-isolatie en per-account recovery-isolatie onder overlap
+- auth loader fail-closed nu ook expliciet bij provider→account ownership mismatch tussen loader-slot en routing registry
+- final account cleanup wist nu alle runtime token/lifecycle/recovery state via `resetTokenRuntimeState(accountId)`
+- tests toegevoegd voor ownership mismatch en runtime-state cleanup na final removal
+
+### Exit criteria
+- parallelle requests over meerdere accounts blijven correct geïsoleerd ✅
+- geen fallback naar verkeerd account mogelijk ✅
 
 ---
 
 ## 12. Phase 4 — capability/model exposure
+
+**Status:** ▶️ Gestart
 
 Doel: modelaanbod per account gecontroleerd zichtbaar maken.
 
@@ -383,23 +396,11 @@ Doel: van werkend naar verantwoord beta-niveau.
 
 ## Immediate next step
 
-**Continue Phase 3: request routing verder uitbouwen met echte refresh/exchange-serialisatie en de laatste lifecycle/sync edge cases afronden.**
+**Start Phase 4: model exposure aanscherpen rond user-declared plans, onzekere modellen en mismatch/downgrade gedrag.**
 
 ---
 
 ## Remaining roadmap (estimated)
-
-### Phase 3 — resterend
-
-Verwachting: **ongeveer 1 PR**
-
-1. **Refresh/recovery path**
-   - echte refresh/exchange-serialisatie bovenop de huidige recovery-gate
-   - revoked/expired token recovery verder uitbouwen
-   - fail-closed recovery pad
-2. **Routing lifecycle afronden**
-   - laatste pending-removal / restart / sync edge cases
-   - Phase 3 afsluiten in docs/tests
 
 ### Phase 4 — capability/model exposure
 
@@ -428,15 +429,14 @@ Verwachting: **ongeveer 3 PR's**
 
 ### Totale resterende inschatting
 
-- **1 PR** voor Phase 3
 - **2–3 PR's** voor Phase 4
 - **3–4 PR's** voor Phase 5
 - **3 PR's** voor Hardening
 
-Geschatte rest: **ongeveer 10–12 PR's**.
+Geschatte rest: **ongeveer 9–11 PR's**.
 
 ### Belangrijkste mijlpaal
 
-De echte architectuurmijlpaal is: **Phase 3 volledig afronden**.
+De echte architectuurmijlpaal is gehaald: **Phase 3 is volledig afgerond**.
 
-Daarna is de backend/routing-kern grotendeels klaar en verschuift het zwaartepunt naar capability policy, TUI/UX en hardening.
+Daarna verschuift het zwaartepunt naar capability policy, TUI/UX en hardening.

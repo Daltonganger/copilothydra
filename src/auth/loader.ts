@@ -104,6 +104,13 @@ export function buildAuthLoader(
       fetch: async (request, init) => {
         const lease = acquireRoutingLease(providerId);
         try {
+          if (lease.accountId !== accountId) {
+            throw new Error(
+              `[copilothydra] Routing ownership mismatch for provider "${providerId}": ` +
+                `loader expected account "${accountId}" but registry resolved "${lease.accountId}"`
+            );
+          }
+
           const runtimeToken = await runSerializedTokenLifecycle(lease.accountId, async () => {
             const info = await getAuth();
             const synced = syncTokenStateFromStoredAuth(lease.accountId, info);

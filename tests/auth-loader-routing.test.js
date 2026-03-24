@@ -176,3 +176,33 @@ test("auth loader retries one routed recovery when initial token state is expire
     globalThis.fetch = originalFetch;
   }
 });
+
+test("auth loader fails closed when provider ownership no longer matches the loader account", async () => {
+  const routing = await import("../dist/routing/provider-account-map.js");
+  const { buildAuthLoader } = await import("../dist/auth/loader.js");
+
+  routing.registerAccounts([
+    {
+      id: "acct_other",
+      providerId: "github-copilot-acct-acct_expected",
+      label: "Other",
+      githubUsername: "other",
+      plan: "free",
+      capabilityState: "user-declared",
+      lifecycleState: "active",
+      addedAt: new Date("2026-03-24T00:00:00.000Z").toISOString(),
+    },
+  ]);
+
+  const loader = await buildAuthLoader("acct_expected", "github-copilot-acct-acct_expected")(
+    async () => ({ type: "oauth", refresh: "oauth-token", access: "oauth-token", expires: 0 }),
+    { id: "github-copilot-acct-acct_expected" },
+  );
+
+  await assert.rejects(
+    loader.fetch?.("https://example.com/ownership"),
+    /Routing ownership mismatch/
+  );
+
+  assert.equal(routing.getInFlightCount("acct_other"), 0);
+});
