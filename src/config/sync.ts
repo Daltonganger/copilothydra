@@ -19,9 +19,9 @@ import {
   type OpenCodeConfigFile,
 } from "./opencode-config.js";
 
-export async function syncAccountsToOpenCodeConfig(configPath?: string): Promise<void> {
+export async function syncAccountsToOpenCodeConfig(configPath?: string, configDir?: string): Promise<void> {
   const path = configPath ?? resolveOpenCodeConfigPath();
-  const [accountsFile, config] = await Promise.all([loadAccounts(), loadOpenCodeConfig(path)]);
+  const [accountsFile, config] = await Promise.all([loadAccounts(configDir), loadOpenCodeConfig(path)]);
 
   const activeAccounts = accountsFile.accounts.filter((account) => account.lifecycleState === "active");
   const providerEntries = { ...(config.provider ?? {}) };

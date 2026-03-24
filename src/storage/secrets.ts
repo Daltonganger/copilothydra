@@ -17,7 +17,7 @@
 
 import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import { join, dirname } from "node:path";
-import type { AccountId, CopilotSecretRecord, SecretsFile } from "../types.js";
+import type { AccountId, CopilotSecretRecord, SecretsFile, AccountsFile } from "../types.js";
 import { debugStorage, warn } from "../log.js";
 import { isUnsafePlaintextConfirmed } from "../flags.js";
 import { resolveConfigDir } from "./accounts.js";
@@ -149,6 +149,17 @@ export async function updateSecrets(
     await saveSecretsToPath(file, path);
     return file;
   });
+}
+
+export async function pruneOrphanSecrets(
+  accounts: AccountsFile | { accounts: Array<{ id: AccountId }> },
+  configDir?: string
+): Promise<SecretsFile> {
+  const validAccountIds = new Set(accounts.accounts.map((account) => account.id));
+
+  return await updateSecrets((file) => {
+    file.secrets = file.secrets.filter((secret) => validAccountIds.has(secret.accountId));
+  }, configDir);
 }
 
 // ---------------------------------------------------------------------------
