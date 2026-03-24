@@ -44,6 +44,14 @@ const tokenRegistry = new Map<AccountId, TokenState>();
  */
 const tokenLifecycleTails = new Map<AccountId, Promise<void>>();
 
+/**
+ * Map from accountId → in-flight recovery/refresh promise.
+ *
+ * Unlike the lifecycle tail queue, this is single-flight deduplication:
+ * concurrent callers for the same account share one recovery attempt.
+ */
+const tokenRecoveryInFlight = new Map<AccountId, Promise<TokenState>>();
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -122,6 +130,29 @@ export async function runSerializedTokenLifecycle<T>(
     release();
     if (tokenLifecycleTails.get(accountId) === currentTail) {
       tokenLifecycleTails.delete(accountId);
+    }
+  }
+}
+
+export async function runSingleFlightTokenRecovery(
+  accountId: AccountId,
+  operation: () => Promise<TokenState>,
+): Promise<TokenState> {
+  const existing = tokenRecoveryInFlight.get(accountId);
+  if (existing) {
+    debugAuth(`joining in-flight token recovery for account ${accountId}`);
+    return await existing;
+  }
+
+  debugAuth(`starting token recovery for account ${accountId}`);
+  const recoveryPromise = (async () => await operation())();
+  tokenRecoveryInFlight.set(accountId, recoveryPromise);
+
+  try {
+    return await recoveryPromise;
+  } finally {
+    if (tokenRecoveryInFlight.get(accountId) === recoveryPromise) {
+      tokenRecoveryInFlight.delete(accountId);
     }
   }
 }

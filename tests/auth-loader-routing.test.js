@@ -128,3 +128,51 @@ test("auth loader handles concurrent fetches on one account without leaking leas
     globalThis.fetch = originalFetch;
   }
 });
+
+test("auth loader retries one routed recovery when initial token state is expired", async () => {
+  const routing = await import("../dist/routing/provider-account-map.js");
+  const { buildAuthLoader } = await import("../dist/auth/loader.js");
+
+  routing.registerAccounts([
+    {
+      id: "acct_recovery",
+      providerId: "github-copilot-acct-acct_recovery",
+      label: "Recovery",
+      githubUsername: "recovery",
+      plan: "pro",
+      capabilityState: "user-declared",
+      lifecycleState: "active",
+      addedAt: new Date("2026-03-24T00:00:00.000Z").toISOString(),
+    },
+  ]);
+
+  let getAuthCalls = 0;
+  const expired = Math.floor(Date.now() / 1000) - 60;
+  const loader = await buildAuthLoader("acct_recovery", "github-copilot-acct-acct_recovery")(
+    async () => {
+      getAuthCalls += 1;
+      if (getAuthCalls <= 2) {
+        return { type: "oauth", refresh: "expired-token", access: "expired-token", expires: expired };
+      }
+      return { type: "oauth", refresh: "fresh-token", access: "fresh-token", expires: 0 };
+    },
+    { id: "github-copilot-acct-acct_recovery" },
+  );
+
+  const originalFetch = globalThis.fetch;
+  let authorization;
+  globalThis.fetch = async (_request, init) => {
+    authorization = init?.headers?.Authorization ?? init?.headers?.authorization;
+    return new Response("ok", { status: 200 });
+  };
+
+  try {
+    const response = await loader.fetch?.("https://example.com/recovery");
+    assert.equal(response?.status, 200);
+    assert.equal(authorization, "Bearer fresh-token");
+    assert.equal(routing.getInFlightCount("acct_recovery"), 0);
+    assert.equal(getAuthCalls, 3);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

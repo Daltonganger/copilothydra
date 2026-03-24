@@ -53,6 +53,7 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
    - routed token pass done: auth loader now syncs provider→account→token state and fails closed when routed oauth state is missing
    - drain-on-remove pass done: account removal now persists pending-removal state and final cleanup only happens after drain-complete checks
    - token lifecycle serialization pass done: same-account token sync path is now serialized ahead of future refresh/exchange logic
+   - recovery gating pass done: expired routed token state now gets one per-account single-flight recovery attempt before fail-closed erroring
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -308,6 +309,9 @@ Doel: correcte isolatie tussen accounts bij parallel gebruik.
 - `runSerializedTokenLifecycle(accountId, operation)` toegevoegd voor per-account serialisatie van token lifecycle werk
 - auth loader serializeert nu routed `getAuth()` + runtime token sync per account voordat request headers worden gezet
 - tests toegevoegd voor same-account token serialization en concurrent routed fetches zonder lease leaks
+- `runSingleFlightTokenRecovery(accountId, operation)` toegevoegd voor gedeelde recovery/refresh poging per account
+- auth loader probeert nu één recovery-pass wanneer routed token state expired is na sync uit stored auth
+- tests toegevoegd voor single-flight recovery en routed expired-token recovery
 
 ---
 
@@ -383,22 +387,13 @@ Doel: van werkend naar verantwoord beta-niveau.
 
 ## Remaining roadmap (estimated)
 
-### Eerst open PR's verwerken
-
-- PR #11 — routing foundation
-- PR #12 — routed token integration
-- PR #13 — drain-aware removal
-- PR #14 — token lifecycle serialization
-
-Verwachting: **1 merge/cleanup blok**
-
 ### Phase 3 — resterend
 
-Verwachting: **ongeveer 3 PR's**
+Verwachting: **ongeveer 2 PR's**
 
 1. **Refresh/recovery path**
-   - echte refresh/exchange-serialisatie
-   - revoked/expired token recovery
+   - echte refresh/exchange-serialisatie bovenop de huidige recovery-gate
+   - revoked/expired token recovery verder uitbouwen
    - fail-closed recovery pad
 2. **Parallel isolation hardening**
    - extra concurrency coverage
@@ -435,13 +430,12 @@ Verwachting: **ongeveer 3 PR's**
 
 ### Totale resterende inschatting
 
-- **1 PR-blok** voor huidige open PR cleanup
-- **3 PR's** voor Phase 3
+- **2 PR's** voor Phase 3
 - **2–3 PR's** voor Phase 4
 - **3–4 PR's** voor Phase 5
 - **3 PR's** voor Hardening
 
-Geschatte rest: **ongeveer 12–14 PR's**.
+Geschatte rest: **ongeveer 11–13 PR's**.
 
 ### Belangrijkste mijlpaal
 

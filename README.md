@@ -23,6 +23,7 @@ Implemented so far:
 - Phase 3 routed token integration (provider→account→token fail-closed path)
 - Phase 3 drain-on-remove lifecycle (two-step pending-removal → final cleanup flow)
 - Phase 3 token lifecycle serialization (same-account token sync prepared for refresh-safe evolution)
+- Phase 3 routed token recovery gating (single-flight retry path for expired/missing routed token state)
 
 ## What works now
 
@@ -57,6 +58,7 @@ Implemented so far:
 - Auth loader requests now sync runtime token state through provider routing and fail closed when routed token state is unavailable
 - Pending-removal accounts are now persisted in storage, removed from generated provider config, and finalized only after drain-complete cleanup
 - Same-account token lifecycle work is now serialized before auth-header injection, preparing Phase 3 for refresh/exchange without same-account races
+- Routed auth now performs one per-account single-flight recovery attempt when synced token state is expired before failing closed
 
 ## Important behavior
 
@@ -124,22 +126,13 @@ Continue Phase 3: multi-account routing and request isolation.
 
 ## Remaining roadmap
 
-### First: process current open PRs
-
-- PR #11 — Phase 3 routing foundation
-- PR #12 — routed token integration
-- PR #13 — drain-aware removal
-- PR #14 — token lifecycle serialization
-
-Expected effort: **1 merge/cleanup block**
-
 ### Phase 3 — multi-account routing (remaining)
 
-Expected remaining: **about 3 PRs**
+Expected remaining: **about 2 PRs**
 
 1. **Refresh/recovery path**
-   - real refresh/exchange serialization
-   - revoked/expired token recovery
+   - real refresh/exchange serialization beyond the current single-flight recovery gate
+   - revoked/expired token recovery follow-through
    - fail-closed recovery behavior
 2. **Parallel isolation hardening**
    - more concurrency coverage
@@ -185,13 +178,12 @@ Expected remaining: **about 3 PRs**
 
 ### Rough total remaining
 
-- **1 PR block** for current open PR cleanup
-- **3 PRs** for Phase 3
+- **2 PRs** for Phase 3
 - **2–3 PRs** for Phase 4
 - **3–4 PRs** for Phase 5
 - **3 PRs** for Hardening
 
-Estimated total remaining: **about 12–14 PRs**.
+Estimated total remaining: **about 11–13 PRs**.
 
 ### Most important milestone
 
