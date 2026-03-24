@@ -22,6 +22,8 @@
 
 import type { AccountId, AuthLoader, ProviderId, StoredAuthInfo } from "../types.js";
 import { debugAuth } from "../log.js";
+import { acquireRoutingLease } from "../routing/provider-account-map.js";
+import { requireActiveTokenState, syncTokenStateFromStoredAuth } from "./token-state.js";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -76,8 +78,11 @@ export function buildAuthLoader(
     if (!stored || stored.type !== "oauth") {
       // No token stored yet — return empty loader so OpenCode can prompt login
       debugAuth(`no stored oauth token for provider "${provider.id}", returning empty loader`);
+      syncTokenStateFromStoredAuth(accountId, stored);
       return {};
     }
+
+    syncTokenStateFromStoredAuth(accountId, stored);
 
     // Determine base URL — supports GitHub Enterprise (Spike B confirmed this pattern)
     const baseURL = stored.enterpriseUrl
@@ -91,25 +96,28 @@ export function buildAuthLoader(
       apiKey: "",
       // Custom fetch: re-reads auth on every request (matches CopilotAuthPlugin pattern)
       fetch: async (request, init) => {
-        const info = await getAuth();
-        if (!info || info.type !== "oauth") {
-          // Token was revoked between loader init and this request — fall through without auth
-          debugAuth(`token revoked mid-flight for "${providerId}", forwarding unauthenticated`);
-          return globalThis.fetch(request, init);
+        const lease = acquireRoutingLease(providerId);
+        try {
+          const info = await getAuth();
+          const synced = syncTokenStateFromStoredAuth(lease.accountId, info);
+          if (!synced) {
+            throw new Error(
+              `[copilothydra] No oauth token available for routed account "${lease.accountId}" (${providerId})`
+            );
+          }
+
+          const runtimeToken = requireActiveTokenState(lease.accountId);
+
+          const headers: Record<string, string> = {
+            ...(init?.headers as Record<string, string> | undefined),
+            Authorization: `Bearer ${runtimeToken.githubOAuthToken}`,
+            "Openai-Intent": "conversation-edits",
+          };
+
+          return globalThis.fetch(request, { ...init, headers });
+        } finally {
+          lease.release();
         }
-
-        const headers: Record<string, string> = {
-          // Spread any existing headers first so we can override
-          ...(init?.headers as Record<string, string> | undefined),
-          // GitHub OAuth token used directly as Bearer (confirmed Spike B)
-          Authorization: `Bearer ${info.refresh}`,
-          "Openai-Intent": "conversation-edits",
-          // NOTE: x-initiator and Copilot-Vision-Request are added by OpenCode's
-          // chat.headers hook which fires on providerID.includes("github-copilot").
-          // Our provider IDs are "github-copilot-acct-*" so they will match.
-        };
-
-        return globalThis.fetch(request, { ...init, headers });
       },
     };
 

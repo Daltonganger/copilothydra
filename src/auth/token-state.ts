@@ -9,7 +9,7 @@
  * after Spike B fully characterizes the Copilot token lifecycle.
  */
 
-import type { AccountId } from "../types.js";
+import type { AccountId, StoredAuthInfo } from "../types.js";
 import { debugAuth } from "../log.js";
 
 // ---------------------------------------------------------------------------
@@ -54,6 +54,25 @@ export function clearTokenState(accountId: AccountId): void {
   tokenRegistry.delete(accountId);
 }
 
+export function syncTokenStateFromStoredAuth(
+  accountId: AccountId,
+  auth: StoredAuthInfo | undefined,
+): TokenState | undefined {
+  if (!auth || auth.type !== "oauth") {
+    clearTokenState(accountId);
+    return undefined;
+  }
+
+  const next: TokenState = {
+    accountId,
+    githubOAuthToken: auth.refresh,
+    expiresAt: auth.expires,
+    setAt: Date.now(),
+  };
+  setTokenState(next);
+  return next;
+}
+
 /**
  * Returns true if the token is expired (and has a known expiry).
  * Returns false if expires=0 (no expiry / unknown — treat as valid).
@@ -61,4 +80,15 @@ export function clearTokenState(accountId: AccountId): void {
 export function isTokenExpired(state: TokenState): boolean {
   if (state.expiresAt === 0) return false;
   return Date.now() / 1000 > state.expiresAt;
+}
+
+export function requireActiveTokenState(accountId: AccountId): TokenState {
+  const state = getTokenState(accountId);
+  if (!state) {
+    throw new Error(`[copilothydra] No runtime token state registered for account "${accountId}"`);
+  }
+  if (isTokenExpired(state)) {
+    throw new Error(`[copilothydra] Runtime token state for account "${accountId}" is expired`);
+  }
+  return state;
 }
