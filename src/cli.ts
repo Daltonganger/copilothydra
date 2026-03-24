@@ -13,7 +13,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import type { PlanTier } from "./types.js";
 import { createAccountMeta } from "./account.js";
-import { loadAccounts, upsertAccount } from "./storage/accounts.js";
+import { findAccountByGitHubUsername, loadAccounts, upsertAccount } from "./storage/accounts.js";
 import { removeAccountCompletely } from "./account-removal.js";
 import { isTTY } from "./ui/menu.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
@@ -56,6 +56,14 @@ async function addAccountInteractive(): Promise<void> {
     const label = await promptRequired(rl, "Account label", "Personal");
     const githubUsername = await promptRequired(rl, "GitHub username", "alice");
     const plan = await promptPlan(rl);
+
+    const existingForUsername = await findAccountByGitHubUsername(githubUsername);
+    if (existingForUsername) {
+      throw new Error(
+        `[copilothydra] an account for GitHub username "${githubUsername}" already exists ` +
+          `(label: ${existingForUsername.label})`
+      );
+    }
 
     const account = createAccountMeta({ label, githubUsername, plan });
     checkAccountRuntimeReadiness(account);
