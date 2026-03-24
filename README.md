@@ -14,6 +14,7 @@ Implemented so far:
 - Phase 2 storage hardening (corruption recovery pass)
 - Phase 2 storage hardening (account removal + orphan cleanup pass)
 - Phase 2 storage hardening (schema validation + duplicate detection pass)
+- Phase 2 registry hardening (duplicate GitHub account prevention pass)
 
 ## What works now
 
@@ -34,6 +35,7 @@ Implemented so far:
 - Orphan secret cleanup is available
 - `copilothydra remove-account <account-id|provider-id>` removes account metadata, secrets, and synced provider config
 - Malformed or duplicate account/secret entries are treated as corruption and quarantined before recovery
+- Duplicate GitHub usernames are blocked case-insensitively in both account creation and storage validation
 
 ## Important behavior
 
