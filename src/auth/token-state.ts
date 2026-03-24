@@ -70,6 +70,33 @@ export function clearTokenState(accountId: AccountId): void {
   tokenRegistry.delete(accountId);
 }
 
+export function getTokenIsolationSnapshot(): Array<{
+  accountId: AccountId;
+  hasToken: boolean;
+  expiresAt: number | undefined;
+  setAt: number | undefined;
+  lifecycleQueued: boolean;
+  recoveryInFlight: boolean;
+}> {
+  const accountIds = new Set<AccountId>([
+    ...tokenRegistry.keys(),
+    ...tokenLifecycleTails.keys(),
+    ...tokenRecoveryInFlight.keys(),
+  ]);
+
+  return [...accountIds].map((accountId) => {
+    const state = tokenRegistry.get(accountId);
+    return {
+      accountId,
+      hasToken: Boolean(state),
+      expiresAt: state?.expiresAt,
+      setAt: state?.setAt,
+      lifecycleQueued: tokenLifecycleTails.has(accountId),
+      recoveryInFlight: tokenRecoveryInFlight.has(accountId),
+    };
+  });
+}
+
 export function syncTokenStateFromStoredAuth(
   accountId: AccountId,
   auth: StoredAuthInfo | undefined,

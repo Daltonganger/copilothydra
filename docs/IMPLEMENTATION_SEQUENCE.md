@@ -312,6 +312,8 @@ Doel: correcte isolatie tussen accounts bij parallel gebruik.
 - `runSingleFlightTokenRecovery(accountId, operation)` toegevoegd voor gedeelde recovery/refresh poging per account
 - auth loader probeert nu één recovery-pass wanneer routed token state expired is na sync uit stored auth
 - tests toegevoegd voor single-flight recovery en routed expired-token recovery
+- `getTokenIsolationSnapshot()` toegevoegd als veilige runtime-inspectie zonder tokenwaarden te loggen
+- tests toegevoegd voor cross-account parallelle fetch-isolatie en per-account recovery-isolatie onder overlap
 
 ---
 
@@ -381,7 +383,7 @@ Doel: van werkend naar verantwoord beta-niveau.
 
 ## Immediate next step
 
-**Continue Phase 3: request routing verder uitbouwen met echte refresh/exchange-serialisatie en bredere parallel-isolatie.**
+**Continue Phase 3: request routing verder uitbouwen met echte refresh/exchange-serialisatie en de laatste lifecycle/sync edge cases afronden.**
 
 ---
 
@@ -389,17 +391,13 @@ Doel: van werkend naar verantwoord beta-niveau.
 
 ### Phase 3 — resterend
 
-Verwachting: **ongeveer 2 PR's**
+Verwachting: **ongeveer 1 PR**
 
 1. **Refresh/recovery path**
    - echte refresh/exchange-serialisatie bovenop de huidige recovery-gate
    - revoked/expired token recovery verder uitbouwen
    - fail-closed recovery pad
-2. **Parallel isolation hardening**
-   - extra concurrency coverage
-   - same-account vs cross-account isolatiechecks
-   - geen token/account bleed
-3. **Routing lifecycle afronden**
+2. **Routing lifecycle afronden**
    - laatste pending-removal / restart / sync edge cases
    - Phase 3 afsluiten in docs/tests
 
@@ -430,12 +428,12 @@ Verwachting: **ongeveer 3 PR's**
 
 ### Totale resterende inschatting
 
-- **2 PR's** voor Phase 3
+- **1 PR** voor Phase 3
 - **2–3 PR's** voor Phase 4
 - **3–4 PR's** voor Phase 5
 - **3 PR's** voor Hardening
 
-Geschatte rest: **ongeveer 11–13 PR's**.
+Geschatte rest: **ongeveer 10–12 PR's**.
 
 ### Belangrijkste mijlpaal
 
