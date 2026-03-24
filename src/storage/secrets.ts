@@ -22,6 +22,7 @@ import { debugStorage, warn } from "../log.js";
 import { isUnsafePlaintextConfirmed } from "../flags.js";
 import { resolveConfigDir } from "./accounts.js";
 import { withLock } from "./locking.js";
+import { isRecord, requireString } from "./validation.js";
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -198,18 +199,6 @@ function validateSecretsFile(data: unknown): SecretsFile {
 
 function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return typeof err === "object" && err !== null && "code" in err;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function requireString(obj: Record<string, unknown>, key: string, label: string): string {
-  const value = obj[key];
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`[copilothydra] ${label} is missing required string field: ${key}`);
-  }
-  return value;
 }
 
 function isCorruptionError(err: unknown): boolean {
