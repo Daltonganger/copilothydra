@@ -21,6 +21,7 @@ import type { AccountId, CopilotSecretRecord, SecretsFile } from "../types.js";
 import { debugStorage, warn } from "../log.js";
 import { UNSAFE_PLAINTEXT_CONFIRMED } from "../flags.js";
 import { resolveConfigDir } from "./accounts.js";
+import { withLock } from "./locking.js";
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -36,6 +37,10 @@ export function secretsFilePath(configDir?: string): string {
 
 export async function loadSecrets(configDir?: string): Promise<SecretsFile> {
   const path = secretsFilePath(configDir);
+  return loadSecretsFromPath(path);
+}
+
+async function loadSecretsFromPath(path: string): Promise<SecretsFile> {
   debugStorage("loading secrets file (path not logged)");
 
   try {
@@ -57,6 +62,11 @@ export async function loadSecrets(configDir?: string): Promise<SecretsFile> {
 // ---------------------------------------------------------------------------
 
 export async function saveSecrets(data: SecretsFile, configDir?: string): Promise<void> {
+  const path = secretsFilePath(configDir);
+  await saveSecretsToPath(data, path);
+}
+
+async function saveSecretsToPath(data: SecretsFile, path: string): Promise<void> {
   if (!UNSAFE_PLAINTEXT_CONFIRMED) {
     throw new Error(
       "[copilothydra] Refusing to write secrets to plaintext storage. " +
@@ -64,8 +74,6 @@ export async function saveSecrets(data: SecretsFile, configDir?: string): Promis
       "plaintext secrets are not safe for production use."
     );
   }
-
-  const path = secretsFilePath(configDir);
   const tmpPath = path + ".tmp";
   debugStorage("saving secrets file (path not logged)");
 
@@ -106,23 +114,38 @@ export async function upsertSecret(
   record: CopilotSecretRecord,
   configDir?: string
 ): Promise<void> {
-  const file = await loadSecrets(configDir);
-  const idx = file.secrets.findIndex((s) => s.accountId === record.accountId);
-  if (idx >= 0) {
-    file.secrets[idx] = record;
-  } else {
-    file.secrets.push(record);
-  }
-  await saveSecrets(file, configDir);
+  await updateSecrets((file) => {
+    const idx = file.secrets.findIndex((s) => s.accountId === record.accountId);
+    if (idx >= 0) {
+      file.secrets[idx] = record;
+    } else {
+      file.secrets.push(record);
+    }
+  }, configDir);
 }
 
 export async function removeSecret(
   accountId: AccountId,
   configDir?: string
 ): Promise<void> {
-  const file = await loadSecrets(configDir);
-  file.secrets = file.secrets.filter((s) => s.accountId !== accountId);
-  await saveSecrets(file, configDir);
+  await updateSecrets((file) => {
+    file.secrets = file.secrets.filter((s) => s.accountId !== accountId);
+  }, configDir);
+}
+
+export async function updateSecrets(
+  mutator: (file: SecretsFile) => void | Promise<void>,
+  configDir?: string
+): Promise<SecretsFile> {
+  const path = secretsFilePath(configDir);
+
+  return await withLock(path, async () => {
+    const file = await loadSecretsFromPath(path);
+    await mutator(file);
+    validateSecretsFile(file);
+    await saveSecretsToPath(file, path);
+    return file;
+  });
 }
 
 // ---------------------------------------------------------------------------

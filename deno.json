@@ -1,9 +1,0 @@
-{
-  "unstable": ["sloppy-imports"],
-  "nodeModulesDir": "auto",
-  "exclude": ["dist", "node_modules"],
-  "compilerOptions": {
-    "lib": ["ES2022", "DOM"],
-    "types": ["npm:@types/node"]
-  }
-}
