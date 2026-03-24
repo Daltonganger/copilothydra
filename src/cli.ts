@@ -15,6 +15,7 @@ import type { PlanTier } from "./types.js";
 import { createAccountMeta } from "./account.js";
 import { findAccountByGitHubUsername, loadAccounts, upsertAccount } from "./storage/accounts.js";
 import { removeAccountCompletely } from "./account-removal.js";
+import { repairStorage } from "./storage-repair.js";
 import { isTTY } from "./ui/menu.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 import { resolveOpenCodeConfigPath } from "./config/opencode-config.js";
@@ -37,6 +38,9 @@ async function main(): Promise<void> {
       return;
     case "remove-account":
       await removeAccountCommand(process.argv[3]);
+      return;
+    case "repair-storage":
+      await repairStorageCommand();
       return;
     default:
       throw new Error(`Unknown command: ${command}`);
@@ -128,6 +132,16 @@ async function removeAccountCommand(identifier?: string): Promise<void> {
   output.write(`Removed account: ${result.removed.label} (${result.removed.githubUsername})\n`);
   output.write(`Provider ID removed: ${result.removed.providerId}\n`);
   output.write("Reload/restart OpenCode to apply provider changes.\n");
+}
+
+async function repairStorageCommand(): Promise<void> {
+  const result = await repairStorage();
+  output.write(`Accounts retained: ${result.accountCount}\n`);
+  output.write(`Secrets before repair: ${result.secretCountBefore}\n`);
+  output.write(`Secrets after repair: ${result.secretCountAfter}\n`);
+  output.write(`Pruned orphan secrets: ${result.prunedSecretCount}\n`);
+  output.write(`OpenCode config reconciled: ${resolveOpenCodeConfigPath()}\n`);
+  output.write("Reload/restart OpenCode to apply provider changes if any stale providers were removed.\n");
 }
 
 async function promptRequired(
