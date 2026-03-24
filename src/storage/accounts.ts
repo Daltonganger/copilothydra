@@ -23,6 +23,7 @@ import { join, dirname } from "node:path";
 import type { AccountId, CopilotAccountMeta, AccountsFile } from "../types.js";
 import { debugStorage, warn } from "../log.js";
 import { withLock } from "./locking.js";
+import { isRecord, requireString } from "./validation.js";
 
 // ---------------------------------------------------------------------------
 // Config dir resolution
@@ -176,15 +177,40 @@ export async function updateAccounts(
 // ---------------------------------------------------------------------------
 
 function validateAccountsFile(data: unknown): AccountsFile {
-  if (
-    typeof data !== "object" ||
-    data === null ||
-    (data as Record<string, unknown>)["version"] !== 1 ||
-    !Array.isArray((data as Record<string, unknown>)["accounts"])
-  ) {
+  if (!isRecord(data) || data["version"] !== 1 || !Array.isArray(data["accounts"])) {
     throw new Error("[copilothydra] accounts file is corrupt or has an unexpected format");
   }
-  return data as AccountsFile;
+
+  const accounts = data["accounts"];
+  const seenIds = new Set<string>();
+  const seenProviderIds = new Set<string>();
+
+  for (const account of accounts) {
+    if (!isRecord(account)) {
+      throw new Error("[copilothydra] accounts file contains a non-object account entry");
+    }
+
+    const id = requireString(account, "id", "account");
+    const providerId = requireString(account, "providerId", "account");
+    requireString(account, "label", "account");
+    requireString(account, "githubUsername", "account");
+    requireString(account, "plan", "account");
+    requireString(account, "capabilityState", "account");
+    requireString(account, "lifecycleState", "account");
+    requireString(account, "addedAt", "account");
+
+    if (seenIds.has(id)) {
+      throw new Error(`[copilothydra] accounts file contains duplicate account id: ${id}`);
+    }
+    if (seenProviderIds.has(providerId)) {
+      throw new Error(`[copilothydra] accounts file contains duplicate provider id: ${providerId}`);
+    }
+
+    seenIds.add(id);
+    seenProviderIds.add(providerId);
+  }
+
+  return data as unknown as AccountsFile;
 }
 
 // ---------------------------------------------------------------------------
@@ -198,7 +224,11 @@ function isNodeError(err: unknown): err is NodeJS.ErrnoException {
 function isCorruptionError(err: unknown): boolean {
   return (
     err instanceof SyntaxError ||
-    (err instanceof Error && err.message.includes("accounts file is corrupt or has an unexpected format"))
+    (err instanceof Error && (
+      err.message.includes("accounts file is corrupt or has an unexpected format") ||
+      err.message.includes("accounts file contains") ||
+      err.message.includes("account is missing required string field")
+    ))
   );
 }
 

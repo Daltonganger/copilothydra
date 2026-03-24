@@ -22,6 +22,7 @@ import { debugStorage, warn } from "../log.js";
 import { isUnsafePlaintextConfirmed } from "../flags.js";
 import { resolveConfigDir } from "./accounts.js";
 import { withLock } from "./locking.js";
+import { isRecord, requireString } from "./validation.js";
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -167,15 +168,29 @@ export async function pruneOrphanSecrets(
 // ---------------------------------------------------------------------------
 
 function validateSecretsFile(data: unknown): SecretsFile {
-  if (
-    typeof data !== "object" ||
-    data === null ||
-    (data as Record<string, unknown>)["version"] !== 1 ||
-    !Array.isArray((data as Record<string, unknown>)["secrets"])
-  ) {
+  if (!isRecord(data) || data["version"] !== 1 || !Array.isArray(data["secrets"])) {
     throw new Error("[copilothydra] secrets file is corrupt or has an unexpected format");
   }
-  return data as SecretsFile;
+
+  const secrets = data["secrets"];
+  const seenAccountIds = new Set<string>();
+
+  for (const secret of secrets) {
+    if (!isRecord(secret)) {
+      throw new Error("[copilothydra] secrets file contains a non-object secret entry");
+    }
+
+    const accountId = requireString(secret, "accountId", "secret");
+    requireString(secret, "githubOAuthToken", "secret");
+
+    if (seenAccountIds.has(accountId)) {
+      throw new Error(`[copilothydra] secrets file contains duplicate account id: ${accountId}`);
+    }
+
+    seenAccountIds.add(accountId);
+  }
+
+  return data as unknown as SecretsFile;
 }
 
 // ---------------------------------------------------------------------------
@@ -189,7 +204,11 @@ function isNodeError(err: unknown): err is NodeJS.ErrnoException {
 function isCorruptionError(err: unknown): boolean {
   return (
     err instanceof SyntaxError ||
-    (err instanceof Error && err.message.includes("secrets file is corrupt or has an unexpected format"))
+    (err instanceof Error && (
+      err.message.includes("secrets file is corrupt or has an unexpected format") ||
+      err.message.includes("secrets file contains") ||
+      err.message.includes("secret is missing required string field")
+    ))
   );
 }
 

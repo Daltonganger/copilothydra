@@ -40,6 +40,7 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
    - transaction test added for account storage updates
    - corruption recovery pass done: malformed storage files are quarantined and recreated
    - removal pass done: account removal now also cleans secrets and synced provider config
+   - validation pass done: malformed/duplicate storage entries are now treated as corruption
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -235,6 +236,9 @@ Doel: meerdere accounts persistent kunnen beheren.
 - `removeAccountCompletely(...)` toegevoegd voor consistente account+secret+config cleanup
 - CLI ondersteunt nu `remove-account <account-id|provider-id>`
 - tests toegevoegd voor orphan cleanup, volledige removal helper en CLI removal pad
+- account- en secret-entry validatie controleert nu verplichte velden en duplicate ids
+- duplicate/malformed entries worden via het bestaande quarantine+recovery pad fail-closed afgehandeld
+- tests toegevoegd voor duplicate en malformed storage entry recovery
 
 ### Extra aandachtspunten
 - plaintext secret-opslag expliciet als tijdelijke/beta-keuze blijven documenteren
