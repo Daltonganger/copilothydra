@@ -17,6 +17,7 @@ import { findAccountByGitHubUsername, loadAccounts, upsertAccount } from "./stor
 import { removeAccountCompletely } from "./account-removal.js";
 import { repairStorage } from "./storage-repair.js";
 import { revalidateAccount, renameAccount, updateAccountPlan } from "./account-update.js";
+import { auditStorage } from "./storage-audit.js";
 import { isTTY } from "./ui/menu.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 import { resolveOpenCodeConfigPath } from "./config/opencode-config.js";
@@ -51,6 +52,9 @@ async function main(): Promise<void> {
       return;
     case "repair-storage":
       await repairStorageCommand();
+      return;
+    case "audit-storage":
+      await auditStorageCommand();
       return;
     default:
       throw new Error(`Unknown command: ${command}`);
@@ -195,6 +199,23 @@ async function repairStorageCommand(): Promise<void> {
   output.write(`Pruned orphan secrets: ${result.prunedSecretCount}\n`);
   output.write(`OpenCode config reconciled: ${resolveOpenCodeConfigPath()}\n`);
   output.write("Reload/restart OpenCode to apply provider changes if any stale providers were removed.\n");
+}
+
+async function auditStorageCommand(): Promise<void> {
+  const result = await auditStorage();
+  output.write(`Accounts found: ${result.accountCount}\n`);
+  output.write(`Secrets found: ${result.secretCount}\n`);
+  output.write(`Accounts without secrets: ${result.accountsWithoutSecrets.length}\n`);
+  output.write(`Orphan secrets: ${result.orphanSecretAccountIds.length}\n`);
+  output.write(`Missing provider entries: ${result.missingProviderIds.length}\n`);
+  output.write(`Stale provider entries: ${result.staleProviderIds.length}\n`);
+
+  if (result.ok) {
+    output.write("Storage audit is clean. No repair needed.\n");
+    return;
+  }
+
+  output.write("Storage audit detected inconsistencies. Run `copilothydra repair-storage` to reconcile them.\n");
 }
 
 async function resolveAccountByIdentifier(identifier: string) {

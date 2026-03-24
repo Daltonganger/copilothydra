@@ -17,6 +17,8 @@ Implemented so far:
 - Phase 2 registry hardening (duplicate GitHub account prevention pass)
 - Phase 2 repair flow (storage/config reconcile pass)
 - Phase 2 account metadata update flow (rename / plan update / revalidate pass)
+- Phase 2 audit flow (detect-only storage/config doctor pass)
+- Phase 2 storage edge-case hardening (enum/timestamp/optional token validation pass)
 
 ## What works now
 
@@ -32,6 +34,7 @@ Implemented so far:
   - `copilothydra rename-account <account-id|provider-id> <new-label>`
   - `copilothydra set-plan <account-id|provider-id> <free|student|pro|pro+>`
   - `copilothydra revalidate-account <account-id|provider-id>`
+  - `copilothydra audit-storage`
 - Smoke/config/non-TTY/compatibility tests
 - Lock-wrapped account/secrets update transactions
 - Storage transaction test coverage for account updates
@@ -43,6 +46,8 @@ Implemented so far:
 - Duplicate GitHub usernames are blocked case-insensitively in both account creation and storage validation
 - `copilothydra repair-storage` prunes orphan secrets and removes stale CopilotHydra provider entries from OpenCode config
 - existing accounts can now be renamed, revalidated, and moved to a new declared plan without manual file editing
+- `copilothydra audit-storage` reports orphan secrets and provider drift without mutating storage
+- Stored account enums/timestamps and optional secret token fields are now validated strictly and quarantined on malformed state
 
 ## Important behavior
 
