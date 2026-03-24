@@ -45,6 +45,7 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
    - repair pass done: storage/config reconcile command repairs orphan secrets and stale provider entries
    - metadata update pass done: account rename, plan update, and revalidate helpers now mutate storage and resync config
    - audit pass done: detect-only storage/config audit reports drift before mutating repair is run
+   - edge-case validation pass done: enum/timestamp/optional secret field validation now fail-closes malformed persisted state
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -256,6 +257,9 @@ Doel: meerdere accounts persistent kunnen beheren.
 - `auditStorage(...)` toegevoegd voor detect-only controle van orphan secrets, missende provider entries en stale config
 - CLI ondersteunt nu `audit-storage`
 - tests toegevoegd voor audit helper en CLI-output
+- account-validatie controleert nu ook toegestane enumwaarden en ISO timestamps
+- secret-validatie controleert nu ook optionele `copilotAccessToken` / `copilotAccessTokenExpiresAt` velden en consistente expiry-state
+- tests toegevoegd voor enum/timestamp/optional-field corruption recovery
 
 ### Extra aandachtspunten
 - plaintext secret-opslag expliciet als tijdelijke/beta-keuze blijven documenteren

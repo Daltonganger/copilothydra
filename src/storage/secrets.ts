@@ -22,7 +22,7 @@ import { debugStorage, warn } from "../log.js";
 import { isUnsafePlaintextConfirmed } from "../flags.js";
 import { resolveConfigDir } from "./accounts.js";
 import { withLock } from "./locking.js";
-import { isRecord, requireString } from "./validation.js";
+import { isRecord, requireIsoTimestamp, requireOptionalString, requireString } from "./validation.js";
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -182,6 +182,17 @@ function validateSecretsFile(data: unknown): SecretsFile {
 
     const accountId = requireString(secret, "accountId", "secret");
     requireString(secret, "githubOAuthToken", "secret");
+    const copilotAccessToken = requireOptionalString(secret, "copilotAccessToken", "secret");
+    const copilotAccessTokenExpiresAt = requireOptionalString(secret, "copilotAccessTokenExpiresAt", "secret");
+
+    if (copilotAccessTokenExpiresAt !== undefined) {
+      requireIsoTimestamp(copilotAccessTokenExpiresAt, "secret", "copilotAccessTokenExpiresAt");
+      if (copilotAccessToken === undefined) {
+        throw new Error(
+          "[copilothydra] secret has invalid token expiry state: copilotAccessTokenExpiresAt requires copilotAccessToken"
+        );
+      }
+    }
 
     if (seenAccountIds.has(accountId)) {
       throw new Error(`[copilothydra] secrets file contains duplicate account id: ${accountId}`);
@@ -207,7 +218,10 @@ function isCorruptionError(err: unknown): boolean {
     (err instanceof Error && (
       err.message.includes("secrets file is corrupt or has an unexpected format") ||
       err.message.includes("secrets file contains") ||
-      err.message.includes("secret is missing required string field")
+      err.message.includes("secret is missing required string field") ||
+      err.message.includes("secret has invalid optional string field") ||
+      err.message.includes("secret has invalid ISO timestamp") ||
+      err.message.includes("secret has invalid token expiry state")
     ))
   );
 }
