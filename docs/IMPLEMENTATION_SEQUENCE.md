@@ -34,8 +34,8 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
 8. ✅ **Phase 1 — single-account reference path**
 9. ✅ **Early tests**
 
-### Nu bezig
-10. ▶️ **Phase 2 — account registry + storage**
+### Afgerond
+10. ✅ **Phase 2 — account registry + storage**
    - first pass done: lock-wrapped read-modify-write helpers for accounts/secrets
    - transaction test added for account storage updates
    - corruption recovery pass done: malformed storage files are quarantined and recreated
@@ -43,9 +43,13 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
    - validation pass done: malformed/duplicate storage entries are now treated as corruption
    - uniqueness pass done: duplicate GitHub usernames are blocked in registry writes and validation
    - repair pass done: storage/config reconcile command repairs orphan secrets and stale provider entries
-   - metadata update pass done: account rename, plan update, and revalidate helpers now mutate storage and resync config
-   - audit pass done: detect-only storage/config audit reports drift before mutating repair is run
-   - edge-case validation pass done: enum/timestamp/optional secret field validation now fail-closes malformed persisted state
+    - metadata update pass done: account rename, plan update, and revalidate helpers now mutate storage and resync config
+    - audit pass done: detect-only storage/config audit reports drift before mutating repair is run
+    - edge-case validation pass done: enum/timestamp/optional secret field validation now fail-closes malformed persisted state
+
+### Nu bezig
+11. ▶️ **Phase 3 — multi-account routing**
+   - routing foundation started: lease-based provider→account resolution now tracks in-flight requests and blocks new work for pending-removal accounts
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -217,7 +221,7 @@ Doel: vroeg regressies voorkomen op de reference path.
 
 ## 10. Phase 2 — account registry + storage
 
-**Status:** ▶️ Volgende stap
+**Status:** ✅ Gereed
 
 Doel: meerdere accounts persistent kunnen beheren.
 
@@ -265,9 +269,14 @@ Doel: meerdere accounts persistent kunnen beheren.
 - plaintext secret-opslag expliciet als tijdelijke/beta-keuze blijven documenteren
 - writes/locks moeten fail-closed blijven en geen silent corruption toelaten
 
+### Exit criteria
+- accounts veilig en consistent opslaan/laden/updaten ✅
+
 ---
 
 ## 11. Phase 3 — multi-account routing
+
+**Status:** ▶️ Gestart
 
 Doel: correcte isolatie tussen accounts bij parallel gebruik.
 
@@ -278,6 +287,13 @@ Doel: correcte isolatie tussen accounts bij parallel gebruik.
 - concurrency guards toevoegen
 - refresh/exchange serialisatie per account toevoegen indien nodig
 - drain-on-remove gedrag implementeren
+
+### Reeds afgerond binnen Phase 3
+- lease-based routing toegevoegd via `acquireRoutingLease(providerId)`
+- in-flight request counts per account worden nu bijgehouden
+- `markAccountPendingRemoval(accountId)` blokkeert nieuwe routing leases fail-closed
+- `canAccountDrainComplete(accountId)` en `getRoutingSnapshot()` toegevoegd voor drain/inspectie
+- tests toegevoegd voor lease lifecycle, pending-removal blocking en routing snapshots
 
 ---
 

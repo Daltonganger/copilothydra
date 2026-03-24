@@ -19,6 +19,7 @@ Implemented so far:
 - Phase 2 account metadata update flow (rename / plan update / revalidate pass)
 - Phase 2 audit flow (detect-only storage/config doctor pass)
 - Phase 2 storage edge-case hardening (enum/timestamp/optional token validation pass)
+- Phase 3 routing foundation (lease-based provider→account routing guards)
 
 ## What works now
 
@@ -48,6 +49,7 @@ Implemented so far:
 - existing accounts can now be renamed, revalidated, and moved to a new declared plan without manual file editing
 - `copilothydra audit-storage` reports orphan secrets and provider drift without mutating storage
 - Stored account enums/timestamps and optional secret token fields are now validated strictly and quarantined on malformed state
+- Runtime routing now has lease-based in-flight tracking and pending-removal guards per account
 
 ## Important behavior
 
@@ -111,4 +113,4 @@ Kort: **één stap = docs bijwerken + PR maken + dan pas verder**.
 
 ## Next step
 
-Continue Phase 2: account registry and storage hardening.
+Continue Phase 3: multi-account routing and request isolation.
