@@ -1,0 +1,169 @@
+/**
+ * CopilotHydra — account storage
+ *
+ * Reads and writes the account metadata file (copilot-accounts.json).
+ * No secrets are stored here.
+ *
+ * File location: <opencode-config-dir>/copilot-accounts.json
+ * Default config dir: ~/.config/opencode/ (macOS/Linux)
+ *                     ~/.config/opencode/ (Windows too, because OpenCode uses xdg-basedir universally)
+ *
+ * Important Spike E finding:
+ * - OpenCode stores its own auth.json in the DATA dir (`~/.local/share/opencode/auth.json`)
+ * - CopilotHydra stores its own metadata/secrets in the CONFIG dir by design
+ *   because the user explicitly chose the OpenCode config directory convention.
+ *
+ * NOTE: Phase 0 scaffold. Locking is deferred to src/storage/locking.ts.
+ * Atomic write/replace is implemented here but without cross-process locks.
+ * Full lock-wrapped transactions are built in Phase 2.
+ */
+
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { join, dirname } from "node:path";
+import type { AccountId, CopilotAccountMeta, AccountsFile } from "../types.js";
+import { debugStorage, warn } from "../log.js";
+
+// ---------------------------------------------------------------------------
+// Config dir resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve the OpenCode config directory.
+ *
+ * Priority:
+ * 1. OPENCODE_CONFIG_DIR env var (confirmed in Spike E)
+ * 2. XDG_CONFIG_HOME/opencode
+ * 3. <home>/.config/opencode
+ *
+ * Notes:
+ * - OpenCode itself uses `xdg-basedir` across macOS/Linux/Windows.
+ * - We intentionally mirror that convention here instead of using APPDATA.
+ * - OPENCODE_TEST_HOME exists in OpenCode for test isolation; we honor it as
+ *   a home-dir override when no explicit config dir is provided.
+ */
+export function resolveConfigDir(): string {
+  if (process.env["OPENCODE_CONFIG_DIR"]) {
+    return process.env["OPENCODE_CONFIG_DIR"];
+  }
+  if (process.env["XDG_CONFIG_HOME"]) {
+    return join(process.env["XDG_CONFIG_HOME"], "opencode");
+  }
+  const home = process.env["OPENCODE_TEST_HOME"] ?? process.env["HOME"] ?? process.env["USERPROFILE"] ?? "~";
+  return join(home, ".config", "opencode");
+}
+
+export function accountsFilePath(configDir?: string): string {
+  return join(configDir ?? resolveConfigDir(), "copilot-accounts.json");
+}
+
+// ---------------------------------------------------------------------------
+// Read
+// ---------------------------------------------------------------------------
+
+export async function loadAccounts(configDir?: string): Promise<AccountsFile> {
+  const path = accountsFilePath(configDir);
+  debugStorage(`loading accounts from ${path}`);
+
+  try {
+    const raw = await readFile(path, "utf-8");
+    const parsed = JSON.parse(raw) as unknown;
+    return validateAccountsFile(parsed);
+  } catch (err) {
+    if (isNodeError(err) && err.code === "ENOENT") {
+      debugStorage("accounts file not found, returning empty");
+      return { version: 1, accounts: [] };
+    }
+    warn("storage", `Failed to load accounts file: ${String(err)}`);
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Write (atomic)
+// ---------------------------------------------------------------------------
+
+export async function saveAccounts(data: AccountsFile, configDir?: string): Promise<void> {
+  const path = accountsFilePath(configDir);
+  const tmpPath = path + ".tmp";
+  debugStorage(`saving accounts to ${path}`);
+
+  await mkdir(dirname(path), { recursive: true });
+  const json = JSON.stringify(data, null, 2) + "\n";
+
+  // Atomic write: write to .tmp then rename
+  await writeFile(tmpPath, json, { encoding: "utf-8", mode: 0o600 });
+
+  // On Windows, rename may fail if destination exists — try unlink first (best-effort)
+  if (process.platform === "win32") {
+    try {
+      const { unlink, rename } = await import("node:fs/promises");
+      try { await unlink(path); } catch { /* ignore if not exists */ }
+      await rename(tmpPath, path);
+    } catch (err) {
+      warn("storage", `Atomic rename failed on Windows, falling back to direct write: ${String(err)}`);
+      await writeFile(path, json, { encoding: "utf-8", mode: 0o600 });
+    }
+  } else {
+    const { rename } = await import("node:fs/promises");
+    await rename(tmpPath, path);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CRUD helpers
+// ---------------------------------------------------------------------------
+
+export async function findAccount(
+  id: AccountId,
+  configDir?: string
+): Promise<CopilotAccountMeta | undefined> {
+  const file = await loadAccounts(configDir);
+  return file.accounts.find((a) => a.id === id);
+}
+
+export async function upsertAccount(
+  account: CopilotAccountMeta,
+  configDir?: string
+): Promise<void> {
+  const file = await loadAccounts(configDir);
+  const idx = file.accounts.findIndex((a) => a.id === account.id);
+  if (idx >= 0) {
+    file.accounts[idx] = account;
+  } else {
+    file.accounts.push(account);
+  }
+  await saveAccounts(file, configDir);
+}
+
+export async function removeAccount(
+  id: AccountId,
+  configDir?: string
+): Promise<void> {
+  const file = await loadAccounts(configDir);
+  file.accounts = file.accounts.filter((a) => a.id !== id);
+  await saveAccounts(file, configDir);
+}
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+function validateAccountsFile(data: unknown): AccountsFile {
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    (data as Record<string, unknown>)["version"] !== 1 ||
+    !Array.isArray((data as Record<string, unknown>)["accounts"])
+  ) {
+    throw new Error("[copilothydra] accounts file is corrupt or has an unexpected format");
+  }
+  return data as AccountsFile;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return typeof err === "object" && err !== null && "code" in err;
+}

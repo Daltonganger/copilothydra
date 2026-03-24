@@ -1,0 +1,36 @@
+{
+  "name": "copilothydra",
+  "version": "0.0.1",
+  "description": "OpenCode plugin: multiple GitHub Copilot accounts",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "copilothydra": "dist/cli.js"
+  },
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "cli": "node dist/cli.js",
+    "dev": "tsc --watch",
+    "test": "npm run build && node --test tests/**/*.test.js",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["opencode", "copilot", "plugin"],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*"
+  },
+  "peerDependenciesMeta": {
+    "@opencode-ai/plugin": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
