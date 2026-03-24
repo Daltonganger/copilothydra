@@ -21,6 +21,7 @@ Implemented so far:
 - Phase 2 storage edge-case hardening (enum/timestamp/optional token validation pass)
 - Phase 3 routing foundation (lease-based provider→account routing guards)
 - Phase 3 routed token integration (provider→account→token fail-closed path)
+- Phase 3 drain-on-remove lifecycle (two-step pending-removal → final cleanup flow)
 
 ## What works now
 
@@ -44,6 +45,7 @@ Implemented so far:
 - Secret transaction test coverage and corruption recovery tests
 - Orphan secret cleanup is available
 - `copilothydra remove-account <account-id|provider-id>` removes account metadata, secrets, and synced provider config
+- `copilothydra remove-account <account-id|provider-id>` now uses a two-step drain flow: first mark pending-removal, then finalize cleanup on the next call
 - Malformed or duplicate account/secret entries are treated as corruption and quarantined before recovery
 - Duplicate GitHub usernames are blocked case-insensitively in both account creation and storage validation
 - `copilothydra repair-storage` prunes orphan secrets and removes stale CopilotHydra provider entries from OpenCode config
@@ -52,6 +54,7 @@ Implemented so far:
 - Stored account enums/timestamps and optional secret token fields are now validated strictly and quarantined on malformed state
 - Runtime routing now has lease-based in-flight tracking and pending-removal guards per account
 - Auth loader requests now sync runtime token state through provider routing and fail closed when routed token state is unavailable
+- Pending-removal accounts are now persisted in storage, removed from generated provider config, and finalized only after drain-complete cleanup
 
 ## Important behavior
 

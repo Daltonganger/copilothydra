@@ -144,6 +144,16 @@ export function markAccountPendingRemoval(accountId: AccountId): void {
   warn("routing", `Account "${accountId}" marked pending-removal; new routing leases will fail closed`);
 }
 
+export function unregisterAccount(accountId: AccountId): void {
+  const account = accountRegistry.get(accountId);
+  if (!account) return;
+
+  providerToAccount.delete(account.providerId);
+  accountRegistry.delete(accountId);
+  inFlightByAccount.delete(accountId);
+  debugRouting(`unregistered account "${accountId}" and provider "${account.providerId}" from routing registry`);
+}
+
 export function getInFlightCount(accountId: AccountId): number {
   return inFlightByAccount.get(accountId) ?? 0;
 }

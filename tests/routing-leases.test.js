@@ -86,3 +86,28 @@ test("routing snapshot exposes lifecycle and in-flight counts", async () => {
 
   lease.release();
 });
+
+test("unregisterAccount removes provider and in-flight tracking from registry", async () => {
+  const routing = await import(`../dist/routing/provider-account-map.js?${Date.now()}`);
+
+  routing.registerAccounts([
+    {
+      id: "acct_four",
+      providerId: "github-copilot-acct-acct_four",
+      label: "Four",
+      githubUsername: "four",
+      plan: "free",
+      capabilityState: "user-declared",
+      lifecycleState: "active",
+      addedAt: new Date("2026-03-24T00:00:00.000Z").toISOString(),
+    },
+  ]);
+
+  routing.unregisterAccount("acct_four");
+
+  assert.equal(routing.getRoutingSnapshot().length, 0);
+  assert.throws(
+    () => routing.acquireRoutingLease("github-copilot-acct-acct_four"),
+    /No account registered/
+  );
+});
