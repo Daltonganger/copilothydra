@@ -23,6 +23,7 @@ import { join, dirname } from "node:path";
 import type { AccountId, CopilotAccountMeta, AccountsFile } from "../types.js";
 import { debugStorage, warn } from "../log.js";
 import { withLock } from "./locking.js";
+import { isRecord, requireString } from "./validation.js";
 
 // ---------------------------------------------------------------------------
 // Config dir resolution
@@ -218,18 +219,6 @@ function validateAccountsFile(data: unknown): AccountsFile {
 
 function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return typeof err === "object" && err !== null && "code" in err;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function requireString(obj: Record<string, unknown>, key: string, label: string): string {
-  const value = obj[key];
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`[copilothydra] ${label} is missing required string field: ${key}`);
-  }
-  return value;
 }
 
 function isCorruptionError(err: unknown): boolean {
