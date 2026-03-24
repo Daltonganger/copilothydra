@@ -22,6 +22,7 @@ Implemented so far:
 - Phase 3 routing foundation (lease-based provider→account routing guards)
 - Phase 3 routed token integration (provider→account→token fail-closed path)
 - Phase 3 drain-on-remove lifecycle (two-step pending-removal → final cleanup flow)
+- Phase 3 token lifecycle serialization (same-account token sync prepared for refresh-safe evolution)
 
 ## What works now
 
@@ -55,6 +56,7 @@ Implemented so far:
 - Runtime routing now has lease-based in-flight tracking and pending-removal guards per account
 - Auth loader requests now sync runtime token state through provider routing and fail closed when routed token state is unavailable
 - Pending-removal accounts are now persisted in storage, removed from generated provider config, and finalized only after drain-complete cleanup
+- Same-account token lifecycle work is now serialized before auth-header injection, preparing Phase 3 for refresh/exchange without same-account races
 
 ## Important behavior
 
