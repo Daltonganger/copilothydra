@@ -121,3 +121,83 @@ Kort: **één stap = docs bijwerken + PR maken + dan pas verder**.
 ## Next step
 
 Continue Phase 3: multi-account routing and request isolation.
+
+## Remaining roadmap
+
+### First: process current open PRs
+
+- PR #11 — Phase 3 routing foundation
+- PR #12 — routed token integration
+- PR #13 — drain-aware removal
+- PR #14 — token lifecycle serialization
+
+Expected effort: **1 merge/cleanup block**
+
+### Phase 3 — multi-account routing (remaining)
+
+Expected remaining: **about 3 PRs**
+
+1. **Refresh/recovery path**
+   - real refresh/exchange serialization
+   - revoked/expired token recovery
+   - fail-closed recovery behavior
+2. **Parallel isolation hardening**
+   - more concurrency coverage
+   - same-account vs cross-account isolation checks
+   - no token/account bleed under overlap
+3. **Routing lifecycle completion**
+   - remaining pending-removal / restart / sync edge cases
+   - Phase 3 completion docs and final tests
+
+### Phase 4 — capability/model exposure
+
+Expected remaining: **about 2–3 PRs**
+
+1. **Declared model exposure hardening**
+   - centralize plan → model exposure
+   - mark uncertain models explicitly
+2. **Mismatch/downgrade flow**
+   - mismatch state logic
+   - stricter-plan overwrite/confirm behavior
+3. **Docs/tests pass**
+   - capability policy docs
+   - Phase 4 completion tests and cleanup
+
+### Phase 5 — TUI
+
+Expected remaining: **about 3–4 PRs**
+
+1. **Menu foundation**
+2. **Account actions in TUI**
+3. **Lifecycle state presentation**
+4. **Polish/tests/docs**
+
+### Hardening
+
+Expected remaining: **about 3 PRs**
+
+1. **Compatibility/version detection**
+2. **GPT-5+/Responses gap mitigation or explicit limitation**
+3. **Release hardening**
+   - regression coverage
+   - final docs
+   - beta caveats/security notes
+
+### Rough total remaining
+
+- **1 PR block** for current open PR cleanup
+- **3 PRs** for Phase 3
+- **2–3 PRs** for Phase 4
+- **3–4 PRs** for Phase 5
+- **3 PRs** for Hardening
+
+Estimated total remaining: **about 12–14 PRs**.
+
+### Most important milestone
+
+The main architectural milestone is: **finish Phase 3**.
+
+After that, the backend/routing core is mostly in place and the remaining work shifts more toward:
+- capability policy
+- user experience / TUI
+- hardening and release quality

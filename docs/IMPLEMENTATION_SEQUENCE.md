@@ -378,3 +378,73 @@ Doel: van werkend naar verantwoord beta-niveau.
 ## Immediate next step
 
 **Continue Phase 3: request routing verder uitbouwen met echte refresh/exchange-serialisatie en bredere parallel-isolatie.**
+
+---
+
+## Remaining roadmap (estimated)
+
+### Eerst open PR's verwerken
+
+- PR #11 — routing foundation
+- PR #12 — routed token integration
+- PR #13 — drain-aware removal
+- PR #14 — token lifecycle serialization
+
+Verwachting: **1 merge/cleanup blok**
+
+### Phase 3 — resterend
+
+Verwachting: **ongeveer 3 PR's**
+
+1. **Refresh/recovery path**
+   - echte refresh/exchange-serialisatie
+   - revoked/expired token recovery
+   - fail-closed recovery pad
+2. **Parallel isolation hardening**
+   - extra concurrency coverage
+   - same-account vs cross-account isolatiechecks
+   - geen token/account bleed
+3. **Routing lifecycle afronden**
+   - laatste pending-removal / restart / sync edge cases
+   - Phase 3 afsluiten in docs/tests
+
+### Phase 4 — capability/model exposure
+
+Verwachting: **ongeveer 2–3 PR's**
+
+1. **Declared model exposure aanscherpen**
+2. **Mismatch/downgrade flow**
+3. **Docs/tests afronden**
+
+### Phase 5 — TUI
+
+Verwachting: **ongeveer 3–4 PR's**
+
+1. **Menu foundation**
+2. **Account actions**
+3. **Lifecycle state presentation**
+4. **Polish/tests/docs**
+
+### Hardening
+
+Verwachting: **ongeveer 3 PR's**
+
+1. **Compatibility/version detection**
+2. **GPT-5+/Responses gap aanpakken of expliciet begrenzen**
+3. **Release hardening**
+
+### Totale resterende inschatting
+
+- **1 PR-blok** voor huidige open PR cleanup
+- **3 PR's** voor Phase 3
+- **2–3 PR's** voor Phase 4
+- **3–4 PR's** voor Phase 5
+- **3 PR's** voor Hardening
+
+Geschatte rest: **ongeveer 12–14 PR's**.
+
+### Belangrijkste mijlpaal
+
+De echte architectuurmijlpaal is: **Phase 3 volledig afronden**.
+
+Daarna is de backend/routing-kern grotendeels klaar en verschuift het zwaartepunt naar capability policy, TUI/UX en hardening.
