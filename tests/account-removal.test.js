@@ -88,7 +88,61 @@ test("removeAccountCompletely removes account, secret, and OpenCode provider ent
   }
 });
 
-test("cli remove-account removes a configured account by id", async () => {
+test("beginAccountRemoval marks pending-removal and finalizeAccountRemoval waits for drain", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
+
+    const configPath = path.join(tempDir, "opencode.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { updateAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { updateSecrets } = await import(`../dist/storage/secrets.js?${Date.now()}`);
+    const { syncAccountsToOpenCodeConfig } = await import(`../dist/config/sync.js?${Date.now()}`);
+    const removal = await import("../dist/account-removal.js");
+    const routing = await import("../dist/routing/provider-account-map.js");
+
+    const account = createAccountMeta({ label: "Drain", githubUsername: "drain", plan: "pro" });
+
+    await updateAccounts((file) => {
+      file.accounts.push(account);
+    }, tempDir);
+    await updateSecrets((file) => {
+      file.secrets.push({ accountId: account.id, githubOAuthToken: "token-drain" });
+    }, tempDir);
+    await syncAccountsToOpenCodeConfig(configPath, tempDir);
+
+    routing.registerAccounts([account]);
+    const lease = routing.acquireRoutingLease(account.providerId);
+
+    const started = await removal.beginAccountRemoval(account.id, { configDir: tempDir, configPath });
+    assert.equal(started.account?.lifecycleState, "pending-removal");
+
+    const midAccounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
+    assert.equal(midAccounts.accounts[0].lifecycleState, "pending-removal");
+
+    await assert.rejects(
+      removal.finalizeAccountRemoval(account.id, { configDir: tempDir, configPath }),
+      /in-flight requests/
+    );
+
+    lease.release();
+
+    const finished = await removal.finalizeAccountRemoval(account.id, { configDir: tempDir, configPath });
+    assert.equal(finished.removed?.id, account.id);
+
+    const afterAccounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
+    assert.equal(afterAccounts.accounts.length, 0);
+  } finally {
+    delete process.env.OPENCODE_CONFIG;
+    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
+    await cleanupDir(tempDir);
+  }
+});
+
+test("cli remove-account becomes two-step: pending-removal then final cleanup", async () => {
   const tempDir = await makeTempDir();
 
   try {
@@ -113,7 +167,7 @@ test("cli remove-account removes a configured account by id", async () => {
     await syncAccountsToOpenCodeConfig(configPath, tempDir);
 
     const { spawnSync } = await import("node:child_process");
-    const result = spawnSync(process.execPath, ["dist/cli.js", "remove-account", account.id], {
+    const first = spawnSync(process.execPath, ["dist/cli.js", "remove-account", account.id], {
       cwd: path.resolve("."),
       env: {
         ...process.env,
@@ -124,9 +178,28 @@ test("cli remove-account removes a configured account by id", async () => {
       encoding: "utf8",
     });
 
-    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.equal(first.status, 0, first.stderr || first.stdout);
+    assert.match(first.stdout, /Marked account pending removal/);
 
-    const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
+    let accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
+    assert.equal(accounts.accounts.length, 1);
+    assert.equal(accounts.accounts[0].lifecycleState, "pending-removal");
+
+    const second = spawnSync(process.execPath, ["dist/cli.js", "remove-account", account.id], {
+      cwd: path.resolve("."),
+      env: {
+        ...process.env,
+        OPENCODE_CONFIG_DIR: tempDir,
+        OPENCODE_CONFIG: configPath,
+        COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM: "1",
+      },
+      encoding: "utf8",
+    });
+
+    assert.equal(second.status, 0, second.stderr || second.stdout);
+    assert.match(second.stdout, /Removed account:/);
+
+    accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
     assert.equal(accounts.accounts.length, 0);
 
     const secrets = await readJson(path.join(tempDir, "copilot-secrets.json"));
