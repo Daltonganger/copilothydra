@@ -25,6 +25,8 @@ import { buildAuthLoader } from "./auth/loader.js";
 import { requestDeviceCode, pollForAccessToken } from "./auth/device-flow.js";
 import { info, warn, error } from "./log.js";
 import { validateAccountCount } from "./runtime-checks.js";
+import { registerAccounts } from "./routing/provider-account-map.js";
+import { setTokenState } from "./auth/token-state.js";
 
 // ---------------------------------------------------------------------------
 // Module-level account loading (top-level await in ESM)
@@ -40,6 +42,7 @@ try {
   const file = await loadAccounts();
   _accounts = file.accounts.filter((a) => a.lifecycleState === "active");
   validateAccountCount(_accounts);
+  registerAccounts(_accounts);
   info("plugin", `Loaded ${_accounts.length} active account(s)`);
 } catch (err_) {
   _loadError = String(err_);
@@ -91,6 +94,12 @@ function makeAccountPlugin(account: CopilotAccountMeta): (input: PluginInput) =>
                       deviceCode.interval,
                       deviceCode.expires_in
                     );
+                    setTokenState({
+                      accountId: account.id,
+                      githubOAuthToken: result.accessToken,
+                      expiresAt: 0,
+                      setAt: Date.now(),
+                    });
                     return {
                       type: "success" as const,
                       provider: account.providerId, // lets OpenCode re-route if needed
