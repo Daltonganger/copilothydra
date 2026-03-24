@@ -36,6 +36,14 @@ export interface TokenState {
 /** Map from accountId → current token state */
 const tokenRegistry = new Map<AccountId, TokenState>();
 
+/**
+ * Map from accountId → tail promise for serialized token lifecycle work.
+ *
+ * Phase 3 goal: prepare for future refresh/exchange logic without allowing
+ * same-account token mutations to race each other.
+ */
+const tokenLifecycleTails = new Map<AccountId, Promise<void>>();
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -91,4 +99,29 @@ export function requireActiveTokenState(accountId: AccountId): TokenState {
     throw new Error(`[copilothydra] Runtime token state for account "${accountId}" is expired`);
   }
   return state;
+}
+
+export async function runSerializedTokenLifecycle<T>(
+  accountId: AccountId,
+  operation: () => Promise<T> | T,
+): Promise<T> {
+  const previous = tokenLifecycleTails.get(accountId) ?? Promise.resolve();
+
+  let release!: () => void;
+  const nextTail = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const currentTail = previous.then(() => nextTail);
+  tokenLifecycleTails.set(accountId, currentTail);
+
+  await previous;
+
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (tokenLifecycleTails.get(accountId) === currentTail) {
+      tokenLifecycleTails.delete(accountId);
+    }
+  }
 }

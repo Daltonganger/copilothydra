@@ -23,7 +23,7 @@
 import type { AccountId, AuthLoader, ProviderId, StoredAuthInfo } from "../types.js";
 import { debugAuth } from "../log.js";
 import { acquireRoutingLease } from "../routing/provider-account-map.js";
-import { requireActiveTokenState, syncTokenStateFromStoredAuth } from "./token-state.js";
+import { requireActiveTokenState, runSerializedTokenLifecycle, syncTokenStateFromStoredAuth } from "./token-state.js";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -98,21 +98,23 @@ export function buildAuthLoader(
       fetch: async (request, init) => {
         const lease = acquireRoutingLease(providerId);
         try {
-          const info = await getAuth();
-          const synced = syncTokenStateFromStoredAuth(lease.accountId, info);
-          if (!synced) {
-            // Intentional Phase 3 fail-closed behavior: once routing is provider→account
-            // isolated, a revoked/missing routed token must NOT fall through as an
-            // unauthenticated request. Forwarding without auth could mask routing bugs,
-            // blur token/account ownership, or let the host retry in a less explicit way.
-            // We throw here so the routed account failure is visible and the lease still
-            // releases in `finally`.
-            throw new Error(
-              `[copilothydra] No oauth token available for routed account "${lease.accountId}" (${providerId})`
-            );
-          }
+          const runtimeToken = await runSerializedTokenLifecycle(lease.accountId, async () => {
+            const info = await getAuth();
+            const synced = syncTokenStateFromStoredAuth(lease.accountId, info);
+            if (!synced) {
+              // Intentional Phase 3 fail-closed behavior: once routing is provider→account
+              // isolated, a revoked/missing routed token must NOT fall through as an
+              // unauthenticated request. Forwarding without auth could mask routing bugs,
+              // blur token/account ownership, or let the host retry in a less explicit way.
+              // We throw here so the routed account failure is visible and the lease still
+              // releases in `finally`.
+              throw new Error(
+                `[copilothydra] No oauth token available for routed account "${lease.accountId}" (${providerId})`
+              );
+            }
 
-          const runtimeToken = requireActiveTokenState(lease.accountId);
+            return requireActiveTokenState(lease.accountId);
+          });
 
           const headers: Record<string, string> = {
             ...(init?.headers as Record<string, string> | undefined),
