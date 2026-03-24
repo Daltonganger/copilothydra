@@ -10,16 +10,16 @@
  * - created with mode 0o600 (owner read/write only)
  * - tokens are NEVER passed to log functions
  * - plaintext storage is v1-only; keychain migration is a Phase 2+ concern
- * - UNSAFE_PLAINTEXT_CONFIRMED flag must be set to write tokens
+ * - COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM flag must be set to write tokens
  *
  * NOTE: Phase 0 scaffold. Cross-process locking is in src/storage/locking.ts (Phase 2).
  */
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import { join, dirname } from "node:path";
-import type { AccountId, CopilotSecretRecord, SecretsFile } from "../types.js";
+import type { AccountId, CopilotSecretRecord, SecretsFile, AccountsFile } from "../types.js";
 import { debugStorage, warn } from "../log.js";
-import { UNSAFE_PLAINTEXT_CONFIRMED } from "../flags.js";
+import { isUnsafePlaintextConfirmed } from "../flags.js";
 import { resolveConfigDir } from "./accounts.js";
 import { withLock } from "./locking.js";
 
@@ -52,6 +52,10 @@ async function loadSecretsFromPath(path: string): Promise<SecretsFile> {
       debugStorage("secrets file not found, returning empty");
       return { version: 1, secrets: [] };
     }
+    if (isCorruptionError(err)) {
+      await quarantineCorruptFile(path, "secrets", err);
+      return { version: 1, secrets: [] };
+    }
     warn("storage", "Failed to load secrets file (path and content not logged for security)");
     throw err;
   }
@@ -67,7 +71,7 @@ export async function saveSecrets(data: SecretsFile, configDir?: string): Promis
 }
 
 async function saveSecretsToPath(data: SecretsFile, path: string): Promise<void> {
-  if (!UNSAFE_PLAINTEXT_CONFIRMED) {
+  if (!isUnsafePlaintextConfirmed()) {
     throw new Error(
       "[copilothydra] Refusing to write secrets to plaintext storage. " +
       "Set COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM=1 to acknowledge that " +
@@ -85,7 +89,7 @@ async function saveSecretsToPath(data: SecretsFile, path: string): Promise<void>
 
   if (process.platform === "win32") {
     try {
-      const { unlink, rename } = await import("node:fs/promises");
+      const { unlink } = await import("node:fs/promises");
       try { await unlink(path); } catch { /* ignore */ }
       await rename(tmpPath, path);
     } catch (err) {
@@ -93,7 +97,6 @@ async function saveSecretsToPath(data: SecretsFile, path: string): Promise<void>
       await writeFile(path, json, { encoding: "utf-8", mode: 0o600 });
     }
   } else {
-    const { rename } = await import("node:fs/promises");
     await rename(tmpPath, path);
   }
 }
@@ -148,6 +151,17 @@ export async function updateSecrets(
   });
 }
 
+export async function pruneOrphanSecrets(
+  accounts: AccountsFile | { accounts: Array<{ id: AccountId }> },
+  configDir?: string
+): Promise<SecretsFile> {
+  const validAccountIds = new Set(accounts.accounts.map((account) => account.id));
+
+  return await updateSecrets((file) => {
+    file.secrets = file.secrets.filter((secret) => validAccountIds.has(secret.accountId));
+  }, configDir);
+}
+
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
@@ -170,4 +184,26 @@ function validateSecretsFile(data: unknown): SecretsFile {
 
 function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return typeof err === "object" && err !== null && "code" in err;
+}
+
+function isCorruptionError(err: unknown): boolean {
+  return (
+    err instanceof SyntaxError ||
+    (err instanceof Error && err.message.includes("secrets file is corrupt or has an unexpected format"))
+  );
+}
+
+async function quarantineCorruptFile(path: string, label: string, err: unknown): Promise<void> {
+  const quarantinePath = `${path}.corrupt-${Date.now()}`;
+  warn("storage", `Detected corrupt ${label} file. Quarantining existing file.`);
+
+  try {
+    await rename(path, quarantinePath);
+  } catch (renameErr) {
+    warn(
+      "storage",
+      `Failed to quarantine corrupt ${label} file after load error: ${String(renameErr)} (original error: ${String(err)})`
+    );
+    throw err;
+  }
 }

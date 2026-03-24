@@ -38,6 +38,8 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
 10. ▶️ **Phase 2 — account registry + storage**
    - first pass done: lock-wrapped read-modify-write helpers for accounts/secrets
    - transaction test added for account storage updates
+   - corruption recovery pass done: malformed storage files are quarantined and recreated
+   - removal pass done: account removal now also cleans secrets and synced provider config
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -226,6 +228,13 @@ Doel: meerdere accounts persistent kunnen beheren.
 - `upsertAccount` / `removeAccount` omgezet naar transaction helpers
 - `upsertSecret` / `removeSecret` omgezet naar transaction helpers
 - storage transaction test toegevoegd voor account updates
+- corrupt `copilot-accounts.json` wordt nu naar `*.corrupt-*` verplaatst en daarna hersteld naar lege v1-state
+- corrupt `copilot-secrets.json` wordt nu naar `*.corrupt-*` verplaatst en daarna hersteld naar lege v1-state
+- tests toegevoegd voor secrets transaction pad en beide corruption-recovery paden
+- `pruneOrphanSecrets(...)` toegevoegd voor orphan secret cleanup
+- `removeAccountCompletely(...)` toegevoegd voor consistente account+secret+config cleanup
+- CLI ondersteunt nu `remove-account <account-id|provider-id>`
+- tests toegevoegd voor orphan cleanup, volledige removal helper en CLI removal pad
 
 ### Extra aandachtspunten
 - plaintext secret-opslag expliciet als tijdelijke/beta-keuze blijven documenteren

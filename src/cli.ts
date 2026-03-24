@@ -14,6 +14,7 @@ import { stdin as input, stdout as output } from "node:process";
 import type { PlanTier } from "./types.js";
 import { createAccountMeta } from "./account.js";
 import { loadAccounts, upsertAccount } from "./storage/accounts.js";
+import { removeAccountCompletely } from "./account-removal.js";
 import { isTTY } from "./ui/menu.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 import { resolveOpenCodeConfigPath } from "./config/opencode-config.js";
@@ -33,6 +34,9 @@ async function main(): Promise<void> {
       return;
     case "sync-config":
       await syncConfigOnly();
+      return;
+    case "remove-account":
+      await removeAccountCommand(process.argv[3]);
       return;
     default:
       throw new Error(`Unknown command: ${command}`);
@@ -91,6 +95,30 @@ async function syncConfigOnly(): Promise<void> {
   }
   await syncAccountsToOpenCodeConfig();
   output.write(`Synced provider entries to ${resolveOpenCodeConfigPath()}\n`);
+  output.write("Reload/restart OpenCode to apply provider changes.\n");
+}
+
+async function removeAccountCommand(identifier?: string): Promise<void> {
+  if (!identifier) {
+    throw new Error("[copilothydra] remove-account requires an account id or provider id");
+  }
+
+  const accounts = await loadAccounts();
+  const account = accounts.accounts.find(
+    (candidate) => candidate.id === identifier || candidate.providerId === identifier
+  );
+
+  if (!account) {
+    throw new Error(`[copilothydra] account not found: ${identifier}`);
+  }
+
+  const result = await removeAccountCompletely(account.id);
+  if (!result.removed) {
+    throw new Error(`[copilothydra] account disappeared before removal: ${identifier}`);
+  }
+
+  output.write(`Removed account: ${result.removed.label} (${result.removed.githubUsername})\n`);
+  output.write(`Provider ID removed: ${result.removed.providerId}\n`);
   output.write("Reload/restart OpenCode to apply provider changes.\n");
 }
 

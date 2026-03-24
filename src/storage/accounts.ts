@@ -18,7 +18,7 @@
  * Full lock-wrapped transactions are built in Phase 2.
  */
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import type { AccountId, CopilotAccountMeta, AccountsFile } from "../types.js";
 import { debugStorage, warn } from "../log.js";
@@ -78,6 +78,10 @@ async function loadAccountsFromPath(path: string): Promise<AccountsFile> {
       debugStorage("accounts file not found, returning empty");
       return { version: 1, accounts: [] };
     }
+    if (isCorruptionError(err)) {
+      await quarantineCorruptFile(path, "accounts", err);
+      return { version: 1, accounts: [] };
+    }
     warn("storage", `Failed to load accounts file: ${String(err)}`);
     throw err;
   }
@@ -105,7 +109,7 @@ async function saveAccountsToPath(data: AccountsFile, path: string): Promise<voi
   // On Windows, rename may fail if destination exists — try unlink first (best-effort)
   if (process.platform === "win32") {
     try {
-      const { unlink, rename } = await import("node:fs/promises");
+      const { unlink } = await import("node:fs/promises");
       try { await unlink(path); } catch { /* ignore if not exists */ }
       await rename(tmpPath, path);
     } catch (err) {
@@ -113,7 +117,6 @@ async function saveAccountsToPath(data: AccountsFile, path: string): Promise<voi
       await writeFile(path, json, { encoding: "utf-8", mode: 0o600 });
     }
   } else {
-    const { rename } = await import("node:fs/promises");
     await rename(tmpPath, path);
   }
 }
@@ -190,4 +193,26 @@ function validateAccountsFile(data: unknown): AccountsFile {
 
 function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return typeof err === "object" && err !== null && "code" in err;
+}
+
+function isCorruptionError(err: unknown): boolean {
+  return (
+    err instanceof SyntaxError ||
+    (err instanceof Error && err.message.includes("accounts file is corrupt or has an unexpected format"))
+  );
+}
+
+async function quarantineCorruptFile(path: string, label: string, err: unknown): Promise<void> {
+  const quarantinePath = `${path}.corrupt-${Date.now()}`;
+  warn("storage", `Detected corrupt ${label} file. Quarantining to ${quarantinePath}`);
+
+  try {
+    await rename(path, quarantinePath);
+  } catch (renameErr) {
+    warn(
+      "storage",
+      `Failed to quarantine corrupt ${label} file after load error: ${String(renameErr)} (original error: ${String(err)})`
+    );
+    throw err;
+  }
 }

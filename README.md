@@ -11,6 +11,8 @@ Implemented so far:
 - Phase 1 single-account reference path
 - Early tests
 - Phase 2 storage hardening (first transaction/locking pass)
+- Phase 2 storage hardening (corruption recovery pass)
+- Phase 2 storage hardening (account removal + orphan cleanup pass)
 
 ## What works now
 
@@ -26,6 +28,10 @@ Implemented so far:
 - Smoke/config/non-TTY/compatibility tests
 - Lock-wrapped account/secrets update transactions
 - Storage transaction test coverage for account updates
+- Corrupt account/secret files are quarantined to `*.corrupt-*` and recovered to empty v1 state
+- Secret transaction test coverage and corruption recovery tests
+- Orphan secret cleanup is available
+- `copilothydra remove-account <account-id|provider-id>` removes account metadata, secrets, and synced provider config
 
 ## Important behavior
 
