@@ -42,6 +42,7 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
    - removal pass done: account removal now also cleans secrets and synced provider config
    - validation pass done: malformed/duplicate storage entries are now treated as corruption
    - uniqueness pass done: duplicate GitHub usernames are blocked in registry writes and validation
+   - repair pass done: storage/config reconcile command repairs orphan secrets and stale provider entries
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -243,6 +244,9 @@ Doel: meerdere accounts persistent kunnen beheren.
 - duplicate GitHub usernames worden nu case-insensitive geweigerd bij add/upsert
 - duplicate GitHub usernames in storage worden als corrupte registry-state behandeld
 - tests toegevoegd voor duplicate username rejection en recovery
+- `repairStorage(...)` toegevoegd voor expliciete reconcile van accounts, secrets en OpenCode provider config
+- CLI ondersteunt nu `repair-storage`
+- tests toegevoegd voor orphan secret pruning + stale provider cleanup via helper en CLI
 
 ### Extra aandachtspunten
 - plaintext secret-opslag expliciet als tijdelijke/beta-keuze blijven documenteren
