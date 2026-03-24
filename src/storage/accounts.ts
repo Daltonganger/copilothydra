@@ -22,6 +22,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import type { AccountId, CopilotAccountMeta, AccountsFile } from "../types.js";
 import { debugStorage, warn } from "../log.js";
+import { withLock } from "./locking.js";
 
 // ---------------------------------------------------------------------------
 // Config dir resolution
@@ -62,6 +63,10 @@ export function accountsFilePath(configDir?: string): string {
 
 export async function loadAccounts(configDir?: string): Promise<AccountsFile> {
   const path = accountsFilePath(configDir);
+  return loadAccountsFromPath(path);
+}
+
+async function loadAccountsFromPath(path: string): Promise<AccountsFile> {
   debugStorage(`loading accounts from ${path}`);
 
   try {
@@ -84,6 +89,10 @@ export async function loadAccounts(configDir?: string): Promise<AccountsFile> {
 
 export async function saveAccounts(data: AccountsFile, configDir?: string): Promise<void> {
   const path = accountsFilePath(configDir);
+  await saveAccountsToPath(data, path);
+}
+
+async function saveAccountsToPath(data: AccountsFile, path: string): Promise<void> {
   const tmpPath = path + ".tmp";
   debugStorage(`saving accounts to ${path}`);
 
@@ -125,23 +134,38 @@ export async function upsertAccount(
   account: CopilotAccountMeta,
   configDir?: string
 ): Promise<void> {
-  const file = await loadAccounts(configDir);
-  const idx = file.accounts.findIndex((a) => a.id === account.id);
-  if (idx >= 0) {
-    file.accounts[idx] = account;
-  } else {
-    file.accounts.push(account);
-  }
-  await saveAccounts(file, configDir);
+  await updateAccounts((file) => {
+    const idx = file.accounts.findIndex((a) => a.id === account.id);
+    if (idx >= 0) {
+      file.accounts[idx] = account;
+    } else {
+      file.accounts.push(account);
+    }
+  }, configDir);
 }
 
 export async function removeAccount(
   id: AccountId,
   configDir?: string
 ): Promise<void> {
-  const file = await loadAccounts(configDir);
-  file.accounts = file.accounts.filter((a) => a.id !== id);
-  await saveAccounts(file, configDir);
+  await updateAccounts((file) => {
+    file.accounts = file.accounts.filter((a) => a.id !== id);
+  }, configDir);
+}
+
+export async function updateAccounts(
+  mutator: (file: AccountsFile) => void | Promise<void>,
+  configDir?: string
+): Promise<AccountsFile> {
+  const path = accountsFilePath(configDir);
+
+  return await withLock(path, async () => {
+    const file = await loadAccountsFromPath(path);
+    await mutator(file);
+    validateAccountsFile(file);
+    await saveAccountsToPath(file, path);
+    return file;
+  });
 }
 
 // ---------------------------------------------------------------------------

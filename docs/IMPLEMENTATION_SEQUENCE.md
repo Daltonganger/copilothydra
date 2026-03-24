@@ -4,6 +4,19 @@
 
 Deze volgorde vertaalt `PLAN.md` naar een concrete uitvoerbare implementatiefase, zodat we direct kunnen starten met bouwen zonder de feasibility-first aanpak los te laten.
 
+## Werkafspraak per stap
+
+Voor elke stap/phase in deze sequence geldt dezelfde uitvoerregel:
+
+1. implementeer de stap
+2. werk `README.md` bij
+3. werk relevante docs/status bij
+4. draai verificatie (`build`, `typecheck`, `tests`)
+5. maak een aparte PR voor die stap
+6. ga daarna pas door naar de volgende stap
+
+Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
+
 ---
 
 ## Status snapshot
@@ -23,6 +36,8 @@ Deze volgorde vertaalt `PLAN.md` naar een concrete uitvoerbare implementatiefase
 
 ### Nu bezig
 10. ▶️ **Phase 2 — account registry + storage**
+   - first pass done: lock-wrapped read-modify-write helpers for accounts/secrets
+   - transaction test added for account storage updates
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -36,6 +51,11 @@ Deze volgorde vertaalt `PLAN.md` naar een concrete uitvoerbare implementatiefase
 - `github-copilot-acct-*` providers kunnen dezelfde SDK-package gebruiken, maar krijgen **niet** automatisch OpenCode’s exacte `CUSTOM_LOADERS["github-copilot"]` model-routing mee.
 - Er is **geen betrouwbare officiële entitlement API** voor individuele Copilot accounts; v1 moet dus user-declared capability + runtime mismatch detection gebruiken.
 - OpenCode gebruikt zelf geen file-level locking of atomic temp-write JSON pattern; CopilotHydra’s strengere storage-aanpak is acceptabel.
+
+### Toprisico’s die in elke volgende phase zichtbaar moeten blijven
+- **Versiedetectie/host-compatibiliteit blijft gevoelig.** Unknown-version gedrag is nu warning-first; echte compatibiliteitsmatrix en hardere checks horen nog bij hardening.
+- **GPT-5+/Responses API routing blijft een expliciete open gap** zolang custom provider IDs niet automatisch OpenCode’s `CUSTOM_LOADERS["github-copilot"]` pad krijgen.
+- **Plaintext secrets blijven tijdelijk beta-only gedrag** en moeten zichtbaar als security caveat blijven bestaan tot keychain/secure storage is toegevoegd.
 
 ---
 
@@ -200,6 +220,17 @@ Doel: meerdere accounts persistent kunnen beheren.
 - corruption recovery toevoegen
 - config-dir resolution implementeren
 
+### Reeds afgerond binnen Phase 2
+- `updateAccounts(mutator, configDir?)` toegevoegd als lock-wrapped read-modify-write pad
+- `updateSecrets(mutator, configDir?)` toegevoegd als lock-wrapped read-modify-write pad
+- `upsertAccount` / `removeAccount` omgezet naar transaction helpers
+- `upsertSecret` / `removeSecret` omgezet naar transaction helpers
+- storage transaction test toegevoegd voor account updates
+
+### Extra aandachtspunten
+- plaintext secret-opslag expliciet als tijdelijke/beta-keuze blijven documenteren
+- writes/locks moeten fail-closed blijven en geen silent corruption toelaten
+
 ---
 
 ## 11. Phase 3 — multi-account routing
@@ -254,6 +285,8 @@ Doel: van werkend naar verantwoord beta-niveau.
 - docs afronden
 - beta security warning documenteren rond plaintext secrets
 - bekende host- en platformrisico’s expliciet maken
+- version detection stub vervangen door echte host-compatibiliteitscontrole
+- GPT-5+/responses-routing risico verkleinen of expliciet begrenzen
 
 ---
 
