@@ -1,0 +1,104 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { cleanupDir, makeTempDir } from "./helpers.js";
+
+test("auditStorage reports orphan secrets, missing providers, and stale providers without mutating files", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
+    const configPath = path.join(tempDir, "opencode.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { updateAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { updateSecrets } = await import(`../dist/storage/secrets.js?${Date.now()}`);
+    const { saveOpenCodeConfig } = await import(`../dist/config/opencode-config.js?${Date.now()}`);
+    const { auditStorage } = await import(`../dist/storage-audit.js?${Date.now()}`);
+
+    const accountWithSecret = createAccountMeta({ label: "Keep", githubUsername: "keep", plan: "free" });
+    const accountMissingSecret = createAccountMeta({ label: "NeedSecret", githubUsername: "needsecret", plan: "free" });
+
+    await updateAccounts((file) => {
+      file.accounts.push(accountWithSecret, accountMissingSecret);
+    }, tempDir);
+
+    await updateSecrets((file) => {
+      file.secrets.push({ accountId: accountWithSecret.id, githubOAuthToken: "token-keep" });
+      file.secrets.push({ accountId: "acct_orphan", githubOAuthToken: "token-orphan" });
+    }, tempDir);
+
+    await saveOpenCodeConfig(
+      {
+        provider: {
+          [accountWithSecret.providerId]: { name: "keep" },
+          "github-copilot-acct-stale": { name: "stale" },
+          external: { name: "external" },
+        },
+      },
+      configPath,
+    );
+
+    const result = await auditStorage({ configDir: tempDir, configPath });
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.accountsWithoutSecrets, [accountMissingSecret.id]);
+    assert.deepEqual(result.orphanSecretAccountIds, ["acct_orphan"]);
+    assert.deepEqual(result.missingProviderIds, [accountMissingSecret.providerId]);
+    assert.deepEqual(result.staleProviderIds, ["github-copilot-acct-stale"]);
+  } finally {
+    delete process.env.OPENCODE_CONFIG;
+    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
+    await cleanupDir(tempDir);
+  }
+});
+
+test("cli audit-storage reports detected inconsistencies and repair hint", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
+    const configPath = path.join(tempDir, "opencode.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { updateAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { saveOpenCodeConfig } = await import(`../dist/config/opencode-config.js?${Date.now()}`);
+
+    const account = createAccountMeta({ label: "Audit", githubUsername: "audit", plan: "free" });
+
+    await updateAccounts((file) => {
+      file.accounts.push(account);
+    }, tempDir);
+
+    await saveOpenCodeConfig(
+      {
+        provider: {
+          "github-copilot-acct-stale": { name: "stale" },
+        },
+      },
+      configPath,
+    );
+
+    const result = spawnSync(process.execPath, ["dist/cli.js", "audit-storage"], {
+      cwd: path.resolve("."),
+      env: {
+        ...process.env,
+        OPENCODE_CONFIG_DIR: tempDir,
+        OPENCODE_CONFIG: configPath,
+        COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM: "1",
+      },
+      encoding: "utf8",
+    });
+
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /Accounts without secrets: 1/);
+    assert.match(result.stdout, /Stale provider entries: 1/);
+    assert.match(result.stdout, /repair-storage/);
+  } finally {
+    delete process.env.OPENCODE_CONFIG;
+    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
+    await cleanupDir(tempDir);
+  }
+});
