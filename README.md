@@ -14,6 +14,9 @@ Implemented so far:
 - Phase 2 storage hardening (corruption recovery pass)
 - Phase 2 storage hardening (account removal + orphan cleanup pass)
 - Phase 2 storage hardening (schema validation + duplicate detection pass)
+- Phase 2 registry hardening (duplicate GitHub account prevention pass)
+- Phase 2 repair flow (storage/config reconcile pass)
+- Phase 2 account metadata update flow (rename / plan update / revalidate pass)
 
 ## What works now
 
@@ -26,6 +29,9 @@ Implemented so far:
   - `copilothydra add-account`
   - `copilothydra list-accounts`
   - `copilothydra sync-config`
+  - `copilothydra rename-account <account-id|provider-id> <new-label>`
+  - `copilothydra set-plan <account-id|provider-id> <free|student|pro|pro+>`
+  - `copilothydra revalidate-account <account-id|provider-id>`
 - Smoke/config/non-TTY/compatibility tests
 - Lock-wrapped account/secrets update transactions
 - Storage transaction test coverage for account updates
@@ -34,6 +40,9 @@ Implemented so far:
 - Orphan secret cleanup is available
 - `copilothydra remove-account <account-id|provider-id>` removes account metadata, secrets, and synced provider config
 - Malformed or duplicate account/secret entries are treated as corruption and quarantined before recovery
+- Duplicate GitHub usernames are blocked case-insensitively in both account creation and storage validation
+- `copilothydra repair-storage` prunes orphan secrets and removes stale CopilotHydra provider entries from OpenCode config
+- existing accounts can now be renamed, revalidated, and moved to a new declared plan without manual file editing
 
 ## Important behavior
 

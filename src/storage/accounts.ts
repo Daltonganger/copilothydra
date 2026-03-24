@@ -134,11 +134,31 @@ export async function findAccount(
   return file.accounts.find((a) => a.id === id);
 }
 
+export async function findAccountByGitHubUsername(
+  githubUsername: string,
+  configDir?: string
+): Promise<CopilotAccountMeta | undefined> {
+  const normalized = normalizeGitHubUsername(githubUsername);
+  const file = await loadAccounts(configDir);
+  return file.accounts.find((a) => normalizeGitHubUsername(a.githubUsername) === normalized);
+}
+
 export async function upsertAccount(
   account: CopilotAccountMeta,
   configDir?: string
 ): Promise<void> {
   await updateAccounts((file) => {
+    const normalizedUsername = normalizeGitHubUsername(account.githubUsername);
+    const duplicateUsername = file.accounts.find(
+      (a) => a.id !== account.id && normalizeGitHubUsername(a.githubUsername) === normalizedUsername
+    );
+    if (duplicateUsername) {
+      throw new Error(
+        `[copilothydra] an account with GitHub username "${account.githubUsername}" already exists ` +
+          `(existing label: ${duplicateUsername.label})`
+      );
+    }
+
     const idx = file.accounts.findIndex((a) => a.id === account.id);
     if (idx >= 0) {
       file.accounts[idx] = account;
@@ -184,6 +204,7 @@ function validateAccountsFile(data: unknown): AccountsFile {
   const accounts = data["accounts"];
   const seenIds = new Set<string>();
   const seenProviderIds = new Set<string>();
+  const seenGitHubUsernames = new Set<string>();
 
   for (const account of accounts) {
     if (!isRecord(account)) {
@@ -193,7 +214,7 @@ function validateAccountsFile(data: unknown): AccountsFile {
     const id = requireString(account, "id", "account");
     const providerId = requireString(account, "providerId", "account");
     requireString(account, "label", "account");
-    requireString(account, "githubUsername", "account");
+    const githubUsername = requireString(account, "githubUsername", "account");
     requireString(account, "plan", "account");
     requireString(account, "capabilityState", "account");
     requireString(account, "lifecycleState", "account");
@@ -205,9 +226,14 @@ function validateAccountsFile(data: unknown): AccountsFile {
     if (seenProviderIds.has(providerId)) {
       throw new Error(`[copilothydra] accounts file contains duplicate provider id: ${providerId}`);
     }
+    const normalizedUsername = normalizeGitHubUsername(githubUsername);
+    if (seenGitHubUsernames.has(normalizedUsername)) {
+      throw new Error(`[copilothydra] accounts file contains duplicate github username: ${githubUsername}`);
+    }
 
     seenIds.add(id);
     seenProviderIds.add(providerId);
+    seenGitHubUsernames.add(normalizedUsername);
   }
 
   return data as unknown as AccountsFile;
@@ -221,13 +247,18 @@ function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return typeof err === "object" && err !== null && "code" in err;
 }
 
+function normalizeGitHubUsername(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 function isCorruptionError(err: unknown): boolean {
   return (
     err instanceof SyntaxError ||
     (err instanceof Error && (
       err.message.includes("accounts file is corrupt or has an unexpected format") ||
       err.message.includes("accounts file contains") ||
-      err.message.includes("account is missing required string field")
+      err.message.includes("account is missing required string field") ||
+      err.message.includes("duplicate github username")
     ))
   );
 }

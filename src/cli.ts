@@ -13,8 +13,10 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import type { PlanTier } from "./types.js";
 import { createAccountMeta } from "./account.js";
-import { loadAccounts, upsertAccount } from "./storage/accounts.js";
+import { findAccountByGitHubUsername, loadAccounts, upsertAccount } from "./storage/accounts.js";
 import { removeAccountCompletely } from "./account-removal.js";
+import { repairStorage } from "./storage-repair.js";
+import { revalidateAccount, renameAccount, updateAccountPlan } from "./account-update.js";
 import { isTTY } from "./ui/menu.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 import { resolveOpenCodeConfigPath } from "./config/opencode-config.js";
@@ -38,6 +40,18 @@ async function main(): Promise<void> {
     case "remove-account":
       await removeAccountCommand(process.argv[3]);
       return;
+    case "rename-account":
+      await renameAccountCommand(process.argv[3], process.argv.slice(4).join(" "));
+      return;
+    case "set-plan":
+      await setPlanCommand(process.argv[3], process.argv[4]);
+      return;
+    case "revalidate-account":
+      await revalidateAccountCommand(process.argv[3]);
+      return;
+    case "repair-storage":
+      await repairStorageCommand();
+      return;
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -56,6 +70,14 @@ async function addAccountInteractive(): Promise<void> {
     const label = await promptRequired(rl, "Account label", "Personal");
     const githubUsername = await promptRequired(rl, "GitHub username", "alice");
     const plan = await promptPlan(rl);
+
+    const existingForUsername = await findAccountByGitHubUsername(githubUsername);
+    if (existingForUsername) {
+      throw new Error(
+        `[copilothydra] an account for GitHub username "${githubUsername}" already exists ` +
+          `(label: ${existingForUsername.label})`
+      );
+    }
 
     const account = createAccountMeta({ label, githubUsername, plan });
     checkAccountRuntimeReadiness(account);
@@ -120,6 +142,72 @@ async function removeAccountCommand(identifier?: string): Promise<void> {
   output.write(`Removed account: ${result.removed.label} (${result.removed.githubUsername})\n`);
   output.write(`Provider ID removed: ${result.removed.providerId}\n`);
   output.write("Reload/restart OpenCode to apply provider changes.\n");
+}
+
+async function renameAccountCommand(identifier?: string, label?: string): Promise<void> {
+  if (!identifier) {
+    throw new Error("[copilothydra] rename-account requires an account id or provider id");
+  }
+  if (!label?.trim()) {
+    throw new Error("[copilothydra] rename-account requires a non-empty new label");
+  }
+
+  const account = await resolveAccountByIdentifier(identifier);
+  const updated = await renameAccount(account.id, label);
+  output.write(`Renamed account: ${account.label} -> ${updated.label}\n`);
+  output.write(`Provider ID: ${updated.providerId}\n`);
+  output.write("Reload/restart OpenCode to apply provider label changes.\n");
+}
+
+async function setPlanCommand(identifier?: string, planValue?: string): Promise<void> {
+  if (!identifier) {
+    throw new Error("[copilothydra] set-plan requires an account id or provider id");
+  }
+  if (!planValue || !VALID_PLANS.includes(planValue as PlanTier)) {
+    throw new Error("[copilothydra] set-plan requires one of: free, student, pro, pro+");
+  }
+
+  const account = await resolveAccountByIdentifier(identifier);
+  const updated = await updateAccountPlan(account.id, planValue as PlanTier);
+  checkAccountRuntimeReadiness(updated);
+  output.write(`Updated plan for ${updated.label}: ${account.plan} -> ${updated.plan}\n`);
+  output.write(`Capability state reset to: ${updated.capabilityState}\n`);
+  output.write("Reload/restart OpenCode to apply provider model changes.\n");
+}
+
+async function revalidateAccountCommand(identifier?: string): Promise<void> {
+  if (!identifier) {
+    throw new Error("[copilothydra] revalidate-account requires an account id or provider id");
+  }
+
+  const account = await resolveAccountByIdentifier(identifier);
+  const updated = await revalidateAccount(account.id);
+  output.write(`Revalidated account: ${updated.label} (${updated.githubUsername})\n`);
+  output.write(`Capability state: ${updated.capabilityState}\n`);
+  output.write(`Last validated at: ${updated.lastValidatedAt}\n`);
+}
+
+async function repairStorageCommand(): Promise<void> {
+  const result = await repairStorage();
+  output.write(`Accounts retained: ${result.accountCount}\n`);
+  output.write(`Secrets before repair: ${result.secretCountBefore}\n`);
+  output.write(`Secrets after repair: ${result.secretCountAfter}\n`);
+  output.write(`Pruned orphan secrets: ${result.prunedSecretCount}\n`);
+  output.write(`OpenCode config reconciled: ${resolveOpenCodeConfigPath()}\n`);
+  output.write("Reload/restart OpenCode to apply provider changes if any stale providers were removed.\n");
+}
+
+async function resolveAccountByIdentifier(identifier: string) {
+  const accounts = await loadAccounts();
+  const account = accounts.accounts.find(
+    (candidate) => candidate.id === identifier || candidate.providerId === identifier,
+  );
+
+  if (!account) {
+    throw new Error(`[copilothydra] account not found: ${identifier}`);
+  }
+
+  return account;
 }
 
 async function promptRequired(
