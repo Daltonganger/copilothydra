@@ -14,7 +14,7 @@ import { stdin as input, stdout as output } from "node:process";
 import type { PlanTier } from "./types.js";
 import { createAccountMeta } from "./account.js";
 import { findAccountByGitHubUsername, loadAccounts, upsertAccount } from "./storage/accounts.js";
-import { removeAccountCompletely } from "./account-removal.js";
+import { beginAccountRemoval, finalizeAccountRemoval } from "./account-removal.js";
 import { repairStorage } from "./storage-repair.js";
 import { revalidateAccount, renameAccount, updateAccountPlan } from "./account-update.js";
 import { auditStorage } from "./storage-audit.js";
@@ -138,9 +138,21 @@ async function removeAccountCommand(identifier?: string): Promise<void> {
     throw new Error(`[copilothydra] account not found: ${identifier}`);
   }
 
-  const result = await removeAccountCompletely(account.id);
+  if (account.lifecycleState !== "pending-removal") {
+    const started = await beginAccountRemoval(account.id);
+    if (!started.account) {
+      throw new Error(`[copilothydra] account disappeared before removal start: ${identifier}`);
+    }
+
+    output.write(`Marked account pending removal: ${started.account.label} (${started.account.githubUsername})\n`);
+    output.write(`Provider ID blocked/removed from config: ${started.account.providerId}\n`);
+    output.write("Run the same remove-account command again after drain/restart to finalize cleanup.\n");
+    return;
+  }
+
+  const result = await finalizeAccountRemoval(account.id);
   if (!result.removed) {
-    throw new Error(`[copilothydra] account disappeared before removal: ${identifier}`);
+    throw new Error(`[copilothydra] account disappeared before final removal: ${identifier}`);
   }
 
   output.write(`Removed account: ${result.removed.label} (${result.removed.githubUsername})\n`);

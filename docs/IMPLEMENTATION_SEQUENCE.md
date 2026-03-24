@@ -51,6 +51,7 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
 11. ▶️ **Phase 3 — multi-account routing**
    - routing foundation started: lease-based provider→account resolution now tracks in-flight requests and blocks new work for pending-removal accounts
    - routed token pass done: auth loader now syncs provider→account→token state and fails closed when routed oauth state is missing
+   - drain-on-remove pass done: account removal now persists pending-removal state and final cleanup only happens after drain-complete checks
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -298,6 +299,11 @@ Doel: correcte isolatie tussen accounts bij parallel gebruik.
 - auth loader synct nu runtime token state per routed account via `syncTokenStateFromStoredAuth(...)`
 - routed fetches gebruiken provider→account lease resolution en runtime token checks vóór Authorization-header injectie
 - tests toegevoegd voor routed auth fetches en fail-closed gedrag bij missende token state
+- account removal gebruikt nu een twee-fasen pad via `beginAccountRemoval(...)` en `finalizeAccountRemoval(...)`
+- pending-removal lifecycle state wordt nu persistent opgeslagen en uit OpenCode config weggesynct vóór definitieve cleanup
+- routing registry ondersteunt nu `unregisterAccount(accountId)` na final cleanup
+- CLI `remove-account` markeert eerst pending-removal en finaliseert cleanup pas bij de tweede call
+- tests toegevoegd voor drain-aware removal helper, CLI two-step removal en routing unregister gedrag
 
 ---
 
@@ -367,4 +373,4 @@ Doel: van werkend naar verantwoord beta-niveau.
 
 ## Immediate next step
 
-**Continue Phase 3: request routing verder uitbouwen met per-account token lifecycle en drain-on-remove gedrag.**
+**Continue Phase 3: request routing verder uitbouwen met per-account token lifecycle/refresh-serialisatie en bredere parallel-isolatie.**
