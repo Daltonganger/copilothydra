@@ -79,3 +79,52 @@ test("auth loader fails closed and releases lease when routed token is missing",
 
   assert.equal(routing.getInFlightCount("acct_missing"), 0);
 });
+
+test("auth loader handles concurrent fetches on one account without leaking leases", async () => {
+  const routing = await import("../dist/routing/provider-account-map.js");
+  const { buildAuthLoader } = await import("../dist/auth/loader.js");
+
+  routing.registerAccounts([
+    {
+      id: "acct_parallel",
+      providerId: "github-copilot-acct-acct_parallel",
+      label: "Parallel",
+      githubUsername: "parallel",
+      plan: "pro",
+      capabilityState: "user-declared",
+      lifecycleState: "active",
+      addedAt: new Date("2026-03-24T00:00:00.000Z").toISOString(),
+    },
+  ]);
+
+  let getAuthCalls = 0;
+  const loader = await buildAuthLoader("acct_parallel", "github-copilot-acct-acct_parallel")(
+    async () => {
+      getAuthCalls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return { type: "oauth", refresh: `oauth-token-${getAuthCalls}`, access: `oauth-token-${getAuthCalls}`, expires: 0 };
+    },
+    { id: "github-copilot-acct-acct_parallel" },
+  );
+
+  const originalFetch = globalThis.fetch;
+  const seenAuth = [];
+  globalThis.fetch = async (_request, init) => {
+    seenAuth.push(init?.headers?.Authorization ?? init?.headers?.authorization);
+    return new Response("ok", { status: 200 });
+  };
+
+  try {
+    const [a, b] = await Promise.all([
+      loader.fetch?.("https://example.com/a"),
+      loader.fetch?.("https://example.com/b"),
+    ]);
+
+    assert.equal(a?.status, 200);
+    assert.equal(b?.status, 200);
+    assert.equal(routing.getInFlightCount("acct_parallel"), 0);
+    assert.equal(seenAuth.length, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
