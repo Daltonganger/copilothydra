@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.tmp-phase1/
+.DS_Store
+*.log
