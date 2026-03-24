@@ -11,6 +11,7 @@ Implemented so far:
 - Phase 1 single-account reference path
 - Early tests
 - Phase 2 storage hardening (first transaction/locking pass)
+- Phase 2 storage hardening (corruption recovery pass)
 
 ## What works now
 
@@ -26,6 +27,8 @@ Implemented so far:
 - Smoke/config/non-TTY/compatibility tests
 - Lock-wrapped account/secrets update transactions
 - Storage transaction test coverage for account updates
+- Corrupt account/secret files are quarantined to `*.corrupt-*` and recovered to empty v1 state
+- Secret transaction test coverage and corruption recovery tests
 
 ## Important behavior
 

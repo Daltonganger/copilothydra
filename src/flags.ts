@@ -61,3 +61,11 @@ export const SKIP_VERSION_CHECK =
  */
 export const UNSAFE_PLAINTEXT_CONFIRMED =
   process.env["COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM"] === "1";
+
+/**
+ * Dynamic variant for cases where tests or child flows change the env var
+ * after initial module evaluation.
+ */
+export function isUnsafePlaintextConfirmed(): boolean {
+  return process.env["COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM"] === "1";
+}
