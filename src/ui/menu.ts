@@ -13,7 +13,7 @@
 import type { CopilotAccountMeta, PlanTier } from "../types.js";
 import { createAccountMeta } from "../account.js";
 import { findAccountByGitHubUsername, loadAccounts, upsertAccount } from "../storage/accounts.js";
-import { buildMismatchMessage, capabilityStateLabel, planLabel } from "../config/capabilities.js";
+import { capabilityStateLabel, planLabel } from "../config/capabilities.js";
 import { getOverrideRequiredModelsForPlan } from "../config/models.js";
 import { syncAccountsToOpenCodeConfig } from "../config/sync.js";
 import { resolveOpenCodeConfigPath } from "../config/opencode-config.js";
@@ -116,13 +116,13 @@ export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Pro
     switch (choice.key) {
       case "add-account":
       {
-        const label = await deps.promptText("Account label", { defaultValue: "Personal" });
+        const label = await deps.promptText("Account label");
         if (!label) {
           deps.write("Add account cancelled.\n");
           break;
         }
 
-        const githubUsername = await deps.promptText("GitHub username", { defaultValue: "alice" });
+        const githubUsername = await deps.promptText("GitHub username");
         if (!githubUsername) {
           deps.write("Add account cancelled.\n");
           break;
@@ -215,14 +215,14 @@ export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Pro
         if (account.lifecycleState === "pending-removal") {
           if (!deps.canAccountDrainComplete(account.key)) {
             deps.write(
-              `Account ${account.label} (${account.githubUsername}) is still draining in-flight requests. ` +
+              `Account ${account.label} is still draining in-flight requests. ` +
               "Try final removal again after those requests finish.\n",
             );
             break;
           }
 
           const shouldFinalize = await deps.confirm(
-            `Finalize removal for ${account.label} (${account.githubUsername})?`,
+            `Finalize removal for ${account.label}?`,
           );
           if (!shouldFinalize) {
             deps.write("Final removal cancelled.\n");
@@ -241,7 +241,7 @@ export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Pro
           break;
         }
 
-        const shouldBegin = await deps.confirm(`Mark ${account.label} (${account.githubUsername}) for removal?`);
+        const shouldBegin = await deps.confirm(`Mark ${account.label} for removal?`);
         if (!shouldBegin) {
           deps.write("Remove cancelled.\n");
           break;
@@ -285,7 +285,7 @@ export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Pro
           break;
         }
 
-        deps.write(`${buildMismatchMessage(selected, selected.mismatchModelId, selected.mismatchSuggestedPlan)}\n`);
+        deps.write(`${buildTuiMismatchMessage(selected)}\n`);
         if (!selected.mismatchSuggestedPlan) {
           deps.write(`Stored plan preserved at ${planLabel(selected.plan)}.\n`);
           break;
@@ -453,4 +453,16 @@ function buildPlanOptions(): Array<{ key: PlanTier; label: string; description?:
     { key: "pro", label: "PRO", description: "Pro declared model set" },
     { key: "pro+", label: "PRO+", description: "Highest declared model set" },
   ];
+}
+
+function buildTuiMismatchMessage(account: CopilotAccountMeta): string {
+  const messageParts = [
+    `Capability mismatch detected for ${account.label} (${account.githubUsername}).`,
+    account.mismatchModelId ? `Observed provider model: ${account.mismatchModelId}.` : undefined,
+    account.mismatchSuggestedPlan
+      ? `Suggested stored plan based on this model: ${planLabel(account.mismatchSuggestedPlan)}.`
+      : undefined,
+  ].filter(Boolean);
+
+  return messageParts.join(" ");
 }
