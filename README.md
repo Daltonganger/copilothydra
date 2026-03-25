@@ -28,6 +28,7 @@ Implemented so far:
 - Phase 3 lifecycle/runtime finish (ownership mismatch guards and full runtime-state cleanup)
 - Phase 4 declared model exposure hardening (uncertain model filtering + explicit override flag)
 - Phase 4 mismatch/downgrade flow (runtime mismatch marking + suggested plan review)
+- Phase 4 docs/tests completion (capability policy coverage + status/docs closeout)
 
 ## What works now
 
@@ -70,6 +71,7 @@ Implemented so far:
 - `copilothydra set-plan ... --allow-unverified-models` enables those uncertain model entries intentionally
 - Runtime 403 entitlement failures now mark the account as `mismatch`, disable unverified-model override exposure, and store the rejected model plus suggested stricter plan
 - `copilothydra review-mismatch <account-id|provider-id>` reviews a stored mismatch and can apply the suggested downgrade
+- `copilothydra list-accounts` surfaces the current capability state so mismatches are visible without opening storage files
 
 ## Important behavior
 
@@ -135,13 +137,13 @@ Kort: **één stap = docs bijwerken + PR maken + dan pas verder**.
 
 ## Next step
 
-Start Phase 4: capability/model exposure hardening.
+Start Phase 5: TUI foundation.
 
 ## Remaining roadmap
 
 ### Phase 4 — capability/model exposure
 
-Expected remaining: **about 2–3 PRs**
+Completed in **3 stacked PRs**
 
 1. **Declared model exposure hardening**
    - centralize plan → model exposure ✅
@@ -150,8 +152,8 @@ Expected remaining: **about 2–3 PRs**
    - mismatch state logic ✅
    - stricter-plan overwrite/confirm behavior ✅
 3. **Docs/tests pass**
-   - capability policy docs
-   - Phase 4 completion tests and cleanup
+   - capability policy docs ✅
+   - Phase 4 completion tests and cleanup ✅
 
 ### Phase 5 — TUI
 
@@ -175,7 +177,7 @@ Expected remaining: **about 3 PRs**
 
 ### Rough total remaining
 
-- **2–3 PRs** for Phase 4
+- **0 PRs** for Phase 4
 - **3–4 PRs** for Phase 5
 - **3 PRs** for Hardening
 

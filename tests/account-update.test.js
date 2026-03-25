@@ -166,3 +166,50 @@ test("markAccountCapabilityMismatch stores mismatch metadata and review-mismatch
     await cleanupDir(tempDir);
   }
 });
+
+test("list-accounts shows capability state and review-mismatch can preserve stored plan", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    const configPath = path.join(tempDir, "opencode.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { upsertAccount, loadAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { markAccountCapabilityMismatch } = await import(`../dist/account-update.js?${Date.now()}`);
+
+    const account = createAccountMeta({ label: "Mismatch", githubUsername: "alice", plan: "pro" });
+    await upsertAccount(account, tempDir);
+    await markAccountCapabilityMismatch(account.id, {
+      configDir: tempDir,
+      configPath,
+      now: "2026-03-25T13:00:00.000Z",
+      rejectedModelId: "o1",
+      suggestedPlan: "student",
+    });
+
+    let result = spawnSync(process.execPath, ["dist/cli.js", "list-accounts"], {
+      cwd: path.resolve("."),
+      env: { ...process.env, OPENCODE_CONFIG_DIR: tempDir, OPENCODE_CONFIG: configPath },
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /⚠ mismatch/);
+
+    result = spawnSync(process.execPath, ["dist/cli.js", "review-mismatch", account.id], {
+      cwd: path.resolve("."),
+      env: { ...process.env, OPENCODE_CONFIG_DIR: tempDir, OPENCODE_CONFIG: configPath },
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /Stored plan preserved at PRO/);
+
+    const accounts = await loadAccounts(tempDir);
+    assert.equal(accounts.accounts[0].plan, "pro");
+    assert.equal(accounts.accounts[0].capabilityState, "mismatch");
+    assert.equal(accounts.accounts[0].mismatchSuggestedPlan, "student");
+  } finally {
+    delete process.env.OPENCODE_CONFIG;
+    await cleanupDir(tempDir);
+  }
+});

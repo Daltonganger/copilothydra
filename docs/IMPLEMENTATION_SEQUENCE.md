@@ -285,7 +285,7 @@ Doel: meerdere accounts persistent kunnen beheren.
 
 ## 11. Phase 3 — multi-account routing
 
-**Status:** ▶️ Gestart
+**Status:** ✅ Gereed
 
 Doel: correcte isolatie tussen accounts bij parallel gebruik.
 
@@ -331,7 +331,7 @@ Doel: correcte isolatie tussen accounts bij parallel gebruik.
 
 ## 12. Phase 4 — capability/model exposure
 
-**Status:** ▶️ Gestart
+**Status:** ✅ Gereed
 
 Doel: modelaanbod per account gecontroleerd zichtbaar maken.
 
@@ -344,6 +344,7 @@ Doel: modelaanbod per account gecontroleerd zichtbaar maken.
 ### Reeds afgerond binnen Phase 4
 - declared model exposure pass done: user-declared accounts now hide override-required models unless explicit override is enabled, and overridden entries are labeled in synced config
 - mismatch/downgrade pass done: runtime entitlement rejections now persist `mismatch` state, capture the rejected model + suggested stricter plan, and `review-mismatch` can preserve or apply the suggested downgrade
+- docs/tests pass done: capability-policy helpers now have direct regression coverage, list output surfaces mismatch state, and Phase 4 docs/status are closed out
 
 ---
 
@@ -401,7 +402,7 @@ Doel: van werkend naar verantwoord beta-niveau.
 
 ## Immediate next step
 
-**Start Phase 4: model exposure aanscherpen rond user-declared plans, onzekere modellen en mismatch/downgrade gedrag.**
+**Start Phase 5: TUI foundation for account management and lifecycle visibility.**
 
 ---
 
@@ -409,13 +410,14 @@ Doel: van werkend naar verantwoord beta-niveau.
 
 ### Phase 4 — capability/model exposure
 
-Verwachting: **ongeveer 2–3 PR's**
+Afgerond in **3 stacked PR's**
 
 1. **Declared model exposure aanscherpen**
    - ✅ user-declared plans now expose baseline models by default and require explicit override for uncertain model entries
 2. **Mismatch/downgrade flow**
    - ✅ runtime mismatch now marks the account, stores downgrade guidance, and can overwrite the declared plan after explicit review
 3. **Docs/tests afronden**
+   - ✅ capability-policy helpers en mismatch-presentatie hebben nu directe regressietests
 
 ### Phase 5 — TUI
 
@@ -436,11 +438,11 @@ Verwachting: **ongeveer 3 PR's**
 
 ### Totale resterende inschatting
 
-- **2–3 PR's** voor Phase 4
+- **0 PR's** voor Phase 4
 - **3–4 PR's** voor Phase 5
 - **3 PR's** voor Hardening
 
-Geschatte rest: **ongeveer 9–11 PR's**.
+Geschatte rest: **ongeveer 7–8 PR's**.
 
 ### Belangrijkste mijlpaal
 
