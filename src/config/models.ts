@@ -19,6 +19,13 @@
 
 import type { PlanTier } from "../types.js";
 
+export const PLAN_TIER_ORDER: PlanTier[] = ["free", "student", "pro", "pro+"];
+
+export interface PlanModelEntry {
+  id: string;
+  requiresExplicitOverride?: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Model tier table
 // ---------------------------------------------------------------------------
@@ -36,38 +43,38 @@ import type { PlanTier } from "../types.js";
  *
  * TODO (Phase 4): augment with runtime validation and mismatch feedback.
  */
-export const MODEL_TIER_TABLE: Record<PlanTier, string[]> = {
+export const MODEL_TIER_TABLE: Record<PlanTier, PlanModelEntry[]> = {
   free: [
-    "gpt-4o-mini",
-    "claude-3.5-haiku",
-    "o3-mini",
+    { id: "gpt-4o-mini" },
+    { id: "claude-3.5-haiku" },
+    { id: "o3-mini" },
   ],
   student: [
-    "gpt-4o-mini",
-    "gpt-4o",
-    "claude-3.5-haiku",
-    "claude-3.5-sonnet",
-    "o3-mini",
+    { id: "gpt-4o-mini" },
+    { id: "gpt-4o", requiresExplicitOverride: true },
+    { id: "claude-3.5-haiku" },
+    { id: "claude-3.5-sonnet", requiresExplicitOverride: true },
+    { id: "o3-mini" },
   ],
   pro: [
-    "gpt-4o-mini",
-    "gpt-4o",
-    "claude-3.5-haiku",
-    "claude-3.5-sonnet",
-    "claude-3.7-sonnet",
-    "o1",
-    "o1-mini",
-    "o3-mini",
+    { id: "gpt-4o-mini" },
+    { id: "gpt-4o" },
+    { id: "claude-3.5-haiku" },
+    { id: "claude-3.5-sonnet" },
+    { id: "claude-3.7-sonnet", requiresExplicitOverride: true },
+    { id: "o1", requiresExplicitOverride: true },
+    { id: "o1-mini", requiresExplicitOverride: true },
+    { id: "o3-mini" },
   ],
   "pro+": [
-    "gpt-4o-mini",
-    "gpt-4o",
-    "claude-3.5-haiku",
-    "claude-3.5-sonnet",
-    "claude-3.7-sonnet",
-    "o1",
-    "o1-mini",
-    "o3-mini",
+    { id: "gpt-4o-mini" },
+    { id: "gpt-4o" },
+    { id: "claude-3.5-haiku" },
+    { id: "claude-3.5-sonnet" },
+    { id: "claude-3.7-sonnet", requiresExplicitOverride: true },
+    { id: "o1", requiresExplicitOverride: true },
+    { id: "o1-mini", requiresExplicitOverride: true },
+    { id: "o3-mini" },
     // Pro+ may include additional premium models
   ],
 };
@@ -81,8 +88,43 @@ export const MODEL_TIER_TABLE: Record<PlanTier, string[]> = {
  *
  * This function intentionally does NOT attempt runtime entitlement detection.
  */
-export function modelsForPlan(plan: PlanTier): string[] {
-  return MODEL_TIER_TABLE[plan] ?? [];
+export function modelsForPlan(
+  plan: PlanTier,
+  options?: { includeUnverified?: boolean }
+): string[] {
+  const includeUnverified = options?.includeUnverified ?? true;
+  return (MODEL_TIER_TABLE[plan] ?? [])
+    .filter((entry) => includeUnverified || !entry.requiresExplicitOverride)
+    .map((entry) => entry.id);
+}
+
+export function getOverrideRequiredModelsForPlan(plan: PlanTier): string[] {
+  return (MODEL_TIER_TABLE[plan] ?? [])
+    .filter((entry) => entry.requiresExplicitOverride)
+    .map((entry) => entry.id);
+}
+
+export function modelRequiresExplicitOverride(plan: PlanTier, modelId: string): boolean {
+  return (MODEL_TIER_TABLE[plan] ?? []).some(
+    (entry) => entry.id === modelId && entry.requiresExplicitOverride,
+  );
+}
+
+export function suggestDowngradePlanForModel(currentPlan: PlanTier, modelId: string): PlanTier | undefined {
+  const currentIndex = PLAN_TIER_ORDER.indexOf(currentPlan);
+  if (currentIndex <= 0) return undefined;
+
+  for (let index = currentIndex - 1; index >= 0; index -= 1) {
+    const candidate = PLAN_TIER_ORDER[index];
+    if (!candidate) {
+      continue;
+    }
+    if (!modelsForPlan(candidate, { includeUnverified: true }).includes(modelId)) {
+      return candidate;
+    }
+  }
+
+  return undefined;
 }
 
 /**

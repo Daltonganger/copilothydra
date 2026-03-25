@@ -11,6 +11,7 @@ import { loadAccounts, removeAccount, updateAccounts } from "./storage/accounts.
 import { pruneOrphanSecrets, removeSecret } from "./storage/secrets.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 import { canAccountDrainComplete, markAccountPendingRemoval, unregisterAccount } from "./routing/provider-account-map.js";
+import { resetTokenRuntimeState } from "./auth/token-state.js";
 
 interface RemovalOptions {
   configDir?: string;
@@ -79,6 +80,7 @@ export async function finalizeAccountRemoval(
   const after = await loadAccounts(options?.configDir);
   await pruneOrphanSecrets(after, options?.configDir);
   await syncAccountsToOpenCodeConfig(options?.configPath, options?.configDir);
+  resetTokenRuntimeState(accountId);
   unregisterAccount(accountId);
 
   return { removed };

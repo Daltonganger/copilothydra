@@ -44,6 +44,14 @@ const tokenRegistry = new Map<AccountId, TokenState>();
  */
 const tokenLifecycleTails = new Map<AccountId, Promise<void>>();
 
+/**
+ * Map from accountId → in-flight recovery/refresh promise.
+ *
+ * Unlike the lifecycle tail queue, this is single-flight deduplication:
+ * concurrent callers for the same account share one recovery attempt.
+ */
+const tokenRecoveryInFlight = new Map<AccountId, Promise<TokenState>>();
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -62,12 +70,46 @@ export function clearTokenState(accountId: AccountId): void {
   tokenRegistry.delete(accountId);
 }
 
+export function resetTokenRuntimeState(accountId: AccountId): void {
+  debugAuth(`resetTokenRuntimeState for account ${accountId}`);
+  tokenRegistry.delete(accountId);
+  tokenLifecycleTails.delete(accountId);
+  tokenRecoveryInFlight.delete(accountId);
+}
+
+export function getTokenIsolationSnapshot(): Array<{
+  accountId: AccountId;
+  hasToken: boolean;
+  expiresAt: number | undefined;
+  setAt: number | undefined;
+  lifecycleQueued: boolean;
+  recoveryInFlight: boolean;
+}> {
+  const accountIds = new Set<AccountId>([
+    ...tokenRegistry.keys(),
+    ...tokenLifecycleTails.keys(),
+    ...tokenRecoveryInFlight.keys(),
+  ]);
+
+  return [...accountIds].map((accountId) => {
+    const state = tokenRegistry.get(accountId);
+    return {
+      accountId,
+      hasToken: Boolean(state),
+      expiresAt: state?.expiresAt,
+      setAt: state?.setAt,
+      lifecycleQueued: tokenLifecycleTails.has(accountId),
+      recoveryInFlight: tokenRecoveryInFlight.has(accountId),
+    };
+  });
+}
+
 export function syncTokenStateFromStoredAuth(
   accountId: AccountId,
   auth: StoredAuthInfo | undefined,
 ): TokenState | undefined {
   if (!auth || auth.type !== "oauth") {
-    clearTokenState(accountId);
+    resetTokenRuntimeState(accountId);
     return undefined;
   }
 
@@ -122,6 +164,29 @@ export async function runSerializedTokenLifecycle<T>(
     release();
     if (tokenLifecycleTails.get(accountId) === currentTail) {
       tokenLifecycleTails.delete(accountId);
+    }
+  }
+}
+
+export async function runSingleFlightTokenRecovery(
+  accountId: AccountId,
+  operation: () => Promise<TokenState>,
+): Promise<TokenState> {
+  const existing = tokenRecoveryInFlight.get(accountId);
+  if (existing) {
+    debugAuth(`joining in-flight token recovery for account ${accountId}`);
+    return await existing;
+  }
+
+  debugAuth(`starting token recovery for account ${accountId}`);
+  const recoveryPromise = (async () => await operation())();
+  tokenRecoveryInFlight.set(accountId, recoveryPromise);
+
+  try {
+    return await recoveryPromise;
+  } finally {
+    if (tokenRecoveryInFlight.get(accountId) === recoveryPromise) {
+      tokenRecoveryInFlight.delete(accountId);
     }
   }
 }

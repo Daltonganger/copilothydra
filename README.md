@@ -23,12 +23,23 @@ Implemented so far:
 - Phase 3 routed token integration (provider→account→token fail-closed path)
 - Phase 3 drain-on-remove lifecycle (two-step pending-removal → final cleanup flow)
 - Phase 3 token lifecycle serialization (same-account token sync prepared for refresh-safe evolution)
+- Phase 3 routed token recovery gating (single-flight retry path for expired/missing routed token state)
+- Phase 3 parallel isolation hardening (cross-account concurrency and token-state isolation checks)
+- Phase 3 lifecycle/runtime finish (ownership mismatch guards and full runtime-state cleanup)
+- Phase 4 declared model exposure hardening (uncertain model filtering + explicit override flag)
+- Phase 4 mismatch/downgrade flow (runtime mismatch marking + suggested plan review)
+- Phase 4 docs/tests completion (capability policy coverage + status/docs closeout)
+- Phase 5 TUI foundation (menu entrypoint + empty/account overview screens)
+- Phase 5 TUI account actions (rename + revalidate wired into the menu)
+- Phase 5 TUI removal and mismatch actions (two-step removal + mismatch review in the menu)
+- OpenCode auth-login integration prep (CopilotHydra login method under `opencode auth login`)
 
 ## What works now
 
 - Per-account provider IDs in the form `github-copilot-acct-<id>`
 - Static plugin slot exports for multiple accounts
 - GitHub device-flow based auth hook integration
+- A CopilotHydra setup/login method now registers under `opencode auth login` via the plugin auth hook
 - OpenCode config sync for provider entries
 - Account-specific model labels like `gpt-4o (Personal)`
 - Bootstrap CLI for:
@@ -57,12 +68,32 @@ Implemented so far:
 - Auth loader requests now sync runtime token state through provider routing and fail closed when routed token state is unavailable
 - Pending-removal accounts are now persisted in storage, removed from generated provider config, and finalized only after drain-complete cleanup
 - Same-account token lifecycle work is now serialized before auth-header injection, preparing Phase 3 for refresh/exchange without same-account races
+- Routed auth now performs one per-account single-flight recovery attempt when synced token state is expired before failing closed
+- Parallel overlap is now covered explicitly: same-account recovery is coalesced while cross-account requests keep independent routed Authorization state
+- Routed auth now fail-closes on provider/account ownership mismatch, and final account removal fully clears runtime token/recovery state
+- User-declared accounts now hide override-required models by default until explicit override is enabled
+- Generated model labels now mark explicitly exposed uncertain entries as `user-declared override`
+- `copilothydra set-plan ... --allow-unverified-models` enables those uncertain model entries intentionally
+- Runtime 403 entitlement failures now mark the account as `mismatch`, disable unverified-model override exposure, and store the rejected model plus suggested stricter plan
+- `copilothydra review-mismatch <account-id|provider-id>` reviews a stored mismatch and can apply the suggested downgrade
+- `copilothydra list-accounts` surfaces the current capability state so mismatches are visible without opening storage files
+- `copilothydra` / `copilothydra menu` now opens a line-based account manager in TTY environments
+- The Phase 5 menu shows empty-state guidance, account overview rows, capability/lifecycle states, and restart-required notice
+- The TUI foundation can already resync provider config from inside the menu
+- The TUI can now rename an account label and revalidate an account directly from the menu
+- The TUI can now mark accounts pending-removal, finalize drained removals, and review/apply mismatch downgrades directly from the menu
+- OpenCode auth login can now drive both first-account creation and existing-account re-auth through dedicated CopilotHydra login options under `github-copilot`
+- New accounts created through the auth-login method sync `opencode.json` immediately and return auth success for the account-specific provider id
 
 ## Important behavior
 
 - OpenCode reload/restart is required after account/config changes
 - After reload, multiple account-specific providers/models can coexist
 - Capability exposure is currently user-declared with runtime mismatch detection policy
+- User-declared plan exposure now defaults to baseline models only; override-required models stay hidden unless explicitly acknowledged
+- A mismatch can preserve the current declared plan, or overwrite it with a suggested stricter one after explicit review
+- The TUI is currently a dependency-free line-based foundation; guided add-account remains the main missing menu flow in Phase 5
+- `copilothydra add-account` remains available, but OpenCode auth login is now the preferred path for add-account / re-auth orchestration
 - GPT-5+/responses routing is still a known gap for custom provider IDs
 
 ## Known limitations
@@ -104,6 +135,7 @@ npm test
 - `docs/PLAN.md`
 - `docs/IMPLEMENTATION_SEQUENCE.md`
 - `docs/feasibility-notes.md`
+- `docs/Loginmethod.md`
 
 ## Working agreement
 
@@ -120,57 +152,51 @@ Kort: **één stap = docs bijwerken + PR maken + dan pas verder**.
 
 ## Next step
 
-Continue Phase 3: multi-account routing and request isolation.
+Continue Phase 5 polish and auth-login hardening.
 
 ## Remaining roadmap
 
-### First: process current open PRs
-
-- PR #11 — Phase 3 routing foundation
-- PR #12 — routed token integration
-- PR #13 — drain-aware removal
-- PR #14 — token lifecycle serialization
-
-Expected effort: **1 merge/cleanup block**
-
-### Phase 3 — multi-account routing (remaining)
-
-Expected remaining: **about 3 PRs**
-
-1. **Refresh/recovery path**
-   - real refresh/exchange serialization
-   - revoked/expired token recovery
-   - fail-closed recovery behavior
-2. **Parallel isolation hardening**
-   - more concurrency coverage
-   - same-account vs cross-account isolation checks
-   - no token/account bleed under overlap
-3. **Routing lifecycle completion**
-   - remaining pending-removal / restart / sync edge cases
-   - Phase 3 completion docs and final tests
-
 ### Phase 4 — capability/model exposure
 
-Expected remaining: **about 2–3 PRs**
+Completed in **3 stacked PRs**
 
 1. **Declared model exposure hardening**
-   - centralize plan → model exposure
-   - mark uncertain models explicitly
+   - centralize plan → model exposure ✅
+   - mark uncertain models explicitly ✅
 2. **Mismatch/downgrade flow**
-   - mismatch state logic
-   - stricter-plan overwrite/confirm behavior
+   - mismatch state logic ✅
+   - stricter-plan overwrite/confirm behavior ✅
 3. **Docs/tests pass**
-   - capability policy docs
-   - Phase 4 completion tests and cleanup
+   - capability policy docs ✅
+   - Phase 4 completion tests and cleanup ✅
 
 ### Phase 5 — TUI
 
-Expected remaining: **about 3–4 PRs**
+In progress: foundation + core account actions shipped, with **about 1 PR** remaining
 
-1. **Menu foundation**
+1. **Menu foundation** ✅
+   - line-based TUI entrypoint
+   - empty/account overview screens
+   - non-TTY guard for the menu path
 2. **Account actions in TUI**
+   - rename account ✅
+   - revalidate account ✅
+   - remove account ✅
+   - review mismatch ✅
 3. **Lifecycle state presentation**
+   - pending-removal and mismatch review states are now actionable in-menu ✅
 4. **Polish/tests/docs**
+
+### Auth-login integration
+
+In progress: CopilotHydra now exposes a login method in `opencode auth login`, with follow-up hardening still needed
+
+1. **Setup/login entrypoint** ✅
+   - `CopilotHydraSetup` now returns an auth hook instead of a no-op
+   - add-account / re-auth can start from OpenCode auth login inputs
+2. **Host-behavior validation**
+   - verify provider-list behavior across more OpenCode versions
+   - confirm how the setup hook coexists with built-in `github-copilot`
 
 ### Hardening
 
@@ -185,19 +211,18 @@ Expected remaining: **about 3 PRs**
 
 ### Rough total remaining
 
-- **1 PR block** for current open PR cleanup
-- **3 PRs** for Phase 3
-- **2–3 PRs** for Phase 4
-- **3–4 PRs** for Phase 5
+- **0 PRs** for Phase 4
+- **1 PR** for Phase 5
+- **1–2 PRs** for auth-login integration
 - **3 PRs** for Hardening
 
-Estimated total remaining: **about 12–14 PRs**.
+Estimated total remaining: **about 5–6 PRs**.
 
 ### Most important milestone
 
-The main architectural milestone is: **finish Phase 3**.
+The main architectural milestone is now complete: **Phase 3 finished**.
 
-After that, the backend/routing core is mostly in place and the remaining work shifts more toward:
+From here, the backend/routing core is mostly in place and the remaining work shifts more toward:
 - capability policy
 - user experience / TUI
 - hardening and release quality

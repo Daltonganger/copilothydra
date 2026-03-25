@@ -1,94 +1,70 @@
 /**
- * CopilotHydra — capability verification (stub)
+ * CopilotHydra — capability verification helpers
  *
- * Phase 0 scaffold for per-account capability discovery.
- *
- * Spike D conclusion:
- * - There is NO reliable official API to detect an individual user's Copilot
- *   plan tier / model entitlements directly.
- * - GitHub Models catalog data shows model existence, NOT per-account access.
- * - Some SDKs may expose runtime `listModels()`-style helpers, but those are
- *   not sufficient as a stable entitlement proof for this plugin architecture.
- *
- * v1 policy: manual plan declaration with explicit user override.
- * Automatic capability verification is deferred to Phase 4 and should be
- * treated as best-effort runtime validation, not ground truth discovery.
- *
- * See PLAN.md Phase 4 and docs/feasibility-notes.md (Spike D results).
+ * v1 policy remains conservative:
+ * - plan exposure starts user-declared
+ * - runtime 403 entitlement failures can mark an account as mismatched
+ * - user can then explicitly accept a stricter stored plan
  */
 
-import type { CopilotAccountMeta, CapabilityState, PlanTier } from "../types.js";
+import type { AccountId, CapabilityState, CopilotAccountMeta, PlanTier } from "../types.js";
 import { warn } from "../log.js";
+import { markAccountCapabilityMismatch } from "../account-update.js";
+import { loadAccounts } from "../storage/accounts.js";
+import { suggestDowngradePlanForModel } from "./models.js";
 
-// ---------------------------------------------------------------------------
-// Mismatch detection (stub)
-// ---------------------------------------------------------------------------
-
-/**
- * Called when a model request is rejected in a way that suggests plan mismatch.
- *
- * Policy:
- * 1. Mark account as "mismatch" capabilityState
- * 2. Surface clear error to user
- * 3. Ask whether to overwrite stored plan with more restrictive one
- *
- * Runtime signals worth treating as mismatch candidates (Spike D):
- * - HTTP 403 with messages like:
- *   - "not authorized to use this Copilot feature"
- *   - "Model not enabled for your account / org / plan"
- *   - "Access denied by organization policy"
- *   - "You don't have access to GitHub Copilot"
- *
- * Important: 401 usually means auth/token failure, not plan mismatch.
- *
- * TODO (Phase 4): implement full mismatch detection and overwrite prompt.
- */
-export function handlePlanMismatch(
-  account: CopilotAccountMeta,
-  _rejectedModelId: string
-): void {
-  warn(
-    "capabilities",
-    `Plan mismatch detected for account "${account.id}" (${account.label}). ` +
-    `Declared plan is "${account.plan}" but model was rejected. ` +
-    `Account state should be marked as "mismatch". This is a Phase 4 TODO.`
-  );
+export interface PlanMismatchResult {
+  account: CopilotAccountMeta;
+  suggestedPlan?: PlanTier;
+  message: string;
 }
 
-// ---------------------------------------------------------------------------
-// Capability state helpers
-// ---------------------------------------------------------------------------
+export async function handlePlanMismatch(
+  accountId: AccountId,
+  rejectedModelId?: string,
+): Promise<PlanMismatchResult | null> {
+  const account = await findAccountById(accountId);
+  if (!account) {
+    warn("capabilities", `Plan mismatch detected for unknown account "${accountId}".`);
+    return null;
+  }
 
-/**
- * Returns a user-facing label for a capability state.
- */
+  const suggestedPlan = rejectedModelId
+    ? suggestDowngradePlanForModel(account.plan, rejectedModelId)
+    : undefined;
+
+  const updated = await markAccountCapabilityMismatch(account.id, {
+    ...(rejectedModelId ? { rejectedModelId } : {}),
+    ...(suggestedPlan ? { suggestedPlan } : {}),
+  });
+
+  const message = buildMismatchMessage(updated, rejectedModelId, suggestedPlan);
+  warn("capabilities", message);
+
+  return {
+    account: updated,
+    ...(suggestedPlan ? { suggestedPlan } : {}),
+    message,
+  };
+}
+
 export function capabilityStateLabel(state: CapabilityState): string {
   switch (state) {
     case "user-declared": return "user-declared";
-    case "verified":      return "verified";
-    case "mismatch":      return "⚠ mismatch";
+    case "verified": return "verified";
+    case "mismatch": return "⚠ mismatch";
   }
 }
 
-/**
- * Returns a user-facing label for a plan tier.
- */
 export function planLabel(plan: PlanTier): string {
   switch (plan) {
-    case "free":    return "FREE";
+    case "free": return "FREE";
     case "student": return "STUDENT";
-    case "pro":     return "PRO";
-    case "pro+":    return "PRO+";
+    case "pro": return "PRO";
+    case "pro+": return "PRO+";
   }
 }
 
-/**
- * Returns true when an error looks like a capability / entitlement mismatch
- * rather than a generic auth failure.
- *
- * This is intentionally conservative: we only match well-known 403-style
- * entitlement phrases from Spike D research.
- */
 export function isCapabilityMismatchError(error: unknown): boolean {
   const message = extractErrorText(error).toLowerCase();
   if (!message) return false;
@@ -102,6 +78,26 @@ export function isCapabilityMismatchError(error: unknown): boolean {
     message.includes("you don't have access to github copilot") ||
     message.includes("access to this endpoint is forbidden")
   );
+}
+
+export function buildMismatchMessage(
+  account: CopilotAccountMeta,
+  rejectedModelId?: string,
+  suggestedPlan?: PlanTier,
+): string {
+  const modelPart = rejectedModelId
+    ? ` Model "${rejectedModelId}" was rejected for declared plan "${account.plan}".`
+    : ` Declared plan "${account.plan}" no longer matches runtime capability.`;
+  const suggestionPart = suggestedPlan
+    ? ` Suggested stricter stored plan: "${suggestedPlan}". Run \`copilothydra review-mismatch ${account.id}\` to apply or preserve the current declaration.`
+    : " No automatic stricter plan suggestion is available yet.";
+
+  return `[copilothydra] Capability mismatch detected for account "${account.label}" (${account.githubUsername}).${modelPart}${suggestionPart}`;
+}
+
+async function findAccountById(accountId: AccountId): Promise<CopilotAccountMeta | undefined> {
+  const accounts = await loadAccounts();
+  return accounts.accounts.find((candidate) => candidate.id === accountId);
 }
 
 function extractErrorText(error: unknown): string {

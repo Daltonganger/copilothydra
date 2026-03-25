@@ -40,7 +40,7 @@
  */
 
 import type { AccountId, ProviderId, CopilotAccountMeta } from "../types.js";
-import { modelsForPlan } from "./models.js";
+import { modelRequiresExplicitOverride, modelsForPlan } from "./models.js";
 
 // ---------------------------------------------------------------------------
 // ID helpers
@@ -171,7 +171,11 @@ export function buildProviderConfig(account: CopilotAccountMeta): ProviderConfig
  * Phase 4 will populate based on account.plan and account.capabilityState.
  */
 function buildModelEntries(_account: CopilotAccountMeta): Record<string, ModelConfigEntry> {
-  const modelIds = modelsForPlan(_account.plan);
+  const includeUnverified =
+    _account.capabilityState === "verified" ||
+    (_account.capabilityState === "user-declared" && _account.allowUnverifiedModels === true);
+  const modelIds = modelsForPlan(_account.plan, { includeUnverified });
+
   return Object.fromEntries(
     modelIds.map((modelId) => [
       modelId,
@@ -183,5 +187,12 @@ function buildModelEntries(_account: CopilotAccountMeta): Record<string, ModelCo
 }
 
 export function buildModelDisplayName(account: CopilotAccountMeta, modelId: string): string {
-  return `${modelId} (${account.label})`;
+  const overrideSuffix =
+    account.capabilityState !== "verified" &&
+    account.allowUnverifiedModels === true &&
+    modelRequiresExplicitOverride(account.plan, modelId)
+      ? ", user-declared override"
+      : "";
+
+  return `${modelId} (${account.label}${overrideSuffix})`;
 }

@@ -18,17 +18,22 @@ import { beginAccountRemoval, finalizeAccountRemoval } from "./account-removal.j
 import { repairStorage } from "./storage-repair.js";
 import { revalidateAccount, renameAccount, updateAccountPlan } from "./account-update.js";
 import { auditStorage } from "./storage-audit.js";
-import { isTTY } from "./ui/menu.js";
+import { isTTY, launchMenu } from "./ui/menu.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
+import { getOverrideRequiredModelsForPlan } from "./config/models.js";
+import { buildMismatchMessage, capabilityStateLabel, planLabel } from "./config/capabilities.js";
 import { resolveOpenCodeConfigPath } from "./config/opencode-config.js";
 import { checkAccountRuntimeReadiness, validateAccountCount } from "./runtime-checks.js";
 
 const VALID_PLANS: PlanTier[] = ["free", "student", "pro", "pro+"];
 
 async function main(): Promise<void> {
-  const command = process.argv[2] ?? "add-account";
+  const command = process.argv[2] ?? "menu";
 
   switch (command) {
+    case "menu":
+      await launchMenu();
+      return;
     case "add-account":
       await addAccountInteractive();
       return;
@@ -49,6 +54,9 @@ async function main(): Promise<void> {
       return;
     case "revalidate-account":
       await revalidateAccountCommand(process.argv[3]);
+      return;
+    case "review-mismatch":
+      await reviewMismatchCommand(process.argv[3], process.argv.slice(4));
       return;
     case "repair-storage":
       await repairStorageCommand();
@@ -74,6 +82,7 @@ async function addAccountInteractive(): Promise<void> {
     const label = await promptRequired(rl, "Account label", "Personal");
     const githubUsername = await promptRequired(rl, "GitHub username", "alice");
     const plan = await promptPlan(rl);
+    const allowUnverifiedModels = await promptAllowUnverifiedModels(rl, plan);
 
     const existingForUsername = await findAccountByGitHubUsername(githubUsername);
     if (existingForUsername) {
@@ -83,7 +92,7 @@ async function addAccountInteractive(): Promise<void> {
       );
     }
 
-    const account = createAccountMeta({ label, githubUsername, plan });
+    const account = createAccountMeta({ label, githubUsername, plan, allowUnverifiedModels });
     checkAccountRuntimeReadiness(account);
 
     await upsertAccount(account);
@@ -91,6 +100,12 @@ async function addAccountInteractive(): Promise<void> {
 
     output.write(`\nAdded account: ${account.label} (${account.githubUsername})\n`);
     output.write(`Provider ID: ${account.providerId}\n`);
+    if (!account.allowUnverifiedModels) {
+      const hiddenModels = getOverrideRequiredModelsForPlan(account.plan);
+      if (hiddenModels.length > 0) {
+        output.write(`Hidden uncertain models until explicit override: ${hiddenModels.join(", ")}\n`);
+      }
+    }
     output.write(`OpenCode config updated: ${resolveOpenCodeConfigPath()}\n`);
     output.write("Reload/restart OpenCode to pick up the new provider and model entries.\n");
     output.write("Then authenticate that provider through OpenCode's auth flow.\n");
@@ -108,7 +123,7 @@ async function listAccounts(): Promise<void> {
 
   for (const account of accounts) {
     output.write(
-      `${account.label} | ${account.githubUsername} | ${account.plan} | ${account.providerId} | ${account.lifecycleState}\n`
+      `${account.label} | ${account.githubUsername} | ${account.plan} | ${capabilityStateLabel(account.capabilityState)} | ${account.providerId} | ${account.lifecycleState}\n`
     );
   }
 }
@@ -184,10 +199,20 @@ async function setPlanCommand(identifier?: string, planValue?: string): Promise<
   }
 
   const account = await resolveAccountByIdentifier(identifier);
-  const updated = await updateAccountPlan(account.id, planValue as PlanTier);
+  const allowUnverifiedModels = hasFlag("--allow-unverified-models");
+  const updated = await updateAccountPlan(account.id, planValue as PlanTier, {
+    allowUnverifiedModels,
+  });
   checkAccountRuntimeReadiness(updated);
   output.write(`Updated plan for ${updated.label}: ${account.plan} -> ${updated.plan}\n`);
   output.write(`Capability state reset to: ${updated.capabilityState}\n`);
+  output.write(`Allow unverified models: ${updated.allowUnverifiedModels === true ? "yes" : "no"}\n`);
+  if (!updated.allowUnverifiedModels) {
+    const hiddenModels = getOverrideRequiredModelsForPlan(updated.plan);
+    if (hiddenModels.length > 0) {
+      output.write(`Hidden uncertain models until explicit override: ${hiddenModels.join(", ")}\n`);
+    }
+  }
   output.write("Reload/restart OpenCode to apply provider model changes.\n");
 }
 
@@ -201,6 +226,65 @@ async function revalidateAccountCommand(identifier?: string): Promise<void> {
   output.write(`Revalidated account: ${updated.label} (${updated.githubUsername})\n`);
   output.write(`Capability state: ${updated.capabilityState}\n`);
   output.write(`Last validated at: ${updated.lastValidatedAt}\n`);
+}
+
+async function reviewMismatchCommand(identifier?: string, args: string[] = []): Promise<void> {
+  if (!identifier) {
+    throw new Error("[copilothydra] review-mismatch requires an account id or provider id");
+  }
+
+  const account = await resolveAccountByIdentifier(identifier);
+  if (account.capabilityState !== "mismatch") {
+    output.write(`Account ${account.label} is not currently marked as mismatch.\n`);
+    return;
+  }
+
+  const suggestedPlan = account.mismatchSuggestedPlan;
+  const forcedPlanArg = args.find((value) => VALID_PLANS.includes(value as PlanTier));
+  const applySuggested = args.includes("--apply-suggested");
+
+  output.write(`${buildMismatchMessage(account, account.mismatchModelId, suggestedPlan)}\n`);
+  if (account.mismatchDetectedAt) {
+    output.write(`Mismatch detected at: ${account.mismatchDetectedAt}\n`);
+  }
+
+  let nextPlan: PlanTier | undefined = forcedPlanArg as PlanTier | undefined;
+  if (!nextPlan && applySuggested) {
+    nextPlan = suggestedPlan;
+  }
+
+  if (!nextPlan && suggestedPlan && isTTY()) {
+    const rl = createInterface({ input, output });
+    try {
+      while (true) {
+        const value = (await rl.question(
+          `Overwrite stored plan with suggested stricter plan ${planLabel(suggestedPlan)}? [y/N]: `,
+        )).trim().toLowerCase();
+
+        if (value === "" || value === "n" || value === "no") break;
+        if (value === "y" || value === "yes") {
+          nextPlan = suggestedPlan;
+          break;
+        }
+      }
+    } finally {
+      rl.close();
+    }
+  }
+
+  if (!nextPlan) {
+    if (suggestedPlan) {
+      output.write(`Stored plan preserved at ${planLabel(account.plan)}.\n`);
+    } else {
+      output.write("No stricter automatic downgrade suggestion is available for this mismatch.\n");
+    }
+    return;
+  }
+
+  const updated = await updateAccountPlan(account.id, nextPlan, { allowUnverifiedModels: false });
+  output.write(`Updated stored plan for ${updated.label}: ${account.plan} -> ${updated.plan}\n`);
+  output.write(`Capability state reset to: ${updated.capabilityState}\n`);
+  output.write("Reload/restart OpenCode to apply provider model changes.\n");
 }
 
 async function repairStorageCommand(): Promise<void> {
@@ -261,6 +345,29 @@ async function promptPlan(rl: ReturnType<typeof createInterface>): Promise<PlanT
       return value as PlanTier;
     }
   }
+}
+
+async function promptAllowUnverifiedModels(
+  rl: ReturnType<typeof createInterface>,
+  plan: PlanTier,
+): Promise<boolean> {
+  const uncertainModels = getOverrideRequiredModelsForPlan(plan);
+  if (uncertainModels.length === 0) {
+    return false;
+  }
+
+  while (true) {
+    const value = (await rl.question(
+      `Expose uncertain models too (${uncertainModels.join(", ")})? [y/N]: `,
+    )).trim().toLowerCase();
+
+    if (value === "" || value === "n" || value === "no") return false;
+    if (value === "y" || value === "yes") return true;
+  }
+}
+
+function hasFlag(flag: string): boolean {
+  return process.argv.includes(flag);
 }
 
 main().catch((error) => {

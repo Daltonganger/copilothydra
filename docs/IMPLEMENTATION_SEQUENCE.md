@@ -48,11 +48,28 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
     - edge-case validation pass done: enum/timestamp/optional secret field validation now fail-closes malformed persisted state
 
 ### Nu bezig
-11. ▶️ **Phase 3 — multi-account routing**
-   - routing foundation started: lease-based provider→account resolution now tracks in-flight requests and blocks new work for pending-removal accounts
-   - routed token pass done: auth loader now syncs provider→account→token state and fails closed when routed oauth state is missing
-   - drain-on-remove pass done: account removal now persists pending-removal state and final cleanup only happens after drain-complete checks
-   - token lifecycle serialization pass done: same-account token sync path is now serialized ahead of future refresh/exchange logic
+11. ✅ **Phase 3 — multi-account routing**
+    - routing foundation started: lease-based provider→account resolution now tracks in-flight requests and blocks new work for pending-removal accounts
+    - routed token pass done: auth loader now syncs provider→account→token state and fails closed when routed oauth state is missing
+    - drain-on-remove pass done: account removal now persists pending-removal state and final cleanup only happens after drain-complete checks
+    - token lifecycle serialization pass done: same-account token sync path is now serialized ahead of future refresh/exchange logic
+    - recovery gating pass done: expired routed token state now gets one per-account single-flight recovery attempt before fail-closed erroring
+    - lifecycle/runtime finish done: ownership mismatch now fails closed and final cleanup clears all runtime token/recovery state
+
+### Afgerond
+12. ✅ **Phase 4 — capability/model exposure**
+    - declared model exposure pass done: user-declared accounts now hide override-required models unless explicit override is enabled, and overridden entries are labeled in synced config
+    - mismatch/downgrade pass done: runtime entitlement rejections now persist mismatch state and can drive stored-plan review
+    - docs/tests pass done: capability-policy helpers and mismatch presentation have direct regression coverage
+
+### Afgerond
+13. ✅ **Phase 5 — TUI**
+    - menu foundation, account actions, removal/mismatch review, and guided add-account are now complete in the line-based menu
+    - auth-login prep also landed so OpenCode auth login can create/re-auth accounts via CopilotHydra
+
+### Nu bezig
+14. ▶️ **Auth-login integration / Hardening prep**
+    - next work is host-behavior hardening around `github-copilot` coexistence/replacement plus broader post-Phase-5 hardening
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -279,7 +296,7 @@ Doel: meerdere accounts persistent kunnen beheren.
 
 ## 11. Phase 3 — multi-account routing
 
-**Status:** ▶️ Gestart
+**Status:** ✅ Gereed
 
 Doel: correcte isolatie tussen accounts bij parallel gebruik.
 
@@ -308,10 +325,24 @@ Doel: correcte isolatie tussen accounts bij parallel gebruik.
 - `runSerializedTokenLifecycle(accountId, operation)` toegevoegd voor per-account serialisatie van token lifecycle werk
 - auth loader serializeert nu routed `getAuth()` + runtime token sync per account voordat request headers worden gezet
 - tests toegevoegd voor same-account token serialization en concurrent routed fetches zonder lease leaks
+- `runSingleFlightTokenRecovery(accountId, operation)` toegevoegd voor gedeelde recovery/refresh poging per account
+- auth loader probeert nu één recovery-pass wanneer routed token state expired is na sync uit stored auth
+- tests toegevoegd voor single-flight recovery en routed expired-token recovery
+- `getTokenIsolationSnapshot()` toegevoegd als veilige runtime-inspectie zonder tokenwaarden te loggen
+- tests toegevoegd voor cross-account parallelle fetch-isolatie en per-account recovery-isolatie onder overlap
+- auth loader fail-closed nu ook expliciet bij provider→account ownership mismatch tussen loader-slot en routing registry
+- final account cleanup wist nu alle runtime token/lifecycle/recovery state via `resetTokenRuntimeState(accountId)`
+- tests toegevoegd voor ownership mismatch en runtime-state cleanup na final removal
+
+### Exit criteria
+- parallelle requests over meerdere accounts blijven correct geïsoleerd ✅
+- geen fallback naar verkeerd account mogelijk ✅
 
 ---
 
 ## 12. Phase 4 — capability/model exposure
+
+**Status:** ✅ Gereed
 
 Doel: modelaanbod per account gecontroleerd zichtbaar maken.
 
@@ -321,9 +352,16 @@ Doel: modelaanbod per account gecontroleerd zichtbaar maken.
 - mismatch/downgrade state tonen
 - overwrite prompt bouwen voor restrictiever plan
 
+### Reeds afgerond binnen Phase 4
+- declared model exposure pass done: user-declared accounts now hide override-required models unless explicit override is enabled, and overridden entries are labeled in synced config
+- mismatch/downgrade pass done: runtime entitlement rejections now persist `mismatch` state, capture the rejected model + suggested stricter plan, and `review-mismatch` can preserve or apply the suggested downgrade
+- docs/tests pass done: capability-policy helpers now have direct regression coverage, list output surfaces mismatch state, and Phase 4 docs/status are closed out
+
 ---
 
 ## 13. Phase 5 — TUI
+
+**Status:** ✅ Gereed
 
 Doel: accountbeheer bruikbaar en duidelijk maken.
 
@@ -336,6 +374,12 @@ Doel: accountbeheer bruikbaar en duidelijk maken.
 - pending-removal state tonen
 - restart-required state tonen
 - non-TTY clean failure
+
+### Reeds afgerond binnen Phase 5
+- menu foundation done: `copilothydra` now opens a line-based TUI entrypoint in TTY environments, with empty-state guidance, account overview, capability/lifecycle visibility, restart-required notice, and menu-level config sync
+- account actions pass done: the TUI now supports rename and revalidate flows using the existing account update helpers, with restart guidance after mutations
+- removal/mismatch pass done: the TUI now drives two-phase removal and guided mismatch review, including pending-removal finalization after drain and suggested plan application
+- auth-login prep pass done: `CopilotHydraSetup` now exposes a CopilotHydra login method under `opencode auth login`, and that path can create a new account or re-auth an existing one before returning the account-specific provider id
 
 ---
 
@@ -377,53 +421,45 @@ Doel: van werkend naar verantwoord beta-niveau.
 
 ## Immediate next step
 
-**Continue Phase 3: request routing verder uitbouwen met echte refresh/exchange-serialisatie en bredere parallel-isolatie.**
+**Continue Phase 5 polish and auth-login hardening.**
 
 ---
 
 ## Remaining roadmap (estimated)
 
-### Eerst open PR's verwerken
-
-- PR #11 — routing foundation
-- PR #12 — routed token integration
-- PR #13 — drain-aware removal
-- PR #14 — token lifecycle serialization
-
-Verwachting: **1 merge/cleanup blok**
-
-### Phase 3 — resterend
-
-Verwachting: **ongeveer 3 PR's**
-
-1. **Refresh/recovery path**
-   - echte refresh/exchange-serialisatie
-   - revoked/expired token recovery
-   - fail-closed recovery pad
-2. **Parallel isolation hardening**
-   - extra concurrency coverage
-   - same-account vs cross-account isolatiechecks
-   - geen token/account bleed
-3. **Routing lifecycle afronden**
-   - laatste pending-removal / restart / sync edge cases
-   - Phase 3 afsluiten in docs/tests
-
 ### Phase 4 — capability/model exposure
 
-Verwachting: **ongeveer 2–3 PR's**
+Afgerond in **3 stacked PR's**
 
 1. **Declared model exposure aanscherpen**
+   - ✅ user-declared plans now expose baseline models by default and require explicit override for uncertain model entries
 2. **Mismatch/downgrade flow**
+   - ✅ runtime mismatch now marks the account, stores downgrade guidance, and can overwrite the declared plan after explicit review
 3. **Docs/tests afronden**
+   - ✅ capability-policy helpers en mismatch-presentatie hebben nu directe regressietests
 
 ### Phase 5 — TUI
 
-Verwachting: **ongeveer 3–4 PR's**
+Verwachting: **ongeveer 1 PR resterend**
 
 1. **Menu foundation**
+   - ✅ line-based entrypoint, empty state, account overview en menu sync-pad
 2. **Account actions**
+   - ✅ rename-account en revalidate-account lopen nu via de TUI
+   - ✅ remove-account en mismatch review lopen nu ook via de TUI
 3. **Lifecycle state presentation**
+   - ✅ pending-removal finalize en mismatch downgrade review zijn nu direct in-menu uitvoerbaar
 4. **Polish/tests/docs**
+
+### Auth-login integration
+
+Verwachting: **ongeveer 1–2 PR's**
+
+1. **Setup/login entrypoint**
+   - ✅ OpenCode auth login kan nu account add/re-auth starten via plugin `authorize(inputs)`
+2. **Host-behavior hardening**
+   - validate coexistence/replacement gedrag rond `github-copilot`
+   - docs + compatibility checks aanscherpen
 
 ### Hardening
 
@@ -435,16 +471,15 @@ Verwachting: **ongeveer 3 PR's**
 
 ### Totale resterende inschatting
 
-- **1 PR-blok** voor huidige open PR cleanup
-- **3 PR's** voor Phase 3
-- **2–3 PR's** voor Phase 4
-- **3–4 PR's** voor Phase 5
+- **0 PR's** voor Phase 4
+- **1 PR** voor Phase 5
+- **1–2 PR's** voor auth-login integration
 - **3 PR's** voor Hardening
 
-Geschatte rest: **ongeveer 12–14 PR's**.
+Geschatte rest: **ongeveer 5–6 PR's**.
 
 ### Belangrijkste mijlpaal
 
-De echte architectuurmijlpaal is: **Phase 3 volledig afronden**.
+De echte architectuurmijlpaal is gehaald: **Phase 3 is volledig afgerond**.
 
-Daarna is de backend/routing-kern grotendeels klaar en verschuift het zwaartepunt naar capability policy, TUI/UX en hardening.
+Daarna verschuift het zwaartepunt naar capability policy, TUI/UX en hardening.

@@ -103,6 +103,7 @@ test("beginAccountRemoval marks pending-removal and finalizeAccountRemoval waits
     const { syncAccountsToOpenCodeConfig } = await import(`../dist/config/sync.js?${Date.now()}`);
     const removal = await import("../dist/account-removal.js");
     const routing = await import("../dist/routing/provider-account-map.js");
+    const tokenState = await import("../dist/auth/token-state.js");
 
     const account = createAccountMeta({ label: "Drain", githubUsername: "drain", plan: "pro" });
 
@@ -115,6 +116,12 @@ test("beginAccountRemoval marks pending-removal and finalizeAccountRemoval waits
     await syncAccountsToOpenCodeConfig(configPath, tempDir);
 
     routing.registerAccounts([account]);
+    tokenState.setTokenState({
+      accountId: account.id,
+      githubOAuthToken: "runtime-token",
+      expiresAt: 0,
+      setAt: Date.now(),
+    });
     const lease = routing.acquireRoutingLease(account.providerId);
 
     const started = await removal.beginAccountRemoval(account.id, { configDir: tempDir, configPath });
@@ -135,6 +142,9 @@ test("beginAccountRemoval marks pending-removal and finalizeAccountRemoval waits
 
     const afterAccounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
     assert.equal(afterAccounts.accounts.length, 0);
+    assert.equal(tokenState.getTokenState(account.id), undefined);
+    const snapshot = tokenState.getTokenIsolationSnapshot();
+    assert.equal(snapshot.find((entry) => entry.accountId === account.id), undefined);
   } finally {
     delete process.env.OPENCODE_CONFIG;
     delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
