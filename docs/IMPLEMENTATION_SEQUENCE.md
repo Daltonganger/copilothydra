@@ -367,6 +367,7 @@ Doel: accountbeheer bruikbaar en duidelijk maken.
 ### Reeds afgerond binnen Phase 5
 - menu foundation done: `copilothydra` now opens a line-based TUI entrypoint in TTY environments, with empty-state guidance, account overview, capability/lifecycle visibility, restart-required notice, and menu-level config sync
 - account actions pass done: the TUI now supports rename and revalidate flows using the existing account update helpers, with restart guidance after mutations
+- auth-login prep pass done: `CopilotHydraSetup` now exposes a CopilotHydra login method under `opencode auth login`, and that path can create a new account or re-auth an existing one before returning the account-specific provider id
 
 ---
 
@@ -408,7 +409,7 @@ Doel: van werkend naar verantwoord beta-niveau.
 
 ## Immediate next step
 
-**Continue Phase 5: wire remove-account and mismatch review flows into the TUI.**
+**Continue auth-login hardening and finish the remaining Phase 5 TUI actions.**
 
 ---
 
@@ -436,6 +437,16 @@ Verwachting: **ongeveer 1–2 PR's resterend**
 3. **Lifecycle state presentation**
 4. **Polish/tests/docs**
 
+### Auth-login integration
+
+Verwachting: **ongeveer 1–2 PR's**
+
+1. **Setup/login entrypoint**
+   - ✅ OpenCode auth login kan nu account add/re-auth starten via plugin `authorize(inputs)`
+2. **Host-behavior hardening**
+   - validate coexistence/replacement gedrag rond `github-copilot`
+   - docs + compatibility checks aanscherpen
+
 ### Hardening
 
 Verwachting: **ongeveer 3 PR's**
@@ -448,9 +459,10 @@ Verwachting: **ongeveer 3 PR's**
 
 - **0 PR's** voor Phase 4
 - **1–2 PR's** voor Phase 5
+- **1–2 PR's** voor auth-login integration
 - **3 PR's** voor Hardening
 
-Geschatte rest: **ongeveer 5 PR's**.
+Geschatte rest: **ongeveer 6–7 PR's**.
 
 ### Belangrijkste mijlpaal
 

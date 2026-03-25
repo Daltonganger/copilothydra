@@ -145,6 +145,14 @@ Even though v1 starts with plaintext storage, structure the design so later migr
 
 All first-pass storage, locking, and terminal behavior must be chosen with macOS and Linux in mind, with Windows validated on a best-effort basis for v1.
 
+## 6. OpenCode auth-login direction
+
+The preferred path is now explicitly:
+
+- account add / re-auth should start from `opencode auth login` where technically possible
+- standalone CopilotHydra CLI/TUI remains a fallback management path, not the primary auth entrypoint
+- plugin auth methods should reuse OpenCode’s login surface first, then fall back to separate tooling only where the host cannot express the needed UX
+
 ---
 
 ## Recommended v1 architecture
@@ -437,6 +445,19 @@ Still pending in later Phase 5 slices:
 Current follow-up status:
 - rename and revalidate are now wired into the menu
 - add account, remove account, and guided mismatch review remain pending
+
+### Auth-login migration note
+
+In parallel with Phase 5, the project is now actively moving account add / re-auth into OpenCode’s own auth-login path.
+
+Current implementation status:
+- `CopilotHydraSetup` now exposes a login method under provider `github-copilot`
+- that login method can either re-auth an existing account by username or create a new account and sync provider config before the device flow completes
+- successful callback returns the account-specific provider id so OpenCode can bind stored auth to `github-copilot-acct-*`
+
+Still to validate/harden:
+- exact coexistence with built-in `github-copilot` behavior across OpenCode versions
+- whether additional host-specific UX adjustments are needed to make this fully replace the built-in expectation
 
 ## UX goals
 - safe

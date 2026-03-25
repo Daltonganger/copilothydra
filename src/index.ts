@@ -27,6 +27,7 @@ import { info, warn, error } from "./log.js";
 import { validateAccountCount } from "./runtime-checks.js";
 import { registerAccounts } from "./routing/provider-account-map.js";
 import { setTokenState } from "./auth/token-state.js";
+import { createCopilotLoginMethod } from "./auth/login-method.js";
 
 // ---------------------------------------------------------------------------
 // Module-level account loading (top-level await in ESM)
@@ -137,17 +138,28 @@ function makeAccountPlugin(account: CopilotAccountMeta): (input: PluginInput) =>
 // ---------------------------------------------------------------------------
 
 export async function CopilotHydraSetup(input: PluginInput): Promise<Hooks> {
+  const compat = checkCompatibility(input);
+  for (const w of compat.warnings) {
+    warn("plugin", w);
+  }
+
   if (_loadError) {
     error("plugin", `CopilotHydra could not load accounts: ${_loadError}`);
   } else {
     info(
       "plugin",
-      "CopilotHydra: no accounts configured. " +
-        "Run `npx copilothydra` or `bunx copilothydra` to open the account manager."
+      _accounts.length === 0
+        ? "CopilotHydra: no accounts configured. OpenCode auth login can now create the first account."
+        : "CopilotHydra: exposing GitHub Copilot login method for add-account / re-auth flows.",
     );
   }
-  // Return empty hooks — OpenCode continues without us
-  return {};
+
+  return {
+    auth: {
+      provider: "github-copilot",
+      methods: [createCopilotLoginMethod()],
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
