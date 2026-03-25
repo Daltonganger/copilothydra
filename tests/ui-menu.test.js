@@ -348,7 +348,8 @@ test("launchMenu can review mismatch and apply suggested downgrade", async () =>
   });
 
   assert.equal(appliedPlan, "student");
-  assert.match(writes.join(""), /Suggested stricter stored plan: "student"/);
+  assert.match(writes.join(""), /Capability mismatch detected for Mismatch \(alice\)\./);
+  assert.match(writes.join(""), /Suggested stored plan based on this model: STUDENT\./);
   assert.match(writes.join(""), /Updated stored plan for Mismatch \(alice\): PRO -> STUDENT/);
 });
 

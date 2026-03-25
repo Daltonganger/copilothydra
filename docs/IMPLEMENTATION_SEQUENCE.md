@@ -56,9 +56,20 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
     - recovery gating pass done: expired routed token state now gets one per-account single-flight recovery attempt before fail-closed erroring
     - lifecycle/runtime finish done: ownership mismatch now fails closed and final cleanup clears all runtime token/recovery state
 
-### Nu bezig
-12. ▶️ **Phase 4 — capability/model exposure**
+### Afgerond
+12. ✅ **Phase 4 — capability/model exposure**
     - declared model exposure pass done: user-declared accounts now hide override-required models unless explicit override is enabled, and overridden entries are labeled in synced config
+    - mismatch/downgrade pass done: runtime entitlement rejections now persist mismatch state and can drive stored-plan review
+    - docs/tests pass done: capability-policy helpers and mismatch presentation have direct regression coverage
+
+### Afgerond
+13. ✅ **Phase 5 — TUI**
+    - menu foundation, account actions, removal/mismatch review, and guided add-account are now complete in the line-based menu
+    - auth-login prep also landed so OpenCode auth login can create/re-auth accounts via CopilotHydra
+
+### Nu bezig
+14. ▶️ **Auth-login integration / Hardening prep**
+    - next work is host-behavior hardening around `github-copilot` coexistence/replacement plus broader post-Phase-5 hardening
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -350,7 +361,7 @@ Doel: modelaanbod per account gecontroleerd zichtbaar maken.
 
 ## 13. Phase 5 — TUI
 
-**Status:** ▶️ Gestart
+**Status:** ✅ Gereed
 
 Doel: accountbeheer bruikbaar en duidelijk maken.
 
@@ -434,10 +445,10 @@ Verwachting: **ongeveer 1 PR resterend**
 1. **Menu foundation**
    - ✅ line-based entrypoint, empty state, account overview en menu sync-pad
 2. **Account actions**
-    - ✅ rename-account en revalidate-account lopen nu via de TUI
-    - ✅ remove-account en mismatch review lopen nu ook via de TUI
+   - ✅ rename-account en revalidate-account lopen nu via de TUI
+   - ✅ remove-account en mismatch review lopen nu ook via de TUI
 3. **Lifecycle state presentation**
-    - ✅ pending-removal finalize en mismatch downgrade review zijn nu direct in-menu uitvoerbaar
+   - ✅ pending-removal finalize en mismatch downgrade review zijn nu direct in-menu uitvoerbaar
 4. **Polish/tests/docs**
 
 ### Auth-login integration
