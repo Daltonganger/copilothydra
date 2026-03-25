@@ -196,7 +196,7 @@ async function setPlanCommand(identifier?: string, planValue?: string): Promise<
   }
 
   const account = await resolveAccountByIdentifier(identifier);
-  const allowUnverifiedModels = process.argv.slice(5).includes("--allow-unverified-models");
+  const allowUnverifiedModels = hasFlag("--allow-unverified-models");
   const updated = await updateAccountPlan(account.id, planValue as PlanTier, {
     allowUnverifiedModels,
   });
@@ -361,6 +361,10 @@ async function promptAllowUnverifiedModels(
     if (value === "" || value === "n" || value === "no") return false;
     if (value === "y" || value === "yes") return true;
   }
+}
+
+function hasFlag(flag: string): boolean {
+  return process.argv.includes(flag);
 }
 
 main().catch((error) => {
