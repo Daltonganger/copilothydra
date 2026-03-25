@@ -341,6 +341,10 @@ Doel: modelaanbod per account gecontroleerd zichtbaar maken.
 - mismatch/downgrade state tonen
 - overwrite prompt bouwen voor restrictiever plan
 
+### Reeds afgerond binnen Phase 4
+- declared model exposure pass done: user-declared accounts now hide override-required models unless explicit override is enabled, and overridden entries are labeled in synced config
+- mismatch/downgrade pass done: runtime entitlement rejections now persist `mismatch` state, capture the rejected model + suggested stricter plan, and `review-mismatch` can preserve or apply the suggested downgrade
+
 ---
 
 ## 13. Phase 5 — TUI
@@ -410,6 +414,7 @@ Verwachting: **ongeveer 2–3 PR's**
 1. **Declared model exposure aanscherpen**
    - ✅ user-declared plans now expose baseline models by default and require explicit override for uncertain model entries
 2. **Mismatch/downgrade flow**
+   - ✅ runtime mismatch now marks the account, stores downgrade guidance, and can overwrite the declared plan after explicit review
 3. **Docs/tests afronden**
 
 ### Phase 5 — TUI

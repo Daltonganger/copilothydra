@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import path from "node:path";
+import { cleanupDir, makeTempDir, readJson } from "./helpers.js";
 
 test("auth loader fetch resolves provider routing and injects routed token header", async () => {
   const routing = await import("../dist/routing/provider-account-map.js");
@@ -205,4 +207,60 @@ test("auth loader fails closed when provider ownership no longer matches the loa
   );
 
   assert.equal(routing.getInFlightCount("acct_other"), 0);
+});
+
+test("auth loader marks account mismatch on 403 entitlement rejection", async () => {
+  const tempDir = await makeTempDir();
+  process.env.OPENCODE_CONFIG_DIR = tempDir;
+
+  try {
+    const stamp = Date.now();
+    const { createAccountMeta } = await import(`../dist/account.js?${stamp}`);
+    const { upsertAccount } = await import(`../dist/storage/accounts.js?${stamp}`);
+    const routing = await import("../dist/routing/provider-account-map.js");
+    const { buildAuthLoader } = await import("../dist/auth/loader.js");
+
+    const account = createAccountMeta({
+      label: "Mismatch",
+      githubUsername: "mismatch",
+      plan: "pro",
+      allowUnverifiedModels: true,
+    });
+    await upsertAccount(account, tempDir);
+
+    routing.registerAccounts([account]);
+
+    const loader = await buildAuthLoader(account.id, account.providerId)(
+      async () => ({ type: "oauth", refresh: "oauth-token", access: "oauth-token", expires: 0 }),
+      { id: account.providerId },
+    );
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({ message: "Model not enabled for your plan" }),
+      { status: 403, headers: { "content-type": "application/json" } },
+    );
+
+    try {
+      await assert.rejects(
+        loader.fetch?.("https://example.com/chat", {
+          method: "POST",
+          body: JSON.stringify({ model: "o1" }),
+          headers: { "content-type": "application/json" },
+        }),
+        /Capability mismatch detected/
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
+    assert.equal(accounts.accounts[0].capabilityState, "mismatch");
+    assert.equal(accounts.accounts[0].allowUnverifiedModels, false);
+    assert.equal(accounts.accounts[0].mismatchModelId, "o1");
+    assert.equal(accounts.accounts[0].mismatchSuggestedPlan, "student");
+  } finally {
+    delete process.env.OPENCODE_CONFIG_DIR;
+    await cleanupDir(tempDir);
+  }
 });

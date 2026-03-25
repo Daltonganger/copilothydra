@@ -229,16 +229,25 @@ function validateAccountsFile(data: unknown): AccountsFile {
     const plan = requireString(account, "plan", "account");
     const capabilityState = requireString(account, "capabilityState", "account");
     requireOptionalBoolean(account, "allowUnverifiedModels", "account");
+    const mismatchDetectedAt = requireOptionalString(account, "mismatchDetectedAt", "account");
+    requireOptionalString(account, "mismatchModelId", "account");
+    const mismatchSuggestedPlan = requireOptionalString(account, "mismatchSuggestedPlan", "account");
     const lifecycleState = requireString(account, "lifecycleState", "account");
     const addedAt = requireString(account, "addedAt", "account");
     const lastValidatedAt = requireOptionalString(account, "lastValidatedAt", "account");
 
     requireEnumValue(plan, PLAN_TIERS, "account", "plan");
     requireEnumValue(capabilityState, CAPABILITY_STATES, "account", "capabilityState");
+    if (mismatchSuggestedPlan !== undefined) {
+      requireEnumValue(mismatchSuggestedPlan, PLAN_TIERS, "account", "mismatchSuggestedPlan");
+    }
     requireEnumValue(lifecycleState, LIFECYCLE_STATES, "account", "lifecycleState");
     requireIsoTimestamp(addedAt, "account", "addedAt");
     if (lastValidatedAt !== undefined) {
       requireIsoTimestamp(lastValidatedAt, "account", "lastValidatedAt");
+    }
+    if (mismatchDetectedAt !== undefined) {
+      requireIsoTimestamp(mismatchDetectedAt, "account", "mismatchDetectedAt");
     }
 
     if (seenIds.has(id)) {

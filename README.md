@@ -27,6 +27,7 @@ Implemented so far:
 - Phase 3 parallel isolation hardening (cross-account concurrency and token-state isolation checks)
 - Phase 3 lifecycle/runtime finish (ownership mismatch guards and full runtime-state cleanup)
 - Phase 4 declared model exposure hardening (uncertain model filtering + explicit override flag)
+- Phase 4 mismatch/downgrade flow (runtime mismatch marking + suggested plan review)
 
 ## What works now
 
@@ -67,6 +68,8 @@ Implemented so far:
 - User-declared accounts now hide override-required models by default until explicit override is enabled
 - Generated model labels now mark explicitly exposed uncertain entries as `user-declared override`
 - `copilothydra set-plan ... --allow-unverified-models` enables those uncertain model entries intentionally
+- Runtime 403 entitlement failures now mark the account as `mismatch`, disable unverified-model override exposure, and store the rejected model plus suggested stricter plan
+- `copilothydra review-mismatch <account-id|provider-id>` reviews a stored mismatch and can apply the suggested downgrade
 
 ## Important behavior
 
@@ -74,6 +77,7 @@ Implemented so far:
 - After reload, multiple account-specific providers/models can coexist
 - Capability exposure is currently user-declared with runtime mismatch detection policy
 - User-declared plan exposure now defaults to baseline models only; override-required models stay hidden unless explicitly acknowledged
+- A mismatch can preserve the current declared plan, or overwrite it with a suggested stricter one after explicit review
 - GPT-5+/responses routing is still a known gap for custom provider IDs
 
 ## Known limitations
@@ -143,8 +147,8 @@ Expected remaining: **about 2–3 PRs**
    - centralize plan → model exposure ✅
    - mark uncertain models explicitly ✅
 2. **Mismatch/downgrade flow**
-   - mismatch state logic
-   - stricter-plan overwrite/confirm behavior
+   - mismatch state logic ✅
+   - stricter-plan overwrite/confirm behavior ✅
 3. **Docs/tests pass**
    - capability policy docs
    - Phase 4 completion tests and cleanup

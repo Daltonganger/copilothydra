@@ -19,6 +19,8 @@
 
 import type { PlanTier } from "../types.js";
 
+export const PLAN_TIER_ORDER: PlanTier[] = ["free", "student", "pro", "pro+"];
+
 export interface PlanModelEntry {
   id: string;
   requiresExplicitOverride?: boolean;
@@ -106,6 +108,23 @@ export function modelRequiresExplicitOverride(plan: PlanTier, modelId: string): 
   return (MODEL_TIER_TABLE[plan] ?? []).some(
     (entry) => entry.id === modelId && entry.requiresExplicitOverride,
   );
+}
+
+export function suggestDowngradePlanForModel(currentPlan: PlanTier, modelId: string): PlanTier | undefined {
+  const currentIndex = PLAN_TIER_ORDER.indexOf(currentPlan);
+  if (currentIndex <= 0) return undefined;
+
+  for (let index = currentIndex - 1; index >= 0; index -= 1) {
+    const candidate = PLAN_TIER_ORDER[index];
+    if (!candidate) {
+      continue;
+    }
+    if (!modelsForPlan(candidate, { includeUnverified: true }).includes(modelId)) {
+      return candidate;
+    }
+  }
+
+  return undefined;
 }
 
 /**

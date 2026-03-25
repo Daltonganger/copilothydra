@@ -23,6 +23,7 @@
 import type { AccountId, AuthLoader, ProviderId, StoredAuthInfo } from "../types.js";
 import { debugAuth } from "../log.js";
 import { acquireRoutingLease } from "../routing/provider-account-map.js";
+import { handlePlanMismatch, isCapabilityMismatchError } from "../config/capabilities.js";
 import {
   isTokenExpired,
   requireActiveTokenState,
@@ -102,6 +103,7 @@ export function buildAuthLoader(
       apiKey: "",
       // Custom fetch: re-reads auth on every request (matches CopilotAuthPlugin pattern)
       fetch: async (request, init) => {
+        const requestedModelId = await extractRequestedModelId(request, init);
         const lease = acquireRoutingLease(providerId);
         try {
           if (lease.accountId !== accountId) {
@@ -143,7 +145,18 @@ export function buildAuthLoader(
             "Openai-Intent": "conversation-edits",
           };
 
-          return globalThis.fetch(request, { ...init, headers });
+          const response = await globalThis.fetch(request, { ...init, headers });
+
+          const mismatchText = await extractCapabilityMismatchText(response);
+          if (response.status === 403 && mismatchText && isCapabilityMismatchError({ message: mismatchText })) {
+            const mismatch = await handlePlanMismatch(lease.accountId, requestedModelId);
+            throw new Error(
+              mismatch?.message ??
+                `[copilothydra] Capability mismatch detected for routed account "${lease.accountId}".`
+            );
+          }
+
+          return response;
         } finally {
           lease.release();
         }
@@ -152,4 +165,47 @@ export function buildAuthLoader(
 
     return loader;
   };
+}
+
+async function extractCapabilityMismatchText(response: Response): Promise<string> {
+  try {
+    const clone = response.clone();
+    const text = await clone.text();
+    return text;
+  } catch {
+    return "";
+  }
+}
+
+async function extractRequestedModelId(
+  request: Parameters<typeof globalThis.fetch>[0],
+  init?: RequestInit,
+): Promise<string | undefined> {
+  const initBody = init?.body;
+  if (typeof initBody === "string") {
+    return extractModelIdFromText(initBody);
+  }
+
+  if (request instanceof Request) {
+    try {
+      const clone = request.clone();
+      return extractModelIdFromText(await clone.text());
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}
+
+function extractModelIdFromText(body: string): string | undefined {
+  if (!body) return undefined;
+
+  try {
+    const parsed = JSON.parse(body) as Record<string, unknown>;
+    const model = parsed["model"];
+    return typeof model === "string" ? model : undefined;
+  } catch {
+    return undefined;
+  }
 }

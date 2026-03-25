@@ -21,6 +21,7 @@ import { auditStorage } from "./storage-audit.js";
 import { isTTY } from "./ui/menu.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 import { getOverrideRequiredModelsForPlan } from "./config/models.js";
+import { buildMismatchMessage, capabilityStateLabel, planLabel } from "./config/capabilities.js";
 import { resolveOpenCodeConfigPath } from "./config/opencode-config.js";
 import { checkAccountRuntimeReadiness, validateAccountCount } from "./runtime-checks.js";
 
@@ -50,6 +51,9 @@ async function main(): Promise<void> {
       return;
     case "revalidate-account":
       await revalidateAccountCommand(process.argv[3]);
+      return;
+    case "review-mismatch":
+      await reviewMismatchCommand(process.argv[3], process.argv.slice(4));
       return;
     case "repair-storage":
       await repairStorageCommand();
@@ -116,7 +120,7 @@ async function listAccounts(): Promise<void> {
 
   for (const account of accounts) {
     output.write(
-      `${account.label} | ${account.githubUsername} | ${account.plan} | ${account.providerId} | ${account.lifecycleState}\n`
+      `${account.label} | ${account.githubUsername} | ${account.plan} | ${capabilityStateLabel(account.capabilityState)} | ${account.providerId} | ${account.lifecycleState}\n`
     );
   }
 }
@@ -219,6 +223,65 @@ async function revalidateAccountCommand(identifier?: string): Promise<void> {
   output.write(`Revalidated account: ${updated.label} (${updated.githubUsername})\n`);
   output.write(`Capability state: ${updated.capabilityState}\n`);
   output.write(`Last validated at: ${updated.lastValidatedAt}\n`);
+}
+
+async function reviewMismatchCommand(identifier?: string, args: string[] = []): Promise<void> {
+  if (!identifier) {
+    throw new Error("[copilothydra] review-mismatch requires an account id or provider id");
+  }
+
+  const account = await resolveAccountByIdentifier(identifier);
+  if (account.capabilityState !== "mismatch") {
+    output.write(`Account ${account.label} is not currently marked as mismatch.\n`);
+    return;
+  }
+
+  const suggestedPlan = account.mismatchSuggestedPlan;
+  const forcedPlanArg = args.find((value) => VALID_PLANS.includes(value as PlanTier));
+  const applySuggested = args.includes("--apply-suggested");
+
+  output.write(`${buildMismatchMessage(account, account.mismatchModelId, suggestedPlan)}\n`);
+  if (account.mismatchDetectedAt) {
+    output.write(`Mismatch detected at: ${account.mismatchDetectedAt}\n`);
+  }
+
+  let nextPlan: PlanTier | undefined = forcedPlanArg as PlanTier | undefined;
+  if (!nextPlan && applySuggested) {
+    nextPlan = suggestedPlan;
+  }
+
+  if (!nextPlan && suggestedPlan && isTTY()) {
+    const rl = createInterface({ input, output });
+    try {
+      while (true) {
+        const value = (await rl.question(
+          `Overwrite stored plan with suggested stricter plan ${planLabel(suggestedPlan)}? [y/N]: `,
+        )).trim().toLowerCase();
+
+        if (value === "" || value === "n" || value === "no") break;
+        if (value === "y" || value === "yes") {
+          nextPlan = suggestedPlan;
+          break;
+        }
+      }
+    } finally {
+      rl.close();
+    }
+  }
+
+  if (!nextPlan) {
+    if (suggestedPlan) {
+      output.write(`Stored plan preserved at ${planLabel(account.plan)}.\n`);
+    } else {
+      output.write("No stricter automatic downgrade suggestion is available for this mismatch.\n");
+    }
+    return;
+  }
+
+  const updated = await updateAccountPlan(account.id, nextPlan, { allowUnverifiedModels: false });
+  output.write(`Updated stored plan for ${updated.label}: ${account.plan} -> ${updated.plan}\n`);
+  output.write(`Capability state reset to: ${updated.capabilityState}\n`);
+  output.write("Reload/restart OpenCode to apply provider model changes.\n");
 }
 
 async function repairStorageCommand(): Promise<void> {

@@ -18,6 +18,12 @@ export interface RuntimeCheckResult {
 
 export function checkAccountRuntimeReadiness(account: CopilotAccountMeta): RuntimeCheckResult {
   const warnings: string[] = [];
+  if (account.capabilityState === "mismatch") {
+    warnings.push(
+      `Account "${account.label}" is marked as mismatch; review the stored plan before continuing.`
+    );
+  }
+
   const includeUnverified =
     account.capabilityState === "verified" ||
     (account.capabilityState === "user-declared" && account.allowUnverifiedModels === true);
