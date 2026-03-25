@@ -131,6 +131,46 @@ test("auth loader handles concurrent fetches on one account without leaking leas
   }
 });
 
+test("auth loader does not inspect successful response bodies for mismatch detection", async () => {
+  const routing = await import("../dist/routing/provider-account-map.js");
+  const { buildAuthLoader } = await import("../dist/auth/loader.js");
+
+  routing.registerAccounts([
+    {
+      id: "acct_success_body",
+      providerId: "github-copilot-acct-acct_success_body",
+      label: "SuccessBody",
+      githubUsername: "successbody",
+      plan: "free",
+      capabilityState: "user-declared",
+      lifecycleState: "active",
+      addedAt: new Date("2026-03-24T00:00:00.000Z").toISOString(),
+    },
+  ]);
+
+  const loader = await buildAuthLoader("acct_success_body", "github-copilot-acct-acct_success_body")(
+    async () => ({ type: "oauth", refresh: "oauth-token", access: "oauth-token", expires: 0 }),
+    { id: "github-copilot-acct-acct_success_body" },
+  );
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    status: 200,
+    headers: { get: () => "text/event-stream" },
+    clone() {
+      throw new Error("clone should not be called for successful responses");
+    },
+  });
+
+  try {
+    const response = await loader.fetch?.("https://example.com/stream");
+    assert.equal(response?.status, 200);
+    assert.equal(routing.getInFlightCount("acct_success_body"), 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("auth loader retries one routed recovery when initial token state is expired", async () => {
   const routing = await import("../dist/routing/provider-account-map.js");
   const { buildAuthLoader } = await import("../dist/auth/loader.js");

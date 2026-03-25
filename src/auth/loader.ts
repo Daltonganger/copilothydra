@@ -147,8 +147,10 @@ export function buildAuthLoader(
 
           const response = await globalThis.fetch(request, { ...init, headers });
 
-          const mismatchText = await extractCapabilityMismatchText(response);
-          if (response.status === 403 && mismatchText && isCapabilityMismatchError({ message: mismatchText })) {
+          const mismatchText = response.status === 403
+            ? await extractCapabilityMismatchText(response)
+            : "";
+          if (mismatchText && isCapabilityMismatchError({ message: mismatchText })) {
             const mismatch = await handlePlanMismatch(lease.accountId, requestedModelId);
             throw new Error(
               mismatch?.message ??
@@ -168,6 +170,15 @@ export function buildAuthLoader(
 }
 
 async function extractCapabilityMismatchText(response: Response): Promise<string> {
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  const canReadBody =
+    contentType.length === 0 ||
+    contentType.includes("application/json") ||
+    contentType.startsWith("text/");
+  if (!canReadBody) {
+    return "";
+  }
+
   try {
     const clone = response.clone();
     const text = await clone.text();
