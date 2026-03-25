@@ -18,7 +18,7 @@ import { beginAccountRemoval, finalizeAccountRemoval } from "./account-removal.j
 import { repairStorage } from "./storage-repair.js";
 import { revalidateAccount, renameAccount, updateAccountPlan } from "./account-update.js";
 import { auditStorage } from "./storage-audit.js";
-import { isTTY } from "./ui/menu.js";
+import { isTTY, launchMenu } from "./ui/menu.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 import { getOverrideRequiredModelsForPlan } from "./config/models.js";
 import { buildMismatchMessage, capabilityStateLabel, planLabel } from "./config/capabilities.js";
@@ -28,9 +28,12 @@ import { checkAccountRuntimeReadiness, validateAccountCount } from "./runtime-ch
 const VALID_PLANS: PlanTier[] = ["free", "student", "pro", "pro+"];
 
 async function main(): Promise<void> {
-  const command = process.argv[2] ?? "add-account";
+  const command = process.argv[2] ?? "menu";
 
   switch (command) {
+    case "menu":
+      await launchMenu();
+      return;
     case "add-account":
       await addAccountInteractive();
       return;

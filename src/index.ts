@@ -143,7 +143,7 @@ export async function CopilotHydraSetup(input: PluginInput): Promise<Hooks> {
     info(
       "plugin",
       "CopilotHydra: no accounts configured. " +
-        "Run `npx copilothydra` or `bunx copilothydra` to add accounts."
+        "Run `npx copilothydra` or `bunx copilothydra` to open the account manager."
     );
   }
   // Return empty hooks — OpenCode continues without us

@@ -421,6 +421,19 @@ Instead:
 
 UI should be implemented after engine correctness is proven.
 
+### Implementation status note
+
+Current implementation includes a first Phase 5 foundation slice:
+- a dependency-free line-based TUI entrypoint
+- explicit non-TTY failure for the menu path
+- empty-state guidance when no accounts exist
+- account overview rendering with plan, capability state, lifecycle state, and restart-required notice
+
+Still pending in later Phase 5 slices:
+- wiring add/remove/rename/revalidate actions into the TUI
+- guided mismatch review from inside the menu
+- richer confirmations and raw-mode polish
+
 ## UX goals
 - safe
 - boring/reliable
@@ -475,6 +488,10 @@ Minimum fallback:
 - fail with a clear message
 
 For v1, account management remains TUI-only.
+
+Current foundation status:
+- this fallback is now implemented for the `copilothydra menu` path
+- non-TTY environments fail clearly before interactive rendering starts
 
 ## Raw-mode safety
 

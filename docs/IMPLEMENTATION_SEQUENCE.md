@@ -350,6 +350,8 @@ Doel: modelaanbod per account gecontroleerd zichtbaar maken.
 
 ## 13. Phase 5 — TUI
 
+**Status:** ▶️ Gestart
+
 Doel: accountbeheer bruikbaar en duidelijk maken.
 
 ### Werk
@@ -361,6 +363,9 @@ Doel: accountbeheer bruikbaar en duidelijk maken.
 - pending-removal state tonen
 - restart-required state tonen
 - non-TTY clean failure
+
+### Reeds afgerond binnen Phase 5
+- menu foundation done: `copilothydra` now opens a line-based TUI entrypoint in TTY environments, with empty-state guidance, account overview, capability/lifecycle visibility, restart-required notice, and menu-level config sync
 
 ---
 
@@ -402,7 +407,7 @@ Doel: van werkend naar verantwoord beta-niveau.
 
 ## Immediate next step
 
-**Start Phase 5: TUI foundation for account management and lifecycle visibility.**
+**Continue Phase 5: wire add/remove/rename/revalidate flows into the TUI.**
 
 ---
 
@@ -421,9 +426,10 @@ Afgerond in **3 stacked PR's**
 
 ### Phase 5 — TUI
 
-Verwachting: **ongeveer 3–4 PR's**
+Verwachting: **ongeveer 2–3 PR's resterend**
 
 1. **Menu foundation**
+   - ✅ line-based entrypoint, empty state, account overview en menu sync-pad
 2. **Account actions**
 3. **Lifecycle state presentation**
 4. **Polish/tests/docs**
@@ -439,10 +445,10 @@ Verwachting: **ongeveer 3 PR's**
 ### Totale resterende inschatting
 
 - **0 PR's** voor Phase 4
-- **3–4 PR's** voor Phase 5
+- **2–3 PR's** voor Phase 5
 - **3 PR's** voor Hardening
 
-Geschatte rest: **ongeveer 7–8 PR's**.
+Geschatte rest: **ongeveer 6 PR's**.
 
 ### Belangrijkste mijlpaal
 

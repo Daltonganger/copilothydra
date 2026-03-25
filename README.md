@@ -29,6 +29,7 @@ Implemented so far:
 - Phase 4 declared model exposure hardening (uncertain model filtering + explicit override flag)
 - Phase 4 mismatch/downgrade flow (runtime mismatch marking + suggested plan review)
 - Phase 4 docs/tests completion (capability policy coverage + status/docs closeout)
+- Phase 5 TUI foundation (menu entrypoint + empty/account overview screens)
 
 ## What works now
 
@@ -72,6 +73,9 @@ Implemented so far:
 - Runtime 403 entitlement failures now mark the account as `mismatch`, disable unverified-model override exposure, and store the rejected model plus suggested stricter plan
 - `copilothydra review-mismatch <account-id|provider-id>` reviews a stored mismatch and can apply the suggested downgrade
 - `copilothydra list-accounts` surfaces the current capability state so mismatches are visible without opening storage files
+- `copilothydra` / `copilothydra menu` now opens a line-based account manager in TTY environments
+- The Phase 5 menu shows empty-state guidance, account overview rows, capability/lifecycle states, and restart-required notice
+- The TUI foundation can already resync provider config from inside the menu
 
 ## Important behavior
 
@@ -80,6 +84,7 @@ Implemented so far:
 - Capability exposure is currently user-declared with runtime mismatch detection policy
 - User-declared plan exposure now defaults to baseline models only; override-required models stay hidden unless explicitly acknowledged
 - A mismatch can preserve the current declared plan, or overwrite it with a suggested stricter one after explicit review
+- The TUI is currently a dependency-free line-based foundation; richer account actions land in the next Phase 5 slices
 - GPT-5+/responses routing is still a known gap for custom provider IDs
 
 ## Known limitations
@@ -137,7 +142,7 @@ Kort: **één stap = docs bijwerken + PR maken + dan pas verder**.
 
 ## Next step
 
-Start Phase 5: TUI foundation.
+Continue Phase 5: wire account actions into the TUI.
 
 ## Remaining roadmap
 
@@ -157,9 +162,12 @@ Completed in **3 stacked PRs**
 
 ### Phase 5 — TUI
 
-Expected remaining: **about 3–4 PRs**
+In progress: foundation shipped, with **about 2–3 PRs** remaining
 
-1. **Menu foundation**
+1. **Menu foundation** ✅
+   - line-based TUI entrypoint
+   - empty/account overview screens
+   - non-TTY guard for the menu path
 2. **Account actions in TUI**
 3. **Lifecycle state presentation**
 4. **Polish/tests/docs**
@@ -178,10 +186,10 @@ Expected remaining: **about 3 PRs**
 ### Rough total remaining
 
 - **0 PRs** for Phase 4
-- **3–4 PRs** for Phase 5
+- **2–3 PRs** for Phase 5
 - **3 PRs** for Hardening
 
-Estimated total remaining: **about 9–11 PRs**.
+Estimated total remaining: **about 6 PRs**.
 
 ### Most important milestone
 
