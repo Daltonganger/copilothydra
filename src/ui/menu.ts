@@ -11,8 +11,10 @@
  */
 
 import type { CopilotAccountMeta, PlanTier } from "../types.js";
-import { loadAccounts } from "../storage/accounts.js";
+import { createAccountMeta } from "../account.js";
+import { findAccountByGitHubUsername, loadAccounts, upsertAccount } from "../storage/accounts.js";
 import { buildMismatchMessage, capabilityStateLabel, planLabel } from "../config/capabilities.js";
+import { getOverrideRequiredModelsForPlan } from "../config/models.js";
 import { syncAccountsToOpenCodeConfig } from "../config/sync.js";
 import { resolveOpenCodeConfigPath } from "../config/opencode-config.js";
 import { checkAccountRuntimeReadiness, validateAccountCount } from "../runtime-checks.js";
@@ -38,10 +40,19 @@ interface AccountOption {
 interface MenuDependencies {
   isTTY(): boolean;
   loadAccounts(): Promise<{ accounts: CopilotAccountMeta[] }>;
+  findAccountByGitHubUsername(githubUsername: string): Promise<CopilotAccountMeta | undefined>;
   validateAccountCount(accounts: CopilotAccountMeta[]): void;
   selectOne<T extends { label: string; description?: string }>(prompt: string, options: T[]): Promise<T | null>;
   confirm(prompt: string): Promise<boolean>;
   promptText(prompt: string, options?: { defaultValue?: string }): Promise<string | null>;
+  createAccountMeta(input: {
+    label: string;
+    githubUsername: string;
+    plan: PlanTier;
+    allowUnverifiedModels?: boolean;
+  }): CopilotAccountMeta;
+  upsertAccount(account: CopilotAccountMeta): Promise<void>;
+  getOverrideRequiredModelsForPlan(plan: PlanTier): string[];
   renameAccount(accountId: string, label: string): Promise<CopilotAccountMeta>;
   revalidateAccount(accountId: string): Promise<CopilotAccountMeta>;
   beginAccountRemoval(accountId: string): Promise<{ account: CopilotAccountMeta | null; alreadyPending: boolean }>;
@@ -57,10 +68,14 @@ interface MenuDependencies {
 const DEFAULT_DEPS: MenuDependencies = {
   isTTY,
   loadAccounts,
+  findAccountByGitHubUsername,
   validateAccountCount,
   selectOne,
   confirm,
   promptText,
+  createAccountMeta,
+  upsertAccount,
+  getOverrideRequiredModelsForPlan,
   renameAccount,
   revalidateAccount,
   beginAccountRemoval,
@@ -100,11 +115,62 @@ export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Pro
 
     switch (choice.key) {
       case "add-account":
-        deps.write(
-          "Add account will be wired into the TUI in the next Phase 5 PR. " +
-            "Use `copilothydra add-account` for now.\n"
-        );
+      {
+        const label = await deps.promptText("Account label", { defaultValue: "Personal" });
+        if (!label) {
+          deps.write("Add account cancelled.\n");
+          break;
+        }
+
+        const githubUsername = await deps.promptText("GitHub username", { defaultValue: "alice" });
+        if (!githubUsername) {
+          deps.write("Add account cancelled.\n");
+          break;
+        }
+
+        const existingForUsername = await deps.findAccountByGitHubUsername(githubUsername);
+        if (existingForUsername) {
+          deps.write(
+            `[copilothydra] an account for GitHub username "${githubUsername}" already exists ` +
+            `(label: ${existingForUsername.label})\n`,
+          );
+          break;
+        }
+
+        const planOption = await deps.selectOne("Plan tier", buildPlanOptions());
+        if (!planOption) {
+          deps.write("Add account cancelled.\n");
+          break;
+        }
+
+        const hiddenModels = deps.getOverrideRequiredModelsForPlan(planOption.key);
+        const allowUnverifiedModels = hiddenModels.length > 0
+          ? await deps.confirm(
+            `Expose uncertain models too (${hiddenModels.join(", ")})?`,
+          )
+          : false;
+
+        const account = deps.createAccountMeta({
+          label,
+          githubUsername,
+          plan: planOption.key,
+          allowUnverifiedModels,
+        });
+        deps.checkAccountRuntimeReadiness(account);
+
+        await deps.upsertAccount(account);
+        await deps.syncAccountsToOpenCodeConfig();
+        restartRequired = true;
+        deps.write(`Added account: ${account.label} (${account.githubUsername})\n`);
+        deps.write(`Provider ID: ${account.providerId}\n`);
+        if (!account.allowUnverifiedModels && hiddenModels.length > 0) {
+          deps.write(`Hidden uncertain models until explicit override: ${hiddenModels.join(", ")}\n`);
+        }
+        deps.write(`OpenCode config updated: ${deps.resolveOpenCodeConfigPath()}\n`);
+        deps.write("Reload/restart OpenCode to pick up the new provider and model entries.\n");
+        deps.write("Then authenticate that provider through OpenCode's auth flow.\n");
         break;
+      }
       case "rename-account": {
         const account = await deps.selectOne("Rename which account?", buildAccountOptions(accounts));
         if (!account) {
@@ -378,4 +444,13 @@ export function buildAccountOptions(accounts: CopilotAccountMeta[]): AccountOpti
     lifecycleState: account.lifecycleState,
     description: `${planLabel(account.plan)} | ${capabilityStateLabel(account.capabilityState)} | ${account.lifecycleState}`,
   }));
+}
+
+function buildPlanOptions(): Array<{ key: PlanTier; label: string; description?: string }> {
+  return [
+    { key: "free", label: "FREE", description: "Baseline declared model set" },
+    { key: "student", label: "STUDENT", description: "Student declared model set" },
+    { key: "pro", label: "PRO", description: "Pro declared model set" },
+    { key: "pro+", label: "PRO+", description: "Highest declared model set" },
+  ];
 }
