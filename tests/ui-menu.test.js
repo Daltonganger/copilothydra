@@ -65,6 +65,8 @@ test("buildMenuOptions exposes rename and revalidate actions when accounts exist
     "add-account",
     "rename-account",
     "revalidate-account",
+    "remove-account",
+    "review-mismatch",
     "sync-config",
     "refresh",
     "exit",
@@ -164,4 +166,241 @@ test("launchMenu can revalidate an account through the TUI action flow", async (
   } finally {
     await cleanupDir(tempDir);
   }
+});
+
+test("launchMenu can mark an account pending removal through the TUI action flow", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    const stamp = Date.now();
+    const { createAccountMeta } = await import(`../dist/account.js?${stamp}`);
+    const { upsertAccount } = await import(`../dist/storage/accounts.js?${stamp}`);
+    const { launchMenu } = await import(`../dist/ui/menu.js?${stamp}`);
+
+    const account = createAccountMeta({ label: "Work", githubUsername: "bob", plan: "free" });
+    await upsertAccount(account, tempDir);
+
+    const writes = [];
+    let mainMenuCalls = 0;
+    let beganRemoval = false;
+
+    await launchMenu({
+      isTTY: () => true,
+      loadAccounts: async () => ({
+        accounts: [
+          {
+            ...account,
+            lifecycleState: beganRemoval ? "pending-removal" : "active",
+          },
+        ],
+      }),
+      beginAccountRemoval: async () => {
+        beganRemoval = true;
+        return {
+          account: { ...account, lifecycleState: "pending-removal" },
+          alreadyPending: false,
+        };
+      },
+      confirm: async () => true,
+      selectOne: async (prompt, options) => {
+        if (prompt === "Main menu") {
+          mainMenuCalls += 1;
+          if (mainMenuCalls === 1) {
+            return options.find((option) => option.key === "remove-account") ?? null;
+          }
+          return options.find((option) => option.key === "exit") ?? null;
+        }
+        if (prompt === "Remove which account?") {
+          return options[0] ?? null;
+        }
+        return null;
+      },
+      write: (message) => {
+        writes.push(message);
+      },
+    });
+
+    assert.equal(beganRemoval, true);
+    assert.match(writes.join(""), /Marked account pending removal: Work \(bob\)/);
+  } finally {
+    await cleanupDir(tempDir);
+  }
+});
+
+test("launchMenu can finalize removal for a pending-removal account", async () => {
+  const stamp = Date.now();
+  const { launchMenu } = await import(`../dist/ui/menu.js?${stamp}`);
+
+  const writes = [];
+  let mainMenuCalls = 0;
+  let finalized = false;
+  await launchMenu({
+    isTTY: () => true,
+    loadAccounts: async () => ({
+      accounts: [
+        {
+          id: "acct_remove",
+          providerId: "github-copilot-acct-acct_remove",
+          label: "Work",
+          githubUsername: "bob",
+          plan: "free",
+          capabilityState: "user-declared",
+          lifecycleState: "pending-removal",
+          addedAt: "2026-03-26T00:00:00.000Z",
+        },
+      ],
+    }),
+    canAccountDrainComplete: () => true,
+    finalizeAccountRemoval: async () => {
+      finalized = true;
+      return {
+        removed: {
+          id: "acct_remove",
+          providerId: "github-copilot-acct-acct_remove",
+          label: "Work",
+          githubUsername: "bob",
+          plan: "free",
+          capabilityState: "user-declared",
+          lifecycleState: "pending-removal",
+          addedAt: "2026-03-26T00:00:00.000Z",
+        },
+      };
+    },
+    confirm: async () => true,
+    selectOne: async (prompt, options) => {
+      if (prompt === "Main menu") {
+        mainMenuCalls += 1;
+        if (mainMenuCalls === 1) {
+          return options.find((option) => option.key === "remove-account") ?? null;
+        }
+        return options.find((option) => option.key === "exit") ?? null;
+      }
+      if (prompt === "Remove which account?") {
+        return options[0] ?? null;
+      }
+      return null;
+    },
+    write: (message) => {
+      writes.push(message);
+    },
+  });
+
+  assert.equal(finalized, true);
+  assert.match(writes.join(""), /Removed account: Work \(bob\)/);
+});
+
+test("launchMenu can review mismatch and apply suggested downgrade", async () => {
+  const stamp = Date.now();
+  const { launchMenu } = await import(`../dist/ui/menu.js?${stamp}`);
+
+  const writes = [];
+  let mainMenuCalls = 0;
+  let appliedPlan;
+  await launchMenu({
+    isTTY: () => true,
+    loadAccounts: async () => ({
+      accounts: [
+        {
+          id: "acct_mismatch",
+          providerId: "github-copilot-acct-acct_mismatch",
+          label: "Mismatch",
+          githubUsername: "alice",
+          plan: "pro",
+          capabilityState: "mismatch",
+          mismatchDetectedAt: "2026-03-26T00:00:00.000Z",
+          mismatchModelId: "o1",
+          mismatchSuggestedPlan: "student",
+          lifecycleState: "active",
+          addedAt: "2026-03-26T00:00:00.000Z",
+        },
+      ],
+    }),
+    updateAccountPlan: async (_accountId, plan) => {
+      appliedPlan = plan;
+      return {
+        id: "acct_mismatch",
+        providerId: "github-copilot-acct-acct_mismatch",
+        label: "Mismatch",
+        githubUsername: "alice",
+        plan,
+        capabilityState: "user-declared",
+        lifecycleState: "active",
+        addedAt: "2026-03-26T00:00:00.000Z",
+      };
+    },
+    confirm: async () => true,
+    selectOne: async (prompt, options) => {
+      if (prompt === "Main menu") {
+        mainMenuCalls += 1;
+        if (mainMenuCalls === 1) {
+          return options.find((option) => option.key === "review-mismatch") ?? null;
+        }
+        return options.find((option) => option.key === "exit") ?? null;
+      }
+      if (prompt === "Review mismatch for which account?") {
+        return options[0] ?? null;
+      }
+      return null;
+    },
+    write: (message) => {
+      writes.push(message);
+    },
+  });
+
+  assert.equal(appliedPlan, "student");
+  assert.match(writes.join(""), /Suggested stricter stored plan: "student"/);
+  assert.match(writes.join(""), /Updated stored plan for Mismatch \(alice\): PRO -> STUDENT/);
+});
+
+test("launchMenu can review mismatch and preserve current plan", async () => {
+  const stamp = Date.now();
+  const { launchMenu } = await import(`../dist/ui/menu.js?${stamp}`);
+
+  const writes = [];
+  let mainMenuCalls = 0;
+  let updateCalled = false;
+  await launchMenu({
+    isTTY: () => true,
+    loadAccounts: async () => ({
+      accounts: [
+        {
+          id: "acct_mismatch",
+          providerId: "github-copilot-acct-acct_mismatch",
+          label: "Mismatch",
+          githubUsername: "alice",
+          plan: "pro",
+          capabilityState: "mismatch",
+          mismatchDetectedAt: "2026-03-26T00:00:00.000Z",
+          mismatchModelId: "o1",
+          mismatchSuggestedPlan: "student",
+          lifecycleState: "active",
+          addedAt: "2026-03-26T00:00:00.000Z",
+        },
+      ],
+    }),
+    updateAccountPlan: async () => {
+      updateCalled = true;
+      throw new Error("should not be called");
+    },
+    confirm: async () => false,
+    selectOne: async (prompt, options) => {
+      if (prompt === "Main menu") {
+        mainMenuCalls += 1;
+        if (mainMenuCalls === 1) {
+          return options.find((option) => option.key === "review-mismatch") ?? null;
+        }
+        return options.find((option) => option.key === "exit") ?? null;
+      }
+      if (prompt === "Review mismatch for which account?") {
+        return options[0] ?? null;
+      }
+      return null;
+    },
+    write: (message) => {
+      writes.push(message);
+    },
+  });
+
+  assert.equal(updateCalled, false);
+  assert.match(writes.join(""), /Stored plan preserved at PRO/);
 });

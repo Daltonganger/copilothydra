@@ -367,6 +367,7 @@ Doel: accountbeheer bruikbaar en duidelijk maken.
 ### Reeds afgerond binnen Phase 5
 - menu foundation done: `copilothydra` now opens a line-based TUI entrypoint in TTY environments, with empty-state guidance, account overview, capability/lifecycle visibility, restart-required notice, and menu-level config sync
 - account actions pass done: the TUI now supports rename and revalidate flows using the existing account update helpers, with restart guidance after mutations
+- removal/mismatch pass done: the TUI now drives two-phase removal and guided mismatch review, including pending-removal finalization after drain and suggested plan application
 - auth-login prep pass done: `CopilotHydraSetup` now exposes a CopilotHydra login method under `opencode auth login`, and that path can create a new account or re-auth an existing one before returning the account-specific provider id
 
 ---
@@ -409,7 +410,7 @@ Doel: van werkend naar verantwoord beta-niveau.
 
 ## Immediate next step
 
-**Continue auth-login hardening and finish the remaining Phase 5 TUI actions.**
+**Continue Phase 5 polish and auth-login hardening.**
 
 ---
 
@@ -428,13 +429,15 @@ Afgerond in **3 stacked PR's**
 
 ### Phase 5 — TUI
 
-Verwachting: **ongeveer 1–2 PR's resterend**
+Verwachting: **ongeveer 1 PR resterend**
 
 1. **Menu foundation**
    - ✅ line-based entrypoint, empty state, account overview en menu sync-pad
 2. **Account actions**
-   - ✅ rename-account en revalidate-account lopen nu via de TUI
+    - ✅ rename-account en revalidate-account lopen nu via de TUI
+    - ✅ remove-account en mismatch review lopen nu ook via de TUI
 3. **Lifecycle state presentation**
+    - ✅ pending-removal finalize en mismatch downgrade review zijn nu direct in-menu uitvoerbaar
 4. **Polish/tests/docs**
 
 ### Auth-login integration
@@ -458,11 +461,11 @@ Verwachting: **ongeveer 3 PR's**
 ### Totale resterende inschatting
 
 - **0 PR's** voor Phase 4
-- **1–2 PR's** voor Phase 5
+- **1 PR** voor Phase 5
 - **1–2 PR's** voor auth-login integration
 - **3 PR's** voor Hardening
 
-Geschatte rest: **ongeveer 6–7 PR's**.
+Geschatte rest: **ongeveer 5–6 PR's**.
 
 ### Belangrijkste mijlpaal
 

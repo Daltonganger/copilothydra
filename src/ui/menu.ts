@@ -10,17 +10,19 @@
  * Future Phase 5 slices will add full account actions and richer interaction.
  */
 
-import type { CopilotAccountMeta } from "../types.js";
+import type { CopilotAccountMeta, PlanTier } from "../types.js";
 import { loadAccounts } from "../storage/accounts.js";
-import { capabilityStateLabel, planLabel } from "../config/capabilities.js";
+import { buildMismatchMessage, capabilityStateLabel, planLabel } from "../config/capabilities.js";
 import { syncAccountsToOpenCodeConfig } from "../config/sync.js";
 import { resolveOpenCodeConfigPath } from "../config/opencode-config.js";
 import { checkAccountRuntimeReadiness, validateAccountCount } from "../runtime-checks.js";
-import { renameAccount, revalidateAccount } from "../account-update.js";
-import { promptText, selectOne } from "./select.js";
+import { renameAccount, revalidateAccount, updateAccountPlan } from "../account-update.js";
+import { beginAccountRemoval, finalizeAccountRemoval } from "../account-removal.js";
+import { canAccountDrainComplete } from "../routing/provider-account-map.js";
+import { confirm, promptText, selectOne } from "./select.js";
 
 interface MenuActionOption {
-  key: "add-account" | "rename-account" | "revalidate-account" | "sync-config" | "refresh" | "exit";
+  key: "add-account" | "rename-account" | "revalidate-account" | "remove-account" | "review-mismatch" | "sync-config" | "refresh" | "exit";
   label: string;
   description?: string;
 }
@@ -28,6 +30,8 @@ interface MenuActionOption {
 interface AccountOption {
   key: string;
   label: string;
+  githubUsername: string;
+  lifecycleState: CopilotAccountMeta["lifecycleState"];
   description?: string;
 }
 
@@ -36,9 +40,14 @@ interface MenuDependencies {
   loadAccounts(): Promise<{ accounts: CopilotAccountMeta[] }>;
   validateAccountCount(accounts: CopilotAccountMeta[]): void;
   selectOne<T extends { label: string; description?: string }>(prompt: string, options: T[]): Promise<T | null>;
+  confirm(prompt: string): Promise<boolean>;
   promptText(prompt: string, options?: { defaultValue?: string }): Promise<string | null>;
   renameAccount(accountId: string, label: string): Promise<CopilotAccountMeta>;
   revalidateAccount(accountId: string): Promise<CopilotAccountMeta>;
+  beginAccountRemoval(accountId: string): Promise<{ account: CopilotAccountMeta | null; alreadyPending: boolean }>;
+  finalizeAccountRemoval(accountId: string): Promise<{ removed: CopilotAccountMeta | null }>;
+  canAccountDrainComplete(accountId: string): boolean;
+  updateAccountPlan(accountId: string, plan: PlanTier, options?: { allowUnverifiedModels?: boolean }): Promise<CopilotAccountMeta>;
   syncAccountsToOpenCodeConfig(): Promise<void>;
   resolveOpenCodeConfigPath(): string;
   checkAccountRuntimeReadiness(account: CopilotAccountMeta): void;
@@ -50,9 +59,14 @@ const DEFAULT_DEPS: MenuDependencies = {
   loadAccounts,
   validateAccountCount,
   selectOne,
+  confirm,
   promptText,
   renameAccount,
   revalidateAccount,
+  beginAccountRemoval,
+  finalizeAccountRemoval,
+  canAccountDrainComplete,
+  updateAccountPlan,
   syncAccountsToOpenCodeConfig,
   resolveOpenCodeConfigPath,
   checkAccountRuntimeReadiness,
@@ -122,6 +136,112 @@ export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Pro
         deps.write(`Revalidated account: ${updated.label} (${updated.githubUsername})\n`);
         deps.write(`Capability state: ${updated.capabilityState}\n`);
         deps.write(`Last validated at: ${updated.lastValidatedAt}\n`);
+        deps.write("Reload/restart OpenCode to apply provider changes.\n");
+        break;
+      }
+      case "remove-account": {
+        const account = await deps.selectOne("Remove which account?", buildAccountOptions(accounts));
+        if (!account) {
+          deps.write("Remove cancelled.\n");
+          break;
+        }
+
+        if (account.lifecycleState === "pending-removal") {
+          if (!deps.canAccountDrainComplete(account.key)) {
+            deps.write(
+              `Account ${account.label} (${account.githubUsername}) is still draining in-flight requests. ` +
+              "Try final removal again after those requests finish.\n",
+            );
+            break;
+          }
+
+          const shouldFinalize = await deps.confirm(
+            `Finalize removal for ${account.label} (${account.githubUsername})?`,
+          );
+          if (!shouldFinalize) {
+            deps.write("Final removal cancelled.\n");
+            break;
+          }
+
+          const finalized = await deps.finalizeAccountRemoval(account.key);
+          if (!finalized.removed) {
+            deps.write("Account was already fully removed.\n");
+            break;
+          }
+
+          restartRequired = true;
+          deps.write(`Removed account: ${finalized.removed.label} (${finalized.removed.githubUsername})\n`);
+          deps.write("Reload/restart OpenCode to apply provider removal.\n");
+          break;
+        }
+
+        const shouldBegin = await deps.confirm(`Mark ${account.label} (${account.githubUsername}) for removal?`);
+        if (!shouldBegin) {
+          deps.write("Remove cancelled.\n");
+          break;
+        }
+
+        const begun = await deps.beginAccountRemoval(account.key);
+        if (!begun.account) {
+          deps.write("Account was not found for removal.\n");
+          break;
+        }
+
+        restartRequired = true;
+        deps.write(
+          begun.alreadyPending
+            ? `Account already pending removal: ${begun.account.label} (${begun.account.githubUsername})\n`
+            : `Marked account pending removal: ${begun.account.label} (${begun.account.githubUsername})\n`,
+        );
+        deps.write("Run remove again after in-flight requests drain to finalize cleanup.\n");
+        deps.write("Reload/restart OpenCode to apply provider changes.\n");
+        break;
+      }
+      case "review-mismatch": {
+        const mismatchAccounts = accounts.filter((account) => account.capabilityState === "mismatch");
+        if (mismatchAccounts.length === 0) {
+          deps.write("No mismatched accounts to review.\n");
+          break;
+        }
+
+        const account = await deps.selectOne(
+          "Review mismatch for which account?",
+          buildAccountOptions(mismatchAccounts),
+        );
+        if (!account) {
+          deps.write("Mismatch review cancelled.\n");
+          break;
+        }
+
+        const selected = mismatchAccounts.find((candidate) => candidate.id === account.key);
+        if (!selected) {
+          deps.write("Selected mismatch account no longer exists.\n");
+          break;
+        }
+
+        deps.write(`${buildMismatchMessage(selected, selected.mismatchModelId, selected.mismatchSuggestedPlan)}\n`);
+        if (!selected.mismatchSuggestedPlan) {
+          deps.write(`Stored plan preserved at ${planLabel(selected.plan)}.\n`);
+          break;
+        }
+
+        const shouldApply = await deps.confirm(
+          `Apply suggested downgrade to ${planLabel(selected.mismatchSuggestedPlan)}?`,
+        );
+        if (!shouldApply) {
+          deps.write(`Stored plan preserved at ${planLabel(selected.plan)}.\n`);
+          break;
+        }
+
+        const updated = await deps.updateAccountPlan(selected.id, selected.mismatchSuggestedPlan, {
+          allowUnverifiedModels: false,
+        });
+        restartRequired = true;
+        deps.write(
+          `Updated stored plan for ${updated.label} (${updated.githubUsername}): ` +
+          `${planLabel(selected.plan)} -> ${planLabel(updated.plan)}\n`,
+        );
+        deps.write(`Capability state reset to: ${updated.capabilityState}\n`);
         deps.write("Reload/restart OpenCode to apply provider changes.\n");
         break;
       }
@@ -216,6 +336,16 @@ export function buildMenuOptions(accounts: CopilotAccountMeta[]): MenuActionOpti
         label: "Revalidate account",
         description: "Refresh validation timestamp and clear mismatch state when appropriate",
       },
+      {
+        key: "remove-account",
+        label: "Remove account",
+        description: "Mark an account for removal or finalize cleanup after drain",
+      },
+      {
+        key: "review-mismatch",
+        label: "Review mismatch",
+        description: "Review a mismatch and optionally apply the suggested stricter plan",
+      },
     );
   }
 
@@ -244,6 +374,8 @@ export function buildAccountOptions(accounts: CopilotAccountMeta[]): AccountOpti
   return accounts.map((account) => ({
     key: account.id,
     label: `${account.label} (${account.githubUsername})`,
+    githubUsername: account.githubUsername,
+    lifecycleState: account.lifecycleState,
     description: `${planLabel(account.plan)} | ${capabilityStateLabel(account.capabilityState)} | ${account.lifecycleState}`,
   }));
 }

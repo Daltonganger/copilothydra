@@ -31,6 +31,7 @@ Implemented so far:
 - Phase 4 docs/tests completion (capability policy coverage + status/docs closeout)
 - Phase 5 TUI foundation (menu entrypoint + empty/account overview screens)
 - Phase 5 TUI account actions (rename + revalidate wired into the menu)
+- Phase 5 TUI removal and mismatch actions (two-step removal + mismatch review in the menu)
 - OpenCode auth-login integration prep (CopilotHydra login method under `opencode auth login`)
 
 ## What works now
@@ -80,6 +81,7 @@ Implemented so far:
 - The Phase 5 menu shows empty-state guidance, account overview rows, capability/lifecycle states, and restart-required notice
 - The TUI foundation can already resync provider config from inside the menu
 - The TUI can now rename an account label and revalidate an account directly from the menu
+- The TUI can now mark accounts pending-removal, finalize drained removals, and review/apply mismatch downgrades directly from the menu
 - OpenCode auth login can now drive both first-account creation and existing-account re-auth through dedicated CopilotHydra login options under `github-copilot`
 - New accounts created through the auth-login method sync `opencode.json` immediately and return auth success for the account-specific provider id
 
@@ -90,7 +92,7 @@ Implemented so far:
 - Capability exposure is currently user-declared with runtime mismatch detection policy
 - User-declared plan exposure now defaults to baseline models only; override-required models stay hidden unless explicitly acknowledged
 - A mismatch can preserve the current declared plan, or overwrite it with a suggested stricter one after explicit review
-- The TUI is currently a dependency-free line-based foundation; add/remove and guided mismatch review still land in later Phase 5 slices
+- The TUI is currently a dependency-free line-based foundation; guided add-account remains the main missing menu flow in Phase 5
 - `copilothydra add-account` remains available, but OpenCode auth login is now the preferred path for add-account / re-auth orchestration
 - GPT-5+/responses routing is still a known gap for custom provider IDs
 
@@ -150,7 +152,7 @@ Kort: **één stap = docs bijwerken + PR maken + dan pas verder**.
 
 ## Next step
 
-Continue the OpenCode auth-login migration and finish the remaining Phase 5 TUI actions.
+Continue Phase 5 polish and auth-login hardening.
 
 ## Remaining roadmap
 
@@ -170,7 +172,7 @@ Completed in **3 stacked PRs**
 
 ### Phase 5 — TUI
 
-In progress: foundation + first account actions shipped, with **about 1–2 PRs** remaining
+In progress: foundation + core account actions shipped, with **about 1 PR** remaining
 
 1. **Menu foundation** ✅
    - line-based TUI entrypoint
@@ -179,7 +181,10 @@ In progress: foundation + first account actions shipped, with **about 1–2 PRs*
 2. **Account actions in TUI**
    - rename account ✅
    - revalidate account ✅
+   - remove account ✅
+   - review mismatch ✅
 3. **Lifecycle state presentation**
+   - pending-removal and mismatch review states are now actionable in-menu ✅
 4. **Polish/tests/docs**
 
 ### Auth-login integration
@@ -207,11 +212,11 @@ Expected remaining: **about 3 PRs**
 ### Rough total remaining
 
 - **0 PRs** for Phase 4
-- **1–2 PRs** for Phase 5
+- **1 PR** for Phase 5
 - **1–2 PRs** for auth-login integration
 - **3 PRs** for Hardening
 
-Estimated total remaining: **about 6–7 PRs**.
+Estimated total remaining: **about 5–6 PRs**.
 
 ### Most important milestone
 
