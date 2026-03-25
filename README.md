@@ -80,7 +80,7 @@ Implemented so far:
 - The Phase 5 menu shows empty-state guidance, account overview rows, capability/lifecycle states, and restart-required notice
 - The TUI foundation can already resync provider config from inside the menu
 - The TUI can now rename an account label and revalidate an account directly from the menu
-- OpenCode auth login can now drive both first-account creation and existing-account re-auth through `GitHub Copilot (CopilotHydra)`
+- OpenCode auth login can now drive both first-account creation and existing-account re-auth through dedicated CopilotHydra login options under `github-copilot`
 - New accounts created through the auth-login method sync `opencode.json` immediately and return auth success for the account-specific provider id
 
 ## Important behavior

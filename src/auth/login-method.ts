@@ -1,10 +1,9 @@
 import type { AuthMethod, AuthOAuthResult, CopilotAccountMeta, PlanTier } from "../types.js";
 import { createAccountMeta } from "../account.js";
 import { requestDeviceCode, pollForAccessToken, type DeviceCodeResponse } from "./device-flow.js";
-import { findAccountByGitHubUsername, loadAccounts, upsertAccount } from "../storage/accounts.js";
+import { findAccountByGitHubUsername, upsertAccount } from "../storage/accounts.js";
 import { syncAccountsToOpenCodeConfig } from "../config/sync.js";
 import { checkAccountRuntimeReadiness } from "../runtime-checks.js";
-import { registerAccounts } from "../routing/provider-account-map.js";
 import { setTokenState } from "./token-state.js";
 import { resolveOpenCodeConfigPath } from "../config/opencode-config.js";
 import { error, info } from "../log.js";
@@ -15,9 +14,7 @@ export interface LoginMethodDependencies {
   findAccountByGitHubUsername: typeof findAccountByGitHubUsername;
   createAccountMeta: typeof createAccountMeta;
   upsertAccount: typeof upsertAccount;
-  loadAccounts: typeof loadAccounts;
   syncAccountsToOpenCodeConfig: typeof syncAccountsToOpenCodeConfig;
-  registerAccounts: typeof registerAccounts;
   checkAccountRuntimeReadiness: typeof checkAccountRuntimeReadiness;
   requestDeviceCode: typeof requestDeviceCode;
   pollForAccessToken: typeof pollForAccessToken;
@@ -29,9 +26,7 @@ const DEFAULT_DEPS: LoginMethodDependencies = {
   findAccountByGitHubUsername,
   createAccountMeta,
   upsertAccount,
-  loadAccounts,
   syncAccountsToOpenCodeConfig,
-  registerAccounts,
   checkAccountRuntimeReadiness,
   requestDeviceCode,
   pollForAccessToken,
@@ -39,58 +34,95 @@ const DEFAULT_DEPS: LoginMethodDependencies = {
   resolveOpenCodeConfigPath,
 };
 
-export function createCopilotLoginMethod(
+export function createCopilotLoginMethods(
   overrides: Partial<LoginMethodDependencies> = {},
-): AuthMethod {
+): AuthMethod[] {
   const deps = { ...DEFAULT_DEPS, ...overrides };
 
-  return {
-    type: "oauth",
-    label: "GitHub Copilot (CopilotHydra)",
-    prompts: [
-      {
-        type: "text",
-        key: "githubUsername",
-        message: "GitHub username (existing username = re-auth)",
-        placeholder: "alice",
-      },
-      {
-        type: "text",
-        key: "label",
-        message: "Account label for new account",
-        placeholder: "Personal",
-      },
-      {
-        type: "text",
-        key: "plan",
-        message: "Plan for new account: free/student/pro/pro+",
-        placeholder: "pro",
-      },
-      {
-        type: "text",
-        key: "allowUnverifiedModels",
-        message: "Expose uncertain models for a new account? yes/no",
-        placeholder: "no",
-      },
-    ],
-    authorize: async (inputs) => {
-      const { account, existing } = await resolveOrCreateAccount(inputs, deps);
-      const deviceCode = await deps.requestDeviceCode();
+  return [
+    {
+      type: "oauth",
+      label: "GitHub Copilot (CopilotHydra) — Re-auth existing account",
+      prompts: [
+        {
+          type: "text",
+          key: "githubUsername",
+          message: "GitHub username for an existing CopilotHydra account",
+          placeholder: "alice",
+        },
+      ],
+      authorize: async (inputs) => {
+        const account = await resolveExistingAccount(inputs, deps);
+        const deviceCode = await deps.requestDeviceCode();
 
-      return buildAuthResult(account, deviceCode, existing, deps);
+        return buildAuthResult(account, deviceCode, true, deps);
+      },
     },
-  };
+    {
+      type: "oauth",
+      label: "GitHub Copilot (CopilotHydra) — Add new account",
+      prompts: [
+        {
+          type: "text",
+          key: "githubUsername",
+          message: "GitHub username for the new account",
+          placeholder: "alice",
+        },
+        {
+          type: "text",
+          key: "label",
+          message: "Account label",
+          placeholder: "Personal",
+        },
+        {
+          type: "text",
+          key: "plan",
+          message: "Plan: free/student/pro/pro+",
+          placeholder: "pro",
+        },
+        {
+          type: "text",
+          key: "allowUnverifiedModels",
+          message: "Expose uncertain models? yes/no",
+          placeholder: "no",
+        },
+      ],
+      authorize: async (inputs) => {
+        const account = await createNewAccount(inputs, deps);
+        const deviceCode = await deps.requestDeviceCode();
+
+        return buildAuthResult(account, deviceCode, false, deps);
+      },
+    },
+  ];
 }
 
-async function resolveOrCreateAccount(
+async function resolveExistingAccount(
   inputs: Record<string, string> | undefined,
   deps: LoginMethodDependencies,
-): Promise<{ account: CopilotAccountMeta; existing: boolean }> {
+): Promise<CopilotAccountMeta> {
+  const githubUsername = requireTextInput(inputs, "githubUsername", "GitHub username");
+  const existing = await deps.findAccountByGitHubUsername(githubUsername);
+  if (!existing) {
+    throw new Error(
+      `[copilothydra] no existing account found for GitHub username \"${githubUsername}\" during re-auth`,
+    );
+  }
+
+  info("auth", `Re-authenticating existing account \"${existing.label}\" (${existing.githubUsername})`);
+  return existing;
+}
+
+async function createNewAccount(
+  inputs: Record<string, string> | undefined,
+  deps: LoginMethodDependencies,
+): Promise<CopilotAccountMeta> {
   const githubUsername = requireTextInput(inputs, "githubUsername", "GitHub username");
   const existing = await deps.findAccountByGitHubUsername(githubUsername);
   if (existing) {
-    info("auth", `Re-authenticating existing account \"${existing.label}\" (${existing.githubUsername})`);
-    return { account: existing, existing: true };
+    throw new Error(
+      `[copilothydra] GitHub username \"${githubUsername}\" already exists; use the re-auth method instead`,
+    );
   }
 
   const label = requireTextInput(inputs, "label", "Account label");
@@ -108,11 +140,8 @@ async function resolveOrCreateAccount(
   await deps.upsertAccount(account);
   await deps.syncAccountsToOpenCodeConfig();
 
-  const accounts = await deps.loadAccounts();
-  deps.registerAccounts(accounts.accounts.filter((candidate) => candidate.lifecycleState === "active"));
-
   info("auth", `Prepared new CopilotHydra account \"${account.label}\" (${account.githubUsername})`);
-  return { account, existing: false };
+  return account;
 }
 
 function buildAuthResult(

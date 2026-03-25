@@ -35,24 +35,21 @@ Voor CopilotHydra betekent dat:
 
 `src/auth/login-method.ts`
 
-Deze module bouwt een gedeelde auth-methode voor OpenCode login:
+Deze module bouwt gedeelde auth-methods voor OpenCode login:
 
-- `createCopilotLoginMethod()`
-- prompts voor:
-  - `githubUsername`
-  - `label`
-  - `plan`
-  - `allowUnverifiedModels`
-- herkent bestaande username als **re-auth**
-- maakt anders een nieuw account aan
+- `createCopilotLoginMethods()`
+- splitst de flow op in twee aparte OpenCode login-opties:
+  - **re-auth existing account** met alleen `githubUsername`
+  - **add new account** met `githubUsername`, `label`, `plan` en `allowUnverifiedModels`
+- voorkomt daarmee dat OpenCode onterecht new-account prompts als verplicht behandelt tijdens re-auth
 
 ### Nieuwe flow
 
-1. OpenCode toont `GitHub Copilot (CopilotHydra)` in auth login
+1. OpenCode toont twee CopilotHydra login-opties in auth login
 2. gebruiker vult inputs in
 3. CopilotHydra bepaalt:
-   - **bestaand account** → re-auth pad
-   - **nieuw account** → metadata aanmaken + provider config syncen
+   - **re-auth existing account** → bestaand account op username laden
+   - **add new account** → metadata aanmaken + provider config syncen
 4. CopilotHydra start GitHub device flow
 5. callback retourneert success met:
    - `provider: account.providerId`
@@ -94,8 +91,8 @@ Voor **re-auth van een bestaand account** is die extra restart-notitie niet nodi
 ## Wat deze stap al oplost
 
 - eerste account kan nu vanuit OpenCode auth login gestart worden
-- extra account toevoegen kan nu via dezelfde auth-login entrypoint, niet alleen via `copilothydra add-account`
-- bestaande accounts kunnen via dezelfde route opnieuw auth doen
+- extra account toevoegen kan nu via een aparte add-account login-optie, niet alleen via `copilothydra add-account`
+- bestaande accounts kunnen via een aparte re-auth login-optie opnieuw auth doen
 - de losse CopilotHydra CLI/TUI blijft beschikbaar als fallback-beheerpad
 
 ## Wat nog niet volledig af is

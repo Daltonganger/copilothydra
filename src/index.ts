@@ -27,7 +27,7 @@ import { info, warn, error } from "./log.js";
 import { validateAccountCount } from "./runtime-checks.js";
 import { registerAccounts } from "./routing/provider-account-map.js";
 import { setTokenState } from "./auth/token-state.js";
-import { createCopilotLoginMethod } from "./auth/login-method.js";
+import { createCopilotLoginMethods } from "./auth/login-method.js";
 
 // ---------------------------------------------------------------------------
 // Module-level account loading (top-level await in ESM)
@@ -134,7 +134,11 @@ function makeAccountPlugin(account: CopilotAccountMeta): (input: PluginInput) =>
 }
 
 // ---------------------------------------------------------------------------
-// Fallback plugin: no accounts configured
+// Setup/login plugin
+//
+// This export is always present so OpenCode can surface CopilotHydra-specific
+// login methods under the shared `github-copilot` login entrypoint. Runtime
+// request routing still happens through the account-specific slot exports.
 // ---------------------------------------------------------------------------
 
 export async function CopilotHydraSetup(input: PluginInput): Promise<Hooks> {
@@ -157,7 +161,7 @@ export async function CopilotHydraSetup(input: PluginInput): Promise<Hooks> {
   return {
     auth: {
       provider: "github-copilot",
-      methods: [createCopilotLoginMethod()],
+      methods: createCopilotLoginMethods(),
     },
   };
 }
@@ -167,7 +171,8 @@ export async function CopilotHydraSetup(input: PluginInput): Promise<Hooks> {
 //
 // OpenCode iterates Object.entries(module) and calls every exported function.
 // We build one plugin function per account and export them all.
-// The fallback is only included when there are no active accounts.
+// The setup/login export is always present; account-specific runtime hooks are
+// still provided separately through the active-account exports below.
 // ---------------------------------------------------------------------------
 
 // Build per-account plugin functions
@@ -179,16 +184,15 @@ for (const account of _accounts) {
   _accountPlugins[exportKey] = makeAccountPlugin(account);
 }
 
-// Re-export everything. If no accounts, export the setup helper so the user
-// gets a meaningful message instead of silent no-op.
+// Re-export everything. The setup helper remains active for auth-login flows,
+// while the account exports continue to serve runtime requests.
 if (_accounts.length === 0) {
   // Already defined above — re-export as named
   // (CopilotHydraSetup is already exported as a named export above)
 } else {
-  // Suppress the setup export when accounts are present — it would just emit
-  // unnecessary log noise on every OpenCode startup.
-  // We can't un-export CopilotHydraSetup once declared, but OpenCode will call
-  // it and it returns {}, which is harmless.
+  // CopilotHydraSetup remains exported intentionally so OpenCode can offer the
+  // add-account / re-auth methods even when account-specific runtime hooks
+  // already exist.
 }
 
 // Export all account plugins as named exports

@@ -22,9 +22,18 @@ test("CopilotHydraSetup exposes a GitHub Copilot auth method for OpenCode auth l
     const hooks = await CopilotHydraSetup(PLUGIN_INPUT);
 
     assert.equal(hooks.auth?.provider, "github-copilot");
-    assert.equal(hooks.auth?.methods.length, 1);
-    assert.equal(hooks.auth?.methods[0].type, "oauth");
-    assert.match(hooks.auth?.methods[0].label ?? "", /CopilotHydra/);
+    assert.equal(hooks.auth?.methods.length, 2);
+    assert.deepEqual(
+      hooks.auth?.methods.map((method) => method.label),
+      [
+        "GitHub Copilot (CopilotHydra) — Re-auth existing account",
+        "GitHub Copilot (CopilotHydra) — Add new account",
+      ],
+    );
+    assert.deepEqual(
+      hooks.auth?.methods.map((method) => method.prompts?.map((prompt) => prompt.key) ?? []),
+      [["githubUsername"], ["githubUsername", "label", "plan", "allowUnverifiedModels"]],
+    );
   } finally {
     delete process.env.OPENCODE_CONFIG_DIR;
     delete process.env.OPENCODE_CONFIG;
@@ -38,10 +47,10 @@ test("login method can create a new account from OpenCode auth login inputs", as
   process.env.OPENCODE_CONFIG = path.join(tempDir, "opencode.json");
 
   try {
-    const { createCopilotLoginMethod } = await import(`../dist/auth/login-method.js?${Date.now()}`);
+    const { createCopilotLoginMethods } = await import(`../dist/auth/login-method.js?${Date.now()}`);
 
     let tokenState;
-    const method = createCopilotLoginMethod({
+    const [, method] = createCopilotLoginMethods({
       requestDeviceCode: async () => ({
         device_code: "device-1",
         user_code: "ABCD-EFGH",
@@ -89,13 +98,13 @@ test("login method can re-auth an existing account without requiring new-account
   try {
     const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
     const { upsertAccount } = await import(`../dist/storage/accounts.js?${Date.now()}`);
-    const { createCopilotLoginMethod } = await import(`../dist/auth/login-method.js?${Date.now()}`);
+    const { createCopilotLoginMethods } = await import(`../dist/auth/login-method.js?${Date.now()}`);
 
     const account = createAccountMeta({ label: "Work", githubUsername: "bob", plan: "student" });
     await upsertAccount(account, tempDir);
 
     let tokenState;
-    const method = createCopilotLoginMethod({
+    const [method] = createCopilotLoginMethods({
       requestDeviceCode: async () => ({
         device_code: "device-2",
         user_code: "IJKL-MNOP",
@@ -120,6 +129,41 @@ test("login method can re-auth an existing account without requiring new-account
     const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
     assert.equal(accounts.accounts.length, 1);
     assert.equal(accounts.accounts[0].label, "Work");
+  } finally {
+    delete process.env.OPENCODE_CONFIG_DIR;
+    delete process.env.OPENCODE_CONFIG;
+    await cleanupDir(tempDir);
+  }
+});
+
+test("new-account method rejects duplicate usernames so re-auth stays separate", async () => {
+  const tempDir = await makeTempDir();
+  process.env.OPENCODE_CONFIG_DIR = tempDir;
+  process.env.OPENCODE_CONFIG = path.join(tempDir, "opencode.json");
+
+  try {
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { upsertAccount } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { createCopilotLoginMethods } = await import(`../dist/auth/login-method.js?${Date.now()}`);
+
+    const account = createAccountMeta({ label: "Existing", githubUsername: "alice", plan: "pro" });
+    await upsertAccount(account, tempDir);
+
+    const [, method] = createCopilotLoginMethods({
+      requestDeviceCode: async () => {
+        throw new Error("device flow should not start");
+      },
+    });
+
+    await assert.rejects(
+      method.authorize({
+        githubUsername: "alice",
+        label: "Duplicate",
+        plan: "pro",
+        allowUnverifiedModels: "no",
+      }),
+      /already exists; use the re-auth method instead/,
+    );
   } finally {
     delete process.env.OPENCODE_CONFIG_DIR;
     delete process.env.OPENCODE_CONFIG;
