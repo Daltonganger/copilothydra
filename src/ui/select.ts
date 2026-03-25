@@ -58,3 +58,19 @@ export async function confirm(prompt: string): Promise<boolean> {
     rl.close();
   }
 }
+
+export async function promptText(prompt: string, options?: { defaultValue?: string }): Promise<string | null> {
+  const defaultSuffix = options?.defaultValue ? ` [${options.defaultValue}]` : "";
+  const rl = createInterface({ input, output });
+  try {
+    while (true) {
+      const answer = (await rl.question(`${prompt}${defaultSuffix} (Enter cancels): `)).trim();
+      if (answer === "") {
+        return null;
+      }
+      return answer;
+    }
+  } finally {
+    rl.close();
+  }
+}

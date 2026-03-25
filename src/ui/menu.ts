@@ -16,52 +16,123 @@ import { capabilityStateLabel, planLabel } from "../config/capabilities.js";
 import { syncAccountsToOpenCodeConfig } from "../config/sync.js";
 import { resolveOpenCodeConfigPath } from "../config/opencode-config.js";
 import { checkAccountRuntimeReadiness, validateAccountCount } from "../runtime-checks.js";
-import { selectOne } from "./select.js";
+import { renameAccount, revalidateAccount } from "../account-update.js";
+import { promptText, selectOne } from "./select.js";
 
 interface MenuActionOption {
-  key: "add-account" | "sync-config" | "refresh" | "exit";
+  key: "add-account" | "rename-account" | "revalidate-account" | "sync-config" | "refresh" | "exit";
   label: string;
   description?: string;
 }
+
+interface AccountOption {
+  key: string;
+  label: string;
+  description?: string;
+}
+
+interface MenuDependencies {
+  isTTY(): boolean;
+  loadAccounts(): Promise<{ accounts: CopilotAccountMeta[] }>;
+  validateAccountCount(accounts: CopilotAccountMeta[]): void;
+  selectOne<T extends { label: string; description?: string }>(prompt: string, options: T[]): Promise<T | null>;
+  promptText(prompt: string, options?: { defaultValue?: string }): Promise<string | null>;
+  renameAccount(accountId: string, label: string): Promise<CopilotAccountMeta>;
+  revalidateAccount(accountId: string): Promise<CopilotAccountMeta>;
+  syncAccountsToOpenCodeConfig(): Promise<void>;
+  resolveOpenCodeConfigPath(): string;
+  checkAccountRuntimeReadiness(account: CopilotAccountMeta): void;
+  write(message: string): void;
+}
+
+const DEFAULT_DEPS: MenuDependencies = {
+  isTTY,
+  loadAccounts,
+  validateAccountCount,
+  selectOne,
+  promptText,
+  renameAccount,
+  revalidateAccount,
+  syncAccountsToOpenCodeConfig,
+  resolveOpenCodeConfigPath,
+  checkAccountRuntimeReadiness,
+  write: (message) => process.stdout.write(message),
+};
 
 export function isTTY(): boolean {
   return process.stdin.isTTY === true && process.stdout.isTTY === true;
 }
 
-export async function launchMenu(): Promise<void> {
-  if (!isTTY()) {
+export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Promise<void> {
+  const deps: MenuDependencies = { ...DEFAULT_DEPS, ...overrides };
+
+  if (!deps.isTTY()) {
     throw new Error("[copilothydra] account management requires an interactive terminal (TTY)");
   }
 
   let restartRequired = false;
 
   while (true) {
-    const accounts = (await loadAccounts()).accounts;
-    validateAccountCount(accounts);
+    const accounts = (await deps.loadAccounts()).accounts;
+    deps.validateAccountCount(accounts);
 
-    process.stdout.write(renderAccountManagerScreen(accounts, { restartRequired }));
+    deps.write(renderAccountManagerScreen(accounts, { restartRequired }));
 
-    const choice = await selectOne("Main menu", buildMenuOptions(accounts));
+    const choice = await deps.selectOne("Main menu", buildMenuOptions(accounts));
     if (!choice || choice.key === "exit") {
-      process.stdout.write("Exiting CopilotHydra account manager.\n");
+      deps.write("Exiting CopilotHydra account manager.\n");
       return;
     }
 
     switch (choice.key) {
       case "add-account":
-        process.stdout.write(
+        deps.write(
           "Add account will be wired into the TUI in the next Phase 5 PR. " +
             "Use `copilothydra add-account` for now.\n"
         );
         break;
+      case "rename-account": {
+        const account = await deps.selectOne("Rename which account?", buildAccountOptions(accounts));
+        if (!account) {
+          deps.write("Rename cancelled.\n");
+          break;
+        }
+
+        const nextLabel = await deps.promptText("New label", { defaultValue: account.label });
+        if (!nextLabel) {
+          deps.write("Rename cancelled.\n");
+          break;
+        }
+
+        const updated = await deps.renameAccount(account.key, nextLabel);
+        restartRequired = true;
+        deps.write(`Renamed account: ${account.label} -> ${updated.label}\n`);
+        deps.write("Reload/restart OpenCode to apply provider label changes.\n");
+        break;
+      }
+      case "revalidate-account": {
+        const account = await deps.selectOne("Revalidate which account?", buildAccountOptions(accounts));
+        if (!account) {
+          deps.write("Revalidate cancelled.\n");
+          break;
+        }
+
+        const updated = await deps.revalidateAccount(account.key);
+        restartRequired = true;
+        deps.write(`Revalidated account: ${updated.label} (${updated.githubUsername})\n`);
+        deps.write(`Capability state: ${updated.capabilityState}\n`);
+        deps.write(`Last validated at: ${updated.lastValidatedAt}\n`);
+        deps.write("Reload/restart OpenCode to apply provider changes.\n");
+        break;
+      }
       case "sync-config":
         for (const account of accounts) {
-          checkAccountRuntimeReadiness(account);
+          deps.checkAccountRuntimeReadiness(account);
         }
-        await syncAccountsToOpenCodeConfig();
+        await deps.syncAccountsToOpenCodeConfig();
         restartRequired = true;
-        process.stdout.write(`Synced provider entries to ${resolveOpenCodeConfigPath()}\n`);
-        process.stdout.write("Reload/restart OpenCode to apply provider changes.\n");
+        deps.write(`Synced provider entries to ${deps.resolveOpenCodeConfigPath()}\n`);
+        deps.write("Reload/restart OpenCode to apply provider changes.\n");
         break;
       case "refresh":
         break;
@@ -124,13 +195,31 @@ export function formatAccountSummary(account: CopilotAccountMeta): string {
   return `- ${account.label} (${account.githubUsername}) ${details.join(" | ")}${mismatchNote}`;
 }
 
-function buildMenuOptions(accounts: CopilotAccountMeta[]): MenuActionOption[] {
+export function buildMenuOptions(accounts: CopilotAccountMeta[]): MenuActionOption[] {
   const options: MenuActionOption[] = [
     {
       key: "add-account",
       label: accounts.length === 0 ? "Add account" : "Add another account",
       description: "Interactive account setup",
     },
+  ];
+
+  if (accounts.length > 0) {
+    options.push(
+      {
+        key: "rename-account",
+        label: "Rename account",
+        description: "Update the user-facing account label",
+      },
+      {
+        key: "revalidate-account",
+        label: "Revalidate account",
+        description: "Refresh validation timestamp and clear mismatch state when appropriate",
+      },
+    );
+  }
+
+  options.push(
     {
       key: "sync-config",
       label: "Sync provider config",
@@ -146,7 +235,15 @@ function buildMenuOptions(accounts: CopilotAccountMeta[]): MenuActionOption[] {
       label: "Exit",
       description: "Close the account manager",
     },
-  ];
+  );
 
   return options;
+}
+
+export function buildAccountOptions(accounts: CopilotAccountMeta[]): AccountOption[] {
+  return accounts.map((account) => ({
+    key: account.id,
+    label: `${account.label} (${account.githubUsername})`,
+    description: `${planLabel(account.plan)} | ${capabilityStateLabel(account.capabilityState)} | ${account.lifecycleState}`,
+  }));
 }

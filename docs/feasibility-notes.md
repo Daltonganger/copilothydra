@@ -130,7 +130,8 @@ CopilotHydra bewaart eigen metadata/secrets in de **config dir** op basis van ex
 ### Huidige implementatiestatus
 - Phase 5 foundation gebruikt nu een dependency-free, line-based TUI-entrypoint
 - non-TTY clean failure blijft expliciet aanwezig op het menu-pad
-- rijkere raw-mode polish en volledige accountacties blijven vervolgwerk binnen Phase 5
+- rename- en revalidate-acties zijn nu direct vanuit het menu bruikbaar
+- rijkere raw-mode polish en de resterende accountacties blijven vervolgwerk binnen Phase 5
 
 ---
 

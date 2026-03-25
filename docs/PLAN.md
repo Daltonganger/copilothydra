@@ -430,9 +430,13 @@ Current implementation includes a first Phase 5 foundation slice:
 - account overview rendering with plan, capability state, lifecycle state, and restart-required notice
 
 Still pending in later Phase 5 slices:
-- wiring add/remove/rename/revalidate actions into the TUI
+- wiring the remaining add/remove flows into the TUI
 - guided mismatch review from inside the menu
 - richer confirmations and raw-mode polish
+
+Current follow-up status:
+- rename and revalidate are now wired into the menu
+- add account, remove account, and guided mismatch review remain pending
 
 ## UX goals
 - safe

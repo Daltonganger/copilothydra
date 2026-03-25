@@ -366,6 +366,7 @@ Doel: accountbeheer bruikbaar en duidelijk maken.
 
 ### Reeds afgerond binnen Phase 5
 - menu foundation done: `copilothydra` now opens a line-based TUI entrypoint in TTY environments, with empty-state guidance, account overview, capability/lifecycle visibility, restart-required notice, and menu-level config sync
+- account actions pass done: the TUI now supports rename and revalidate flows using the existing account update helpers, with restart guidance after mutations
 
 ---
 
@@ -407,7 +408,7 @@ Doel: van werkend naar verantwoord beta-niveau.
 
 ## Immediate next step
 
-**Continue Phase 5: wire add/remove/rename/revalidate flows into the TUI.**
+**Continue Phase 5: wire remove-account and mismatch review flows into the TUI.**
 
 ---
 
@@ -426,11 +427,12 @@ Afgerond in **3 stacked PR's**
 
 ### Phase 5 — TUI
 
-Verwachting: **ongeveer 2–3 PR's resterend**
+Verwachting: **ongeveer 1–2 PR's resterend**
 
 1. **Menu foundation**
    - ✅ line-based entrypoint, empty state, account overview en menu sync-pad
 2. **Account actions**
+   - ✅ rename-account en revalidate-account lopen nu via de TUI
 3. **Lifecycle state presentation**
 4. **Polish/tests/docs**
 
@@ -445,10 +447,10 @@ Verwachting: **ongeveer 3 PR's**
 ### Totale resterende inschatting
 
 - **0 PR's** voor Phase 4
-- **2–3 PR's** voor Phase 5
+- **1–2 PR's** voor Phase 5
 - **3 PR's** voor Hardening
 
-Geschatte rest: **ongeveer 6 PR's**.
+Geschatte rest: **ongeveer 5 PR's**.
 
 ### Belangrijkste mijlpaal
 
