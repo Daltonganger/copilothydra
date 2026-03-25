@@ -53,11 +53,13 @@ test("updateAccountPlan resets capability state and clears lastValidatedAt", asy
     const updated = await updateAccountPlan(account.id, "pro", { configDir: tempDir, configPath });
     assert.equal(updated.plan, "pro");
     assert.equal(updated.capabilityState, "user-declared");
+    assert.equal(updated.allowUnverifiedModels, false);
     assert.equal(updated.lastValidatedAt, undefined);
 
     const accounts = await loadAccounts(tempDir);
     assert.equal(accounts.accounts[0].plan, "pro");
     assert.equal(accounts.accounts[0].capabilityState, "user-declared");
+    assert.equal(accounts.accounts[0].allowUnverifiedModels, false);
     assert.equal(accounts.accounts[0].lastValidatedAt, undefined);
   } finally {
     delete process.env.OPENCODE_CONFIG;
@@ -87,7 +89,7 @@ test("cli rename-account, set-plan, and revalidate-account update stored metadat
     });
     assert.equal(result.status, 0, result.stderr || result.stdout);
 
-    result = spawnSync(process.execPath, ["dist/cli.js", "set-plan", account.id, "pro"], {
+    result = spawnSync(process.execPath, ["dist/cli.js", "set-plan", account.id, "pro", "--allow-unverified-models"], {
       cwd: path.resolve("."),
       env: { ...process.env, OPENCODE_CONFIG_DIR: tempDir, OPENCODE_CONFIG: configPath },
       encoding: "utf8",
@@ -106,6 +108,7 @@ test("cli rename-account, set-plan, and revalidate-account update stored metadat
     assert.equal(accounts.accounts[0].label, "Renamed");
     assert.equal(accounts.accounts[0].plan, "pro");
     assert.equal(accounts.accounts[0].capabilityState, "user-declared");
+    assert.equal(accounts.accounts[0].allowUnverifiedModels, true);
     assert.ok(accounts.accounts[0].lastValidatedAt);
   } finally {
     delete process.env.OPENCODE_CONFIG;

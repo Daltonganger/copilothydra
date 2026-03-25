@@ -62,6 +62,8 @@ export interface CopilotAccountMeta {
   plan: PlanTier;
   /** Whether plan has been verified or is only user-declared */
   capabilityState: CapabilityState;
+  /** Explicit user acknowledgement to expose plan-table models that remain unverified */
+  allowUnverifiedModels?: boolean;
   /** Active or in drain-on-removal state */
   lifecycleState: AccountLifecycleState;
   /** ISO 8601 timestamp */

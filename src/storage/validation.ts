@@ -23,6 +23,15 @@ export function requireOptionalString(obj: Record<string, unknown>, key: string,
   return value;
 }
 
+export function requireOptionalBoolean(obj: Record<string, unknown>, key: string, label: string): boolean | undefined {
+  const value = obj[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== "boolean") {
+    throw new Error(`[copilothydra] ${label} has invalid optional boolean field: ${key}`);
+  }
+  return value;
+}
+
 export function requireEnumValue<T extends string>(
   value: string,
   allowed: readonly T[],

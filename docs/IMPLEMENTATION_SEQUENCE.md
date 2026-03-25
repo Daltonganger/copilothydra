@@ -58,6 +58,7 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
 
 ### Nu bezig
 12. ▶️ **Phase 4 — capability/model exposure**
+    - declared model exposure pass done: user-declared accounts now hide override-required models unless explicit override is enabled, and overridden entries are labeled in synced config
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -407,6 +408,7 @@ Doel: van werkend naar verantwoord beta-niveau.
 Verwachting: **ongeveer 2–3 PR's**
 
 1. **Declared model exposure aanscherpen**
+   - ✅ user-declared plans now expose baseline models by default and require explicit override for uncertain model entries
 2. **Mismatch/downgrade flow**
 3. **Docs/tests afronden**
 

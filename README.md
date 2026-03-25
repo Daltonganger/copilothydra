@@ -26,6 +26,7 @@ Implemented so far:
 - Phase 3 routed token recovery gating (single-flight retry path for expired/missing routed token state)
 - Phase 3 parallel isolation hardening (cross-account concurrency and token-state isolation checks)
 - Phase 3 lifecycle/runtime finish (ownership mismatch guards and full runtime-state cleanup)
+- Phase 4 declared model exposure hardening (uncertain model filtering + explicit override flag)
 
 ## What works now
 
@@ -63,12 +64,16 @@ Implemented so far:
 - Routed auth now performs one per-account single-flight recovery attempt when synced token state is expired before failing closed
 - Parallel overlap is now covered explicitly: same-account recovery is coalesced while cross-account requests keep independent routed Authorization state
 - Routed auth now fail-closes on provider/account ownership mismatch, and final account removal fully clears runtime token/recovery state
+- User-declared accounts now hide override-required models by default until explicit override is enabled
+- Generated model labels now mark explicitly exposed uncertain entries as `user-declared override`
+- `copilothydra set-plan ... --allow-unverified-models` enables those uncertain model entries intentionally
 
 ## Important behavior
 
 - OpenCode reload/restart is required after account/config changes
 - After reload, multiple account-specific providers/models can coexist
 - Capability exposure is currently user-declared with runtime mismatch detection policy
+- User-declared plan exposure now defaults to baseline models only; override-required models stay hidden unless explicitly acknowledged
 - GPT-5+/responses routing is still a known gap for custom provider IDs
 
 ## Known limitations
@@ -135,8 +140,8 @@ Start Phase 4: capability/model exposure hardening.
 Expected remaining: **about 2–3 PRs**
 
 1. **Declared model exposure hardening**
-   - centralize plan → model exposure
-   - mark uncertain models explicitly
+   - centralize plan → model exposure ✅
+   - mark uncertain models explicitly ✅
 2. **Mismatch/downgrade flow**
    - mismatch state logic
    - stricter-plan overwrite/confirm behavior

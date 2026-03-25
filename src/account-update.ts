@@ -33,11 +33,12 @@ export async function renameAccount(
 export async function updateAccountPlan(
   accountId: AccountId,
   plan: PlanTier,
-  options?: UpdateOptions,
+  options?: UpdateOptions & { allowUnverifiedModels?: boolean },
 ): Promise<CopilotAccountMeta> {
   const updated = await mutateAccount(accountId, (account) => {
     account.plan = plan;
     account.capabilityState = "user-declared";
+    account.allowUnverifiedModels = options?.allowUnverifiedModels ?? false;
     delete account.lastValidatedAt;
   }, options?.configDir);
   await syncAccountsToOpenCodeConfig(options?.configPath, options?.configDir);

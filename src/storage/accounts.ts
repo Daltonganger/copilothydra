@@ -23,7 +23,14 @@ import { join, dirname } from "node:path";
 import type { AccountId, CopilotAccountMeta, AccountsFile } from "../types.js";
 import { debugStorage, warn } from "../log.js";
 import { withLock } from "./locking.js";
-import { isRecord, requireEnumValue, requireIsoTimestamp, requireOptionalString, requireString } from "./validation.js";
+import {
+  isRecord,
+  requireEnumValue,
+  requireIsoTimestamp,
+  requireOptionalBoolean,
+  requireOptionalString,
+  requireString,
+} from "./validation.js";
 
 const PLAN_TIERS = ["free", "student", "pro", "pro+"] as const;
 const CAPABILITY_STATES = ["user-declared", "verified", "mismatch"] as const;
@@ -221,6 +228,7 @@ function validateAccountsFile(data: unknown): AccountsFile {
     const githubUsername = requireString(account, "githubUsername", "account");
     const plan = requireString(account, "plan", "account");
     const capabilityState = requireString(account, "capabilityState", "account");
+    requireOptionalBoolean(account, "allowUnverifiedModels", "account");
     const lifecycleState = requireString(account, "lifecycleState", "account");
     const addedAt = requireString(account, "addedAt", "account");
     const lastValidatedAt = requireOptionalString(account, "lastValidatedAt", "account");
@@ -270,11 +278,12 @@ function isCorruptionError(err: unknown): boolean {
     (err instanceof Error && (
       err.message.includes("accounts file is corrupt or has an unexpected format") ||
       err.message.includes("accounts file contains") ||
-      err.message.includes("account is missing required string field") ||
-      err.message.includes("account has invalid optional string field") ||
-      err.message.includes("account has invalid enum value") ||
-      err.message.includes("account has invalid ISO timestamp") ||
-      err.message.includes("duplicate github username")
+        err.message.includes("account is missing required string field") ||
+        err.message.includes("account has invalid optional string field") ||
+        err.message.includes("account has invalid optional boolean field") ||
+        err.message.includes("account has invalid enum value") ||
+        err.message.includes("account has invalid ISO timestamp") ||
+        err.message.includes("duplicate github username")
     ))
   );
 }
