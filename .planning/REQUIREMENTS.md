@@ -69,29 +69,29 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase TBD | Pending |
-| AUTH-02 | Phase TBD | Pending |
-| AUTH-03 | Phase TBD | Pending |
-| AUTH-04 | Phase TBD | Pending |
-| RUNT-01 | Phase TBD | Pending |
-| RUNT-02 | Phase TBD | Pending |
-| RUNT-03 | Phase TBD | Pending |
-| MODL-01 | Phase TBD | Pending |
-| MODL-02 | Phase TBD | Pending |
-| MODL-03 | Phase TBD | Pending |
-| MODL-04 | Phase TBD | Pending |
-| COMP-01 | Phase TBD | Pending |
-| COMP-02 | Phase TBD | Pending |
-| COMP-03 | Phase TBD | Pending |
-| COMP-04 | Phase TBD | Pending |
-| OPER-01 | Phase TBD | Pending |
-| OPER-02 | Phase TBD | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| RUNT-01 | Phase 2 | Pending |
+| RUNT-02 | Phase 2 | Pending |
+| RUNT-03 | Phase 2 | Pending |
+| MODL-01 | Phase 2 | Pending |
+| MODL-02 | Phase 2 | Pending |
+| MODL-03 | Phase 2 | Pending |
+| MODL-04 | Phase 2 | Pending |
+| COMP-01 | Phase 2 | Pending |
+| COMP-02 | Phase 2 | Pending |
+| COMP-03 | Phase 2 | Pending |
+| COMP-04 | Phase 2 | Pending |
+| OPER-01 | Phase 3 | Pending |
+| OPER-02 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17 ⚠️
+- Mapped to phases: 17
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 after initial definition*
+*Last updated: 2026-03-25 after roadmap creation*
