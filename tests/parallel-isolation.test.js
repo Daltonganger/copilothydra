@@ -42,7 +42,7 @@ test("concurrent fetches across two accounts keep Authorization isolated per pro
   const authByUrl = new Map();
   globalThis.fetch = async (request, init) => {
     const url = String(request);
-    authByUrl.set(url, init?.headers?.Authorization ?? init?.headers?.authorization);
+    authByUrl.set(url, new Headers(init?.headers).get("authorization"));
     await new Promise((resolve) => setTimeout(resolve, 5));
     return new Response("ok", { status: 200 });
   };

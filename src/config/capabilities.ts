@@ -71,6 +71,8 @@ export function isCapabilityMismatchError(error: unknown): boolean {
 
   return (
     message.includes("not authorized to use this copilot feature") ||
+    message.includes("the requested model is not supported") ||
+    message.includes("requested model is not supported") ||
     message.includes("model not enabled for your account") ||
     message.includes("model not enabled for your org") ||
     message.includes("model not enabled for your plan") ||

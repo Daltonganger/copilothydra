@@ -10,8 +10,8 @@
  *    OpenCode resolves the SDK factory via `model.api.npm` (NOT provider ID).
  *    Our provider IDs ("github-copilot-acct-<id>") are NOT in BUNDLED_PROVIDERS
  *    or CUSTOM_LOADERS, so we must set `npm` in the config entry.
- *    We use "@ai-sdk/openai-compatible" which is what models.dev uses for
- *    github-copilot itself, and which is already bundled in OpenCode.
+ *    We use a Hydra-local `file://` provider factory module so account-scoped
+ *    provider IDs can still mirror built-in Copilot routing.
  *
  * 2. CONFIG HOOK IS READ-ONLY:
  *    The `Hooks.config` hook receives Config as input and returns `void`.
@@ -20,13 +20,10 @@
  *    CopilotHydra's CLI setup command writes these entries.
  *
  * 3. CUSTOM_LOADERS GAP:
- *    The `CUSTOM_LOADERS["github-copilot"]` in OpenCode handles model routing:
- *    - shouldUseCopilotResponsesApi(modelId) → uses sdk.responses(modelId)
- *    - other models → uses sdk.chat(modelId) or sdk.languageModel(modelId)
- *    Our provider IDs do NOT trigger this custom loader (it's keyed by exact ID).
- *    Mitigation: "@ai-sdk/openai-compatible" uses standard .chat() for all models,
- *    which should work for current Copilot models. GPT-5+ (responses API) will
- *    need a workaround if/when they become relevant.
+ *    OpenCode special-cases exact provider ID `github-copilot` to route GPT-5+
+ *    models through responses and other models through chat.
+ *    Our provider IDs do NOT trigger that exact-ID loader, so CopilotHydra points
+ *    provider `npm` at a local module whose `languageModel()` mirrors the same split.
  *
  * 4. CHAT.HEADERS HOOK:
  *    OpenCode's chat.headers hook checks providerID.includes("github-copilot").
@@ -40,7 +37,7 @@
  */
 
 import type { AccountId, ProviderId, CopilotAccountMeta } from "../types.js";
-import { modelRequiresExplicitOverride, modelsForPlan } from "./models.js";
+import { getCopilotCatalogModel, modelsForPlan } from "./models.js";
 
 // ---------------------------------------------------------------------------
 // ID helpers
@@ -127,6 +124,10 @@ export interface ProviderConfigEntry {
   };
 }
 
+function resolveHydraCopilotProviderModuleHref(): string {
+  return new URL("../sdk/hydra-copilot-provider.js", import.meta.url).href;
+}
+
 // ---------------------------------------------------------------------------
 // Provider config builder
 // ---------------------------------------------------------------------------
@@ -135,8 +136,7 @@ export interface ProviderConfigEntry {
  * Build the provider config entry for a single Copilot account.
  *
  * This entry is written into opencode.json under `provider.<providerId>`.
- * It uses "@ai-sdk/openai-compatible" as the SDK package (bundled in OpenCode)
- * with the standard Copilot API base URL.
+ * It uses a Hydra-local provider factory with the standard Copilot API base URL.
  *
  * Note: auth (Bearer token) is NOT set here — it is injected per-request
  * by the auth hook loader in src/auth/loader.ts.
@@ -144,18 +144,11 @@ export interface ProviderConfigEntry {
 export function buildProviderConfig(account: CopilotAccountMeta): ProviderConfigEntry {
   return {
     name: `GitHub Copilot — ${account.label} (${account.githubUsername})`,
-    // "@ai-sdk/openai-compatible" is bundled in OpenCode and works for all
-    // current Copilot models via the standard chat() endpoint.
-    // Note: CUSTOM_LOADERS["github-copilot"] (responses vs chat routing) does
-    // NOT apply here since our provider ID differs. This is a known gap — see
-    // module doc comment point 3. Standard chat() works for current model set.
-    npm: "@ai-sdk/openai-compatible",
+    // Use a local Hydra provider factory so `github-copilot-acct-*` keeps
+    // multi-account isolation while matching built-in Copilot routing parity.
+    npm: resolveHydraCopilotProviderModuleHref(),
     api: "https://api.githubcopilot.com",
     env: [], // OAuth — no env var required; auth is handled by our loader hook
-    options: {
-      // apiKey is intentionally left empty; our loader injects Authorization header
-      apiKey: "",
-    },
     models: buildModelEntries(account),
   };
 }
@@ -187,12 +180,6 @@ function buildModelEntries(_account: CopilotAccountMeta): Record<string, ModelCo
 }
 
 export function buildModelDisplayName(account: CopilotAccountMeta, modelId: string): string {
-  const overrideSuffix =
-    account.capabilityState !== "verified" &&
-    account.allowUnverifiedModels === true &&
-    modelRequiresExplicitOverride(account.plan, modelId)
-      ? ", user-declared override"
-      : "";
-
-  return `${modelId} (${account.label}${overrideSuffix})`;
+  const catalogName = getCopilotCatalogModel(modelId)?.name;
+  return catalogName ?? modelId;
 }

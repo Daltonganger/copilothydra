@@ -23,6 +23,42 @@
 
 import type { PlanTier } from "../types.js";
 
+export interface CopilotCatalogModelEntry {
+  id: string;
+  name: string;
+}
+
+export const COPILOT_MODEL_CATALOG: Record<string, CopilotCatalogModelEntry> = {
+  "claude-haiku-4.5": { id: "claude-haiku-4.5", name: "Claude Haiku 4.5" },
+  "claude-opus-4.5": { id: "claude-opus-4.5", name: "Claude Opus 4.5" },
+  "claude-opus-4.6": { id: "claude-opus-4.6", name: "Claude Opus 4.6" },
+  "claude-opus-4.6-fast": { id: "claude-opus-4.6-fast", name: "Claude Opus 4.6 Fast" },
+  "claude-opus-41": { id: "claude-opus-41", name: "Claude Opus 4.1" },
+  "claude-sonnet-4": { id: "claude-sonnet-4", name: "Claude Sonnet 4" },
+  "claude-sonnet-4.5": { id: "claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
+  "claude-sonnet-4.6": { id: "claude-sonnet-4.6", name: "Claude Sonnet 4.6" },
+  "gemini-2.5-pro": { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
+  "gemini-3-flash-preview": { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview" },
+  "gemini-3-pro-preview": { id: "gemini-3-pro-preview", name: "Gemini 3 Pro Preview" },
+  "gemini-3.1-pro-preview": { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview" },
+  "gpt-4.1": { id: "gpt-4.1", name: "GPT-4.1" },
+  "gpt-4o": { id: "gpt-4o", name: "GPT-4o" },
+  "gpt-5": { id: "gpt-5", name: "GPT-5" },
+  "gpt-5-mini": { id: "gpt-5-mini", name: "GPT-5-mini" },
+  "gpt-5.1": { id: "gpt-5.1", name: "GPT-5.1" },
+  "gpt-5.1-codex": { id: "gpt-5.1-codex", name: "GPT-5.1-Codex" },
+  "gpt-5.1-codex-max": { id: "gpt-5.1-codex-max", name: "GPT-5.1-Codex-max" },
+  "gpt-5.1-codex-mini": { id: "gpt-5.1-codex-mini", name: "GPT-5.1-Codex-mini" },
+  "gpt-5.2": { id: "gpt-5.2", name: "GPT-5.2" },
+  "gpt-5.2-codex": { id: "gpt-5.2-codex", name: "GPT-5.2-Codex" },
+  "gpt-5.3-codex": { id: "gpt-5.3-codex", name: "GPT-5.3-Codex" },
+  "gpt-5.4": { id: "gpt-5.4", name: "GPT-5.4" },
+  "gpt-5.4-mini": { id: "gpt-5.4-mini", name: "GPT-5.4 Mini" },
+  goldeneye: { id: "goldeneye", name: "Goldeneye" },
+  "grok-code-fast-1": { id: "grok-code-fast-1", name: "Grok Code Fast 1" },
+  "raptor-mini": { id: "raptor-mini", name: "Raptor Mini" },
+};
+
 export const PLAN_TIER_ORDER: PlanTier[] = ["free", "student", "pro", "pro+"];
 
 export interface PlanModelEntry {
@@ -61,9 +97,9 @@ export const MODEL_TIER_TABLE: Record<PlanTier, PlanModelEntry[]> = {
   student: [
     { id: "claude-haiku-4.5" },
     { id: "gemini-2.5-pro" },
-    { id: "gemini-3-flash" },
-    { id: "gemini-3-pro" },
-    { id: "gemini-3.1-pro" },
+    { id: "gemini-3-flash-preview" },
+    { id: "gemini-3-pro-preview" },
+    { id: "gemini-3.1-pro-preview" },
     { id: "gpt-4.1" },
     { id: "gpt-5-mini" },
     { id: "gpt-5.1" },
@@ -84,9 +120,9 @@ export const MODEL_TIER_TABLE: Record<PlanTier, PlanModelEntry[]> = {
     { id: "claude-sonnet-4.5" },
     { id: "claude-sonnet-4.6" },
     { id: "gemini-2.5-pro" },
-    { id: "gemini-3-flash" },
-    { id: "gemini-3-pro" },
-    { id: "gemini-3.1-pro" },
+    { id: "gemini-3-flash-preview" },
+    { id: "gemini-3-pro-preview" },
+    { id: "gemini-3.1-pro-preview" },
     { id: "gpt-4.1" },
     { id: "gpt-5-mini" },
     { id: "gpt-5.1" },
@@ -110,9 +146,9 @@ export const MODEL_TIER_TABLE: Record<PlanTier, PlanModelEntry[]> = {
     { id: "claude-sonnet-4.5" },
     { id: "claude-sonnet-4.6" },
     { id: "gemini-2.5-pro" },
-    { id: "gemini-3-flash" },
-    { id: "gemini-3-pro" },
-    { id: "gemini-3.1-pro" },
+    { id: "gemini-3-flash-preview" },
+    { id: "gemini-3-pro-preview" },
+    { id: "gemini-3.1-pro-preview" },
     { id: "gpt-4.1" },
     { id: "gpt-5-mini" },
     { id: "gpt-5.1" },
@@ -146,6 +182,7 @@ export function modelsForPlan(
   const includeUnverified = options?.includeUnverified ?? true;
   return (MODEL_TIER_TABLE[plan] ?? [])
     .filter((entry) => includeUnverified || !entry.requiresExplicitOverride)
+    .filter((entry) => isKnownCopilotModelId(entry.id))
     .map((entry) => entry.id);
 }
 
@@ -187,4 +224,12 @@ export function suggestDowngradePlanForModel(currentPlan: PlanTier, modelId: str
 export function shouldUseCopilotResponsesApi(modelId: string): boolean {
   if (modelId.startsWith("gpt-5") && modelId !== "gpt-5-mini") return true;
   return false;
+}
+
+export function getCopilotCatalogModel(modelId: string): CopilotCatalogModelEntry | undefined {
+  return COPILOT_MODEL_CATALOG[modelId];
+}
+
+export function isKnownCopilotModelId(modelId: string): boolean {
+  return Object.hasOwn(COPILOT_MODEL_CATALOG, modelId);
 }

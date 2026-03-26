@@ -6,11 +6,7 @@
 
 import type { CopilotAccountMeta } from "./types.js";
 import { warn } from "./log.js";
-import {
-  getOverrideRequiredModelsForPlan,
-  modelsForPlan,
-  shouldUseCopilotResponsesApi,
-} from "./config/models.js";
+import { getOverrideRequiredModelsForPlan } from "./config/models.js";
 
 export interface RuntimeCheckResult {
   warnings: string[];
@@ -27,21 +23,12 @@ export function checkAccountRuntimeReadiness(account: CopilotAccountMeta): Runti
   const includeUnverified =
     account.capabilityState === "verified" ||
     (account.capabilityState === "user-declared" && account.allowUnverifiedModels === true);
-  const modelIds = modelsForPlan(account.plan, { includeUnverified });
   const hiddenUnverifiedModels = includeUnverified ? [] : getOverrideRequiredModelsForPlan(account.plan);
 
   if (hiddenUnverifiedModels.length > 0) {
     warnings.push(
       `Account "${account.label}" is hiding uncertain models until explicitly overridden: ` +
         hiddenUnverifiedModels.join(", ")
-    );
-  }
-
-  const responseModels = modelIds.filter((modelId) => shouldUseCopilotResponsesApi(modelId));
-  if (responseModels.length > 0) {
-    warnings.push(
-      `Account "${account.label}" exposes GPT-5+/responses models (${responseModels.join(", ")}), ` +
-        "but custom provider IDs do not automatically use OpenCode's github-copilot custom loader."
     );
   }
 
