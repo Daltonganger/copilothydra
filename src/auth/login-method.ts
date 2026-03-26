@@ -49,14 +49,10 @@ export function createCopilotLoginMethods(
       label: "GitHub Copilot (CopilotHydra) — Re-auth existing account",
       prompts: [
         {
-          type: "select",
-          key: "accountId",
-          message: "Choose existing CopilotHydra account",
-          options: existingAccounts.map((account) => ({
-            label: `${account.label} (${account.githubUsername})`,
-            value: account.id,
-            hint: account.providerId,
-          })),
+          type: "text",
+          key: "githubUsername",
+          message: "GitHub username for an existing CopilotHydra account",
+          placeholder: existingAccounts[0]?.githubUsername ?? "alice",
         },
       ],
       authorize: async (inputs) => {
@@ -112,11 +108,11 @@ async function resolveExistingAccount(
   inputs: Record<string, string> | undefined,
   deps: LoginMethodDependencies,
 ): Promise<CopilotAccountMeta> {
-  const accountId = requireTextInput(inputs, "accountId", "Existing account");
-  const existing = await deps.findAccount(accountId);
+  const githubUsername = requireTextInput(inputs, "githubUsername", "GitHub username");
+  const existing = await deps.findAccountByGitHubUsername(githubUsername);
   if (!existing) {
     throw new Error(
-      `[copilothydra] no existing account found for account id "${accountId}" during re-auth`,
+      `[copilothydra] no existing account found for GitHub username "${githubUsername}" during re-auth`,
     );
   }
 

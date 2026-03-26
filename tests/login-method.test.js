@@ -151,16 +151,11 @@ test("login method can re-auth an existing account without requiring new-account
 
     const [method] = methods;
     assert.equal(method.label, "GitHub Copilot (CopilotHydra) — Re-auth existing account");
-    assert.equal(method.prompts?.[0]?.type, "select");
-    assert.deepEqual(method.prompts?.[0]?.options, [
-      {
-        label: "Work (bob)",
-        value: account.id,
-        hint: account.providerId,
-      },
-    ]);
+    assert.equal(method.prompts?.[0]?.type, "text");
+    assert.equal(method.prompts?.[0]?.key, "githubUsername");
+    assert.equal(method.prompts?.[0]?.placeholder, "bob");
 
-    const started = await method.authorize({ accountId: account.id });
+    const started = await method.authorize({ githubUsername: account.githubUsername });
     assert.doesNotMatch(started.instructions, /reload\/restart OpenCode/i);
 
     const finished = await started.callback();

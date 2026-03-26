@@ -212,15 +212,6 @@ export interface AuthMethod {
     key: string;
     message: string;
     placeholder?: string;
-  } | {
-    type: "select";
-    key: string;
-    message: string;
-    options: Array<{
-      label: string;
-      value: string;
-      hint?: string;
-    }>;
   }>;
   /** kicks off the auth flow; returns URL + instructions + callback for the device flow */
   authorize: (inputs?: Record<string, string>) => Promise<AuthOAuthResult>;
