@@ -139,6 +139,7 @@ npm test
 - `docs/IMPLEMENTATION_SEQUENCE.md`
 - `docs/feasibility-notes.md`
 - `docs/Loginmethod.md`
+- `docs/top-improvements.md`
 - `docs/compatibility-matrix.md`
 - `assets/branding/README.md`
 
