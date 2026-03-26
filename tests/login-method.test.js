@@ -13,6 +13,27 @@ const PLUGIN_INPUT = {
   $: {},
 };
 
+async function captureStderr(action) {
+  const chunks = [];
+  const originalWrite = process.stderr.write;
+  process.stderr.write = ((chunk, encoding, callback) => {
+    chunks.push(typeof chunk === "string" ? chunk : chunk.toString(typeof encoding === "string" ? encoding : undefined));
+    if (typeof encoding === "function") {
+      encoding();
+    } else if (typeof callback === "function") {
+      callback();
+    }
+    return true;
+  });
+
+  try {
+    const result = await action();
+    return { result, output: chunks.join("") };
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+}
+
 test("CopilotHydraSetup does not emit normal startup noise without debug flags", () => {
   const result = spawnSync(
     process.execPath,
@@ -102,12 +123,17 @@ test("login method can create a new account from OpenCode auth login inputs", as
       allowUnverifiedModels: "no",
     });
 
-    assert.match(started.instructions, /reload\/restart OpenCode/i);
+    assert.equal(started.url, "https://github.com/login/device");
+    assert.equal(started.instructions, "Enter this code:\nABCD-EFGH\n(Code expires in 900s; account: Personal / alice)");
+    assert.doesNotMatch(started.instructions, /https:\/\/github\.com\/login\/device/i);
+    assert.doesNotMatch(started.instructions, /reload\/restart OpenCode/i);
 
-    const finished = await started.callback();
+    const { result: finished, output } = await captureStderr(() => started.callback());
     assert.equal(finished.type, "success");
     assert.match(finished.provider ?? "", /^github-copilot-acct-/);
     assert.equal(tokenState.githubOAuthToken, "gho_test_token");
+    assert.match(output, /Authorization succeeded for "Personal"/);
+    assert.match(output, /reload\/restart OpenCode/i);
 
     const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
     const config = await readJson(path.join(tempDir, "opencode.json"));
@@ -156,12 +182,16 @@ test("login method can re-auth an existing account without requiring new-account
     assert.equal(method.prompts?.[0]?.placeholder, "bob");
 
     const started = await method.authorize({ githubUsername: account.githubUsername });
+    assert.equal(started.url, "https://github.com/login/device");
+    assert.equal(started.instructions, "Enter this code:\nIJKL-MNOP\n(Code expires in 900s; account: Work / bob)");
+    assert.doesNotMatch(started.instructions, /https:\/\/github\.com\/login\/device/i);
     assert.doesNotMatch(started.instructions, /reload\/restart OpenCode/i);
 
-    const finished = await started.callback();
+    const { result: finished, output } = await captureStderr(() => started.callback());
     assert.equal(finished.type, "success");
     assert.equal(finished.provider, account.providerId);
     assert.equal(tokenState.accountId, account.id);
+    assert.doesNotMatch(output, /reload\/restart OpenCode/i);
 
     const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
     assert.equal(accounts.accounts.length, 1);

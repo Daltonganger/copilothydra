@@ -157,16 +157,11 @@ function buildAuthResult(
   isExistingAccount: boolean,
   deps: LoginMethodDependencies,
 ): AuthOAuthResult {
-  const restartNote = isExistingAccount
-    ? ""
-    : `\nAfter authorization completes, reload/restart OpenCode so the new provider entry from ${deps.resolveOpenCodeConfigPath()} is active.`;
-
   return {
     url: deviceCode.verification_uri,
     instructions:
-      `Open ${deviceCode.verification_uri} and enter code: ${deviceCode.user_code}\n` +
-      `(Code expires in ${deviceCode.expires_in}s; account: ${account.label} / ${account.githubUsername})` +
-      restartNote,
+      `Enter this code:\n${deviceCode.user_code}\n` +
+      `(Code expires in ${deviceCode.expires_in}s; account: ${account.label} / ${account.githubUsername})`,
     method: "auto",
     callback: async () => {
       try {
@@ -182,6 +177,13 @@ function buildAuthResult(
           expiresAt: 0,
           setAt: Date.now(),
         });
+
+        if (!isExistingAccount) {
+          info(
+            "auth",
+            `Authorization succeeded for "${account.label}". Reload/restart OpenCode so the new provider entry from ${deps.resolveOpenCodeConfigPath()} is active.`,
+          );
+        }
 
         return {
           type: "success",

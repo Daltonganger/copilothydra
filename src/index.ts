@@ -85,7 +85,7 @@ function makeAccountPlugin(account: CopilotAccountMeta): (input: PluginInput) =>
               return {
                 url: deviceCode.verification_uri,
                 instructions:
-                  `Open ${deviceCode.verification_uri} and enter code: ${deviceCode.user_code}\n` +
+                  `Enter this code:\n${deviceCode.user_code}\n` +
                   `(Code expires in ${deviceCode.expires_in}s)`,
                 method: "auto" as const,
                 callback: async () => {
