@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { cleanupDir, makeTempDir, readJson } from "./helpers.js";
 
 const PLUGIN_INPUT = {
@@ -11,6 +12,39 @@ const PLUGIN_INPUT = {
   serverUrl: "http://localhost:4096",
   $: {},
 };
+
+test("CopilotHydraSetup does not emit normal startup noise without debug flags", () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `import path from 'node:path';
+import os from 'node:os';
+import { mkdtemp, rm } from 'node:fs/promises';
+const tempDir = await mkdtemp(path.join(os.tmpdir(), 'copilothydra-plugin-load-'));
+process.env.OPENCODE_CONFIG_DIR = tempDir;
+process.env.OPENCODE_CONFIG = path.join(tempDir, 'opencode.json');
+const { CopilotHydraSetup } = await import('./dist/index.js');
+await CopilotHydraSetup({ client: {}, project: {}, worktree: {}, directory: process.cwd(), serverUrl: 'http://localhost:4096', $: {} });
+await rm(tempDir, { recursive: true, force: true });`,
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        COPILOTHYDRA_DEBUG: "",
+        COPILOTHYDRA_DEBUG_AUTH: "",
+        COPILOTHYDRA_DEBUG_ROUTING: "",
+        COPILOTHYDRA_DEBUG_STORAGE: "",
+      },
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr.trim(), "");
+});
 
 test("CopilotHydraSetup exposes a GitHub Copilot auth method for OpenCode auth login", async () => {
   const tempDir = await makeTempDir();

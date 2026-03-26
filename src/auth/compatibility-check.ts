@@ -13,7 +13,7 @@
  * to Spike A, where we confirm what PluginInput exposes.
  */
 
-import { warn, info } from "../log.js";
+import { warn, info, debug } from "../log.js";
 import { SKIP_VERSION_CHECK } from "../flags.js";
 
 // ---------------------------------------------------------------------------
@@ -58,11 +58,12 @@ export function checkCompatibility(pluginInput: unknown): CompatibilityResult {
   const version = detectVersion(pluginInput);
 
   if (version === null) {
-    warnings.push(
-      "Could not detect OpenCode version. CopilotHydra may behave incorrectly. " +
-      "Set COPILOTHYDRA_SKIP_VERSION_CHECK=1 to suppress this warning during development."
-    );
-    warn("compat", "OpenCode version could not be detected", { inputKeys: typeof pluginInput === "object" && pluginInput !== null ? Object.keys(pluginInput) : "not-an-object" });
+    debug("compat", "OpenCode version signal not available; skipping compatibility warning", {
+      inputKeys:
+        typeof pluginInput === "object" && pluginInput !== null
+          ? Object.keys(pluginInput)
+          : "not-an-object",
+    });
   } else if (!KNOWN_GOOD_VERSIONS.includes(version)) {
     warnings.push(
       `OpenCode version "${version}" is not in the tested-version matrix for CopilotHydra. ` +

@@ -23,7 +23,7 @@ import { checkCompatibility } from "./auth/compatibility-check.js";
 import { loadAccounts } from "./storage/accounts.js";
 import { buildAuthLoader } from "./auth/loader.js";
 import { requestDeviceCode, pollForAccessToken } from "./auth/device-flow.js";
-import { info, warn, error } from "./log.js";
+import { info, warn, error, debug } from "./log.js";
 import { validateAccountCount } from "./runtime-checks.js";
 import { registerAccounts } from "./routing/provider-account-map.js";
 import { setTokenState } from "./auth/token-state.js";
@@ -44,7 +44,7 @@ try {
   _accounts = file.accounts.filter((a) => a.lifecycleState === "active");
   validateAccountCount(_accounts);
   registerAccounts(_accounts);
-  info("plugin", `Loaded ${_accounts.length} active account(s)`);
+  debug("plugin", `Loaded ${_accounts.length} active account(s)`);
 } catch (err_) {
   _loadError = String(err_);
   error("plugin", `Failed to load accounts at module init: ${_loadError}`);
@@ -62,7 +62,7 @@ function makeAccountPlugin(account: CopilotAccountMeta): (input: PluginInput) =>
       warn("plugin", w);
     }
 
-    info("plugin", `Registering auth hook for account "${account.label}" (${account.providerId})`);
+    debug("plugin", `Registering auth hook for account "${account.label}" (${account.providerId})`);
 
     const hooks: Hooks = {
       auth: {
@@ -150,7 +150,7 @@ export async function CopilotHydraSetup(input: PluginInput): Promise<Hooks> {
   if (_loadError) {
     error("plugin", `CopilotHydra could not load accounts: ${_loadError}`);
   } else {
-    info(
+    debug(
       "plugin",
       _accounts.length === 0
         ? "CopilotHydra: no accounts configured. OpenCode auth login can now create the first account."
