@@ -39,8 +39,8 @@ This list includes one concrete UX/operability addition inspired by the account 
 11. **8-slot limit removal or clearer mitigation**  
     Address the current static export-slot ceiling or document a stronger operator strategy for working within it, since account scale is a core Hydra value proposition.
 
-12. **Slimmere, kortere model-/providernaamgeving in OpenCode lijsten**  
-    Maak de zichtbare providernaam in de modellenlijst veel compacter zodat die wél past in OpenCode. Laat de gebruiker op een slimme plek kiezen welke naam getoond wordt — bijvoorbeeld gebruikersnaam, bijnaam, of een korte `**`-stijl naam — in plaats van lange labels zoals `GitHub Copilot - Personal (Ruben)`.
+12. **Smarter, shorter model/provider naming in OpenCode lists**  
+    Make the visible provider name in the model list much more compact so it actually fits inside OpenCode. Let the user choose, in a sensible place, what should be shown there — for example a username, nickname, or short `**`-style label — instead of long labels such as `GitHub Copilot - Personal (Ruben)`.
 
 ## Notes
 
