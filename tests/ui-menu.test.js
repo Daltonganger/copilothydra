@@ -168,13 +168,13 @@ test("launchMenu can add a new account through the TUI action flow", async () =>
     assert.equal(accounts.accounts[0].githubUsername, "alice");
     assert.equal(accounts.accounts[0].plan, "pro");
     assert.match(writes.join(""), /Added account: Personal \(alice\)/);
-    assert.match(writes.join(""), /Hidden uncertain models until explicit override/);
+    assert.doesNotMatch(writes.join(""), /Hidden uncertain models until explicit override/);
   } finally {
     await cleanupDir(tempDir);
   }
 });
 
-test("launchMenu can add a new account with uncertain-model override enabled", async () => {
+test("launchMenu skips override prompt when the documented plan baseline has no hidden models", async () => {
   const tempDir = await makeTempDir();
 
   try {
@@ -185,6 +185,7 @@ test("launchMenu can add a new account with uncertain-model override enabled", a
     const writes = [];
     let mainMenuCalls = 0;
     let promptCalls = 0;
+    let confirmCalls = 0;
 
     await launchMenu({
       isTTY: () => true,
@@ -212,7 +213,10 @@ test("launchMenu can add a new account with uncertain-model override enabled", a
         if (promptCalls === 2) return "override-user";
         return null;
       },
-      confirm: async () => true,
+      confirm: async () => {
+        confirmCalls += 1;
+        return true;
+      },
       write: (message) => {
         writes.push(message);
       },
@@ -220,7 +224,8 @@ test("launchMenu can add a new account with uncertain-model override enabled", a
 
     const accounts = await loadAccounts(tempDir);
     assert.equal(accounts.accounts.length, 1);
-    assert.equal(accounts.accounts[0].allowUnverifiedModels, true);
+    assert.equal(accounts.accounts[0].allowUnverifiedModels, false);
+    assert.equal(confirmCalls, 0);
     assert.match(writes.join(""), /Added account: Override \(override-user\)/);
     assert.doesNotMatch(writes.join(""), /Hidden uncertain models until explicit override/);
   } finally {

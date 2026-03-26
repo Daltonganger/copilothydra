@@ -3,14 +3,18 @@
  *
  * Maps plan tiers to available Copilot model IDs.
  *
- * IMPORTANT: This table is NOT authoritative truth about model availability.
- * It is a maintained compatibility table based on known Copilot plan behavior.
- * It MUST be replaceable by verified capability discovery (Phase 4).
+ * IMPORTANT: This table is still not authoritative runtime entitlement truth.
+ * It is a maintained compatibility table based on GitHub's published
+ * "Supported AI models per Copilot plan" documentation.
+ * It MUST remain replaceable by verified capability discovery / mismatch
+ * handling because GitHub may change model availability over time.
  *
  * Policy:
  * - document table as user-declared baseline only
- * - expose only models for which account has explicit plan evidence
- * - require explicit user override for uncertain/unverified models
+ * - expose the documented plan baseline
+ * - keep mismatch handling for runtime entitlement failures
+ * - reserve explicit override support for future gray-area models if docs/API
+ *   drift again
  *
  * References:
  * - Spike D: capability truth research
@@ -34,48 +38,94 @@ export interface PlanModelEntry {
  * Copilot model IDs known to be available on each plan tier.
  *
  * These model IDs are what OpenCode expects to pass to the SDK.
- * They are based on observed Copilot behavior and may drift.
+ * They are based on GitHub Docs and may drift.
  *
  * Spike D conclusion:
- * - GitHub's public model catalog is NOT proof that a given account may use a model.
- * - Catalog presence != account entitlement.
- * - Therefore this table remains a user-declared compatibility map, not verified truth.
+ * - GitHub's plan matrix is a stronger baseline than generic catalog presence.
+ * - But published plan support still does not prove a specific account can use a
+ *   model at runtime.
+ * - Therefore this table remains a user-declared compatibility map, not verified
+ *   truth.
  *
  * TODO (Phase 4): augment with runtime validation and mismatch feedback.
  */
 export const MODEL_TIER_TABLE: Record<PlanTier, PlanModelEntry[]> = {
   free: [
-    { id: "gpt-4o-mini" },
-    { id: "claude-3.5-haiku" },
-    { id: "o3-mini" },
+    { id: "claude-haiku-4.5" },
+    { id: "goldeneye" },
+    { id: "gpt-4.1" },
+    { id: "gpt-5-mini" },
+    { id: "grok-code-fast-1" },
+    { id: "raptor-mini" },
   ],
   student: [
-    { id: "gpt-4o-mini" },
-    { id: "gpt-4o", requiresExplicitOverride: true },
-    { id: "claude-3.5-haiku" },
-    { id: "claude-3.5-sonnet", requiresExplicitOverride: true },
-    { id: "o3-mini" },
+    { id: "claude-haiku-4.5" },
+    { id: "gemini-2.5-pro" },
+    { id: "gemini-3-flash" },
+    { id: "gemini-3-pro" },
+    { id: "gemini-3.1-pro" },
+    { id: "gpt-4.1" },
+    { id: "gpt-5-mini" },
+    { id: "gpt-5.1" },
+    { id: "gpt-5.1-codex" },
+    { id: "gpt-5.1-codex-mini" },
+    { id: "gpt-5.1-codex-max" },
+    { id: "gpt-5.2" },
+    { id: "gpt-5.2-codex" },
+    { id: "gpt-5.3-codex" },
+    { id: "grok-code-fast-1" },
+    { id: "raptor-mini" },
   ],
   pro: [
-    { id: "gpt-4o-mini" },
-    { id: "gpt-4o" },
-    { id: "claude-3.5-haiku" },
-    { id: "claude-3.5-sonnet" },
-    { id: "claude-3.7-sonnet", requiresExplicitOverride: true },
-    { id: "o1", requiresExplicitOverride: true },
-    { id: "o1-mini", requiresExplicitOverride: true },
-    { id: "o3-mini" },
+    { id: "claude-haiku-4.5" },
+    { id: "claude-opus-4.5" },
+    { id: "claude-opus-4.6" },
+    { id: "claude-sonnet-4" },
+    { id: "claude-sonnet-4.5" },
+    { id: "claude-sonnet-4.6" },
+    { id: "gemini-2.5-pro" },
+    { id: "gemini-3-flash" },
+    { id: "gemini-3-pro" },
+    { id: "gemini-3.1-pro" },
+    { id: "gpt-4.1" },
+    { id: "gpt-5-mini" },
+    { id: "gpt-5.1" },
+    { id: "gpt-5.1-codex" },
+    { id: "gpt-5.1-codex-mini" },
+    { id: "gpt-5.1-codex-max" },
+    { id: "gpt-5.2" },
+    { id: "gpt-5.2-codex" },
+    { id: "gpt-5.3-codex" },
+    { id: "gpt-5.4" },
+    { id: "gpt-5.4-mini" },
+    { id: "grok-code-fast-1" },
+    { id: "raptor-mini" },
   ],
   "pro+": [
-    { id: "gpt-4o-mini" },
-    { id: "gpt-4o" },
-    { id: "claude-3.5-haiku" },
-    { id: "claude-3.5-sonnet" },
-    { id: "claude-3.7-sonnet", requiresExplicitOverride: true },
-    { id: "o1", requiresExplicitOverride: true },
-    { id: "o1-mini", requiresExplicitOverride: true },
-    { id: "o3-mini" },
-    // Pro+ may include additional premium models
+    { id: "claude-haiku-4.5" },
+    { id: "claude-opus-4.5" },
+    { id: "claude-opus-4.6" },
+    { id: "claude-opus-4.6-fast" },
+    { id: "claude-sonnet-4" },
+    { id: "claude-sonnet-4.5" },
+    { id: "claude-sonnet-4.6" },
+    { id: "gemini-2.5-pro" },
+    { id: "gemini-3-flash" },
+    { id: "gemini-3-pro" },
+    { id: "gemini-3.1-pro" },
+    { id: "gpt-4.1" },
+    { id: "gpt-5-mini" },
+    { id: "gpt-5.1" },
+    { id: "gpt-5.1-codex" },
+    { id: "gpt-5.1-codex-mini" },
+    { id: "gpt-5.1-codex-max" },
+    { id: "gpt-5.2" },
+    { id: "gpt-5.2-codex" },
+    { id: "gpt-5.3-codex" },
+    { id: "gpt-5.4" },
+    { id: "gpt-5.4-mini" },
+    { id: "grok-code-fast-1" },
+    { id: "raptor-mini" },
   ],
 };
 
@@ -83,8 +133,9 @@ export const MODEL_TIER_TABLE: Record<PlanTier, PlanModelEntry[]> = {
  * Returns the model IDs available for a given plan tier.
  *
  * Important: the caller is responsible for checking account.capabilityState.
- * If capabilityState is "user-declared", callers must require explicit
- * user acknowledgement before exposing uncertain models.
+ * Today the documented plan baseline is exposed directly. If future model rows
+ * become uncertain again, callers can still use includeUnverified=false together
+ * with requiresExplicitOverride entries.
  *
  * This function intentionally does NOT attempt runtime entitlement detection.
  */

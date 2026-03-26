@@ -29,17 +29,17 @@ test("single-account sync writes provider config with account-specific model lab
     assert.ok(config.provider);
     assert.ok(config.provider[account.providerId]);
     assert.equal(
-      config.provider[account.providerId].models["gpt-4o"].name,
-      "gpt-4o (Personal)"
+      config.provider[account.providerId].models["gpt-5.4"].name,
+      "gpt-5.4 (Personal)"
     );
-    assert.equal(config.provider[account.providerId].models["o1"], undefined);
+    assert.equal(config.provider[account.providerId].models["claude-opus-4.6-fast"], undefined);
   } finally {
     delete process.env.OPENCODE_CONFIG_DIR;
     await cleanupDir(tempDir);
   }
 });
 
-test("single-account sync exposes uncertain models only after explicit override", async () => {
+test("single-account sync keeps documented baseline stable even when override flag is enabled", async () => {
   const tempDir = await makeTempDir();
   process.env.OPENCODE_CONFIG_DIR = tempDir;
 
@@ -60,12 +60,12 @@ test("single-account sync exposes uncertain models only after explicit override"
 
     const config = await readJson(path.join(tempDir, "opencode.json"));
     assert.equal(
-      config.provider[account.providerId].models["o1"].name,
-      "o1 (Personal, user-declared override)"
+      config.provider[account.providerId].models["gpt-5.4"].name,
+      "gpt-5.4 (Personal)"
     );
     assert.equal(
-      config.provider[account.providerId].models["claude-3.7-sonnet"].name,
-      "claude-3.7-sonnet (Personal, user-declared override)"
+      config.provider[account.providerId].models["claude-opus-4.6-fast"],
+      undefined
     );
   } finally {
     delete process.env.OPENCODE_CONFIG_DIR;

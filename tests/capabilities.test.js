@@ -1,18 +1,96 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-test("plan model policy filters override-required entries unless explicitly included", async () => {
+test("plan model table matches current documented plan baselines", async () => {
   const { modelsForPlan, getOverrideRequiredModelsForPlan } = await import(`../dist/config/models.js?${Date.now()}`);
 
-  assert.deepEqual(getOverrideRequiredModelsForPlan("pro"), ["claude-3.7-sonnet", "o1", "o1-mini"]);
-  assert.deepEqual(modelsForPlan("pro", { includeUnverified: false }), [
-    "gpt-4o-mini",
-    "gpt-4o",
-    "claude-3.5-haiku",
-    "claude-3.5-sonnet",
-    "o3-mini",
+  assert.deepEqual(getOverrideRequiredModelsForPlan("free"), []);
+  assert.deepEqual(getOverrideRequiredModelsForPlan("student"), []);
+  assert.deepEqual(getOverrideRequiredModelsForPlan("pro"), []);
+  assert.deepEqual(getOverrideRequiredModelsForPlan("pro+"), []);
+
+  assert.deepEqual(modelsForPlan("free", { includeUnverified: false }), [
+    "claude-haiku-4.5",
+    "goldeneye",
+    "gpt-4.1",
+    "gpt-5-mini",
+    "grok-code-fast-1",
+    "raptor-mini",
   ]);
-  assert.ok(modelsForPlan("pro", { includeUnverified: true }).includes("o1"));
+
+  assert.deepEqual(modelsForPlan("student", { includeUnverified: false }), [
+    "claude-haiku-4.5",
+    "gemini-2.5-pro",
+    "gemini-3-flash",
+    "gemini-3-pro",
+    "gemini-3.1-pro",
+    "gpt-4.1",
+    "gpt-5-mini",
+    "gpt-5.1",
+    "gpt-5.1-codex",
+    "gpt-5.1-codex-mini",
+    "gpt-5.1-codex-max",
+    "gpt-5.2",
+    "gpt-5.2-codex",
+    "gpt-5.3-codex",
+    "grok-code-fast-1",
+    "raptor-mini",
+  ]);
+
+  assert.deepEqual(modelsForPlan("pro", { includeUnverified: false }), [
+    "claude-haiku-4.5",
+    "claude-opus-4.5",
+    "claude-opus-4.6",
+    "claude-sonnet-4",
+    "claude-sonnet-4.5",
+    "claude-sonnet-4.6",
+    "gemini-2.5-pro",
+    "gemini-3-flash",
+    "gemini-3-pro",
+    "gemini-3.1-pro",
+    "gpt-4.1",
+    "gpt-5-mini",
+    "gpt-5.1",
+    "gpt-5.1-codex",
+    "gpt-5.1-codex-mini",
+    "gpt-5.1-codex-max",
+    "gpt-5.2",
+    "gpt-5.2-codex",
+    "gpt-5.3-codex",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "grok-code-fast-1",
+    "raptor-mini",
+  ]);
+
+  assert.deepEqual(modelsForPlan("pro+", { includeUnverified: false }), [
+    "claude-haiku-4.5",
+    "claude-opus-4.5",
+    "claude-opus-4.6",
+    "claude-opus-4.6-fast",
+    "claude-sonnet-4",
+    "claude-sonnet-4.5",
+    "claude-sonnet-4.6",
+    "gemini-2.5-pro",
+    "gemini-3-flash",
+    "gemini-3-pro",
+    "gemini-3.1-pro",
+    "gpt-4.1",
+    "gpt-5-mini",
+    "gpt-5.1",
+    "gpt-5.1-codex",
+    "gpt-5.1-codex-mini",
+    "gpt-5.1-codex-max",
+    "gpt-5.2",
+    "gpt-5.2-codex",
+    "gpt-5.3-codex",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "grok-code-fast-1",
+    "raptor-mini",
+  ]);
+
+  assert.deepEqual(modelsForPlan("pro+", { includeUnverified: true }), modelsForPlan("pro+", { includeUnverified: false }));
 });
 
 test("capability mismatch helpers detect entitlement failures and suggest stricter plans", async () => {
@@ -21,8 +99,8 @@ test("capability mismatch helpers detect entitlement failures and suggest strict
 
   assert.equal(isCapabilityMismatchError({ message: "Model not enabled for your plan" }), true);
   assert.equal(isCapabilityMismatchError({ message: "rate limited" }), false);
-  assert.equal(suggestDowngradePlanForModel("pro", "o1"), "student");
-  assert.equal(suggestDowngradePlanForModel("free", "gpt-4o-mini"), undefined);
+  assert.equal(suggestDowngradePlanForModel("pro", "gpt-5.4"), "student");
+  assert.equal(suggestDowngradePlanForModel("free", "gpt-4.1"), undefined);
 
   const message = buildMismatchMessage(
     {
@@ -35,11 +113,11 @@ test("capability mismatch helpers detect entitlement failures and suggest strict
       lifecycleState: "active",
       addedAt: "2026-03-25T00:00:00.000Z",
     },
-    "o1",
+    "gpt-5.4",
     "student",
   );
 
   assert.match(message, /Capability mismatch detected/);
-  assert.match(message, /Model "o1" was rejected/);
+  assert.match(message, /Model "gpt-5.4" was rejected/);
   assert.match(message, /review-mismatch acct_test/);
 });
