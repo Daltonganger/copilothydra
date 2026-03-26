@@ -20,9 +20,14 @@ import { resolveConfigDir } from "../storage/accounts.js";
 import { buildProviderConfig, type ProviderConfigEntry } from "./providers.js";
 
 export interface OpenCodeConfigFile {
+  disabled_providers?: string[];
   provider?: Record<string, ProviderConfigEntry>;
   plugin?: string[];
   [key: string]: unknown;
+}
+
+export interface CopilotHydraOpenCodeState {
+  managedDisabledProviders?: string[];
 }
 
 export function resolveOpenCodeConfigPath(configDir?: string): string {
@@ -35,6 +40,11 @@ export function resolveOpenCodeConfigPath(configDir?: string): string {
   const jsoncPath = join(dir, "opencode.jsonc");
 
   return fileExistsSyncLike(jsoncPath) ? jsoncPath : jsonPath;
+}
+
+export function resolveCopilotHydraOpenCodeStatePath(configDir?: string): string {
+  const dir = configDir ?? resolveConfigDir();
+  return join(dir, "copilothydra-opencode-state.json");
 }
 
 export async function loadOpenCodeConfig(configPath?: string): Promise<OpenCodeConfigFile> {
@@ -56,6 +66,26 @@ export async function loadOpenCodeConfig(configPath?: string): Promise<OpenCodeC
   }
 }
 
+export async function loadCopilotHydraOpenCodeState(
+  statePath?: string,
+): Promise<CopilotHydraOpenCodeState> {
+  const path = statePath ?? resolveCopilotHydraOpenCodeStatePath();
+
+  try {
+    const raw = await readFile(path, "utf-8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isRecord(parsed)) {
+      throw new Error("CopilotHydra OpenCode state root must be an object");
+    }
+    return parsed as CopilotHydraOpenCodeState;
+  } catch (err) {
+    if (isNodeError(err) && err.code === "ENOENT") {
+      return {};
+    }
+    throw new Error(`[copilothydra] Failed to load CopilotHydra OpenCode state: ${String(err)}`);
+  }
+}
+
 export async function saveOpenCodeConfig(
   config: OpenCodeConfigFile,
   configPath?: string
@@ -63,6 +93,37 @@ export async function saveOpenCodeConfig(
   const path = configPath ?? resolveOpenCodeConfigPath();
   const tmpPath = path + ".tmp";
   const json = JSON.stringify(config, null, 2) + "\n";
+
+  await mkdir(dirname(path), { recursive: true });
+
+  await withLock(path, async () => {
+    await writeFile(tmpPath, json, { encoding: "utf-8", mode: 0o600 });
+
+    if (process.platform === "win32") {
+      try {
+        try {
+          await unlink(path);
+        } catch {
+          // ignore
+        }
+        await rename(tmpPath, path);
+      } catch {
+        await writeFile(path, json, { encoding: "utf-8", mode: 0o600 });
+      }
+      return;
+    }
+
+    await rename(tmpPath, path);
+  });
+}
+
+export async function saveCopilotHydraOpenCodeState(
+  state: CopilotHydraOpenCodeState,
+  statePath?: string,
+): Promise<void> {
+  const path = statePath ?? resolveCopilotHydraOpenCodeStatePath();
+  const tmpPath = path + ".tmp";
+  const json = JSON.stringify(state, null, 2) + "\n";
 
   await mkdir(dirname(path), { recursive: true });
 

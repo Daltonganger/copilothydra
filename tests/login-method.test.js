@@ -140,6 +140,9 @@ test("login method can create a new account from OpenCode auth login inputs", as
     assert.equal(accounts.accounts.length, 1);
     assert.equal(accounts.accounts[0].githubUsername, "alice");
     assert.ok(config.provider[accounts.accounts[0].providerId]);
+    assert.deepEqual(config.disabled_providers, ["github-copilot"]);
+    assert.equal(config.provider[accounts.accounts[0].providerId].models["gpt-5.4"].name, "GPT-5.4");
+    assert.equal(config.provider[accounts.accounts[0].providerId].models["gpt-5-mini"].name, "GPT-5-mini");
   } finally {
     delete process.env.OPENCODE_CONFIG_DIR;
     delete process.env.OPENCODE_CONFIG;

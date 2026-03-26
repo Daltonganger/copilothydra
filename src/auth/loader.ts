@@ -100,7 +100,6 @@ export function buildAuthLoader(
 
     const loader: AuthLoader = {
       baseURL,
-      apiKey: "",
       // Custom fetch: re-reads auth on every request (matches CopilotAuthPlugin pattern)
       fetch: async (request, init) => {
         const requestedModelId = await extractRequestedModelId(request, init);
@@ -139,15 +138,15 @@ export function buildAuthLoader(
             });
           });
 
-          const headers: Record<string, string> = {
-            ...(init?.headers as Record<string, string> | undefined),
-            Authorization: `Bearer ${runtimeToken.githubOAuthToken}`,
-            "Openai-Intent": "conversation-edits",
-          };
+          const headers = new Headers(init?.headers);
+          headers.delete("authorization");
+          headers.delete("Authorization");
+          headers.set("Authorization", `Bearer ${runtimeToken.githubOAuthToken}`);
+          headers.set("Openai-Intent", "conversation-edits");
 
           const response = await globalThis.fetch(request, { ...init, headers });
 
-          const mismatchText = response.status === 403
+          const mismatchText = (response.status === 400 || response.status === 403)
             ? await extractCapabilityMismatchText(response)
             : "";
           if (mismatchText && isCapabilityMismatchError({ message: mismatchText })) {

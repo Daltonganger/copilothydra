@@ -18,6 +18,10 @@
   },
   "keywords": ["opencode", "copilot", "plugin"],
   "license": "MIT",
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.51",
+    "@ai-sdk/openai-compatible": "^0.2.15"
+  },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.5.0"
