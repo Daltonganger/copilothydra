@@ -1,4 +1,4 @@
-# CopilotHydra Top 11 Improvement Priorities
+# CopilotHydra Top 12 Improvement Priorities
 
 A concise, ranked view of the highest-value hardening work for CopilotHydra based on the current improvement inventory.
 
@@ -38,6 +38,9 @@ This list includes one concrete UX/operability addition inspired by the account 
 
 11. **8-slot limit removal or clearer mitigation**  
     Address the current static export-slot ceiling or document a stronger operator strategy for working within it, since account scale is a core Hydra value proposition.
+
+12. **Slimmere, kortere model-/providernaamgeving in OpenCode lijsten**  
+    Maak de zichtbare providernaam in de modellenlijst veel compacter zodat die wél past in OpenCode. Laat de gebruiker op een slimme plek kiezen welke naam getoond wordt — bijvoorbeeld gebruikersnaam, bijnaam, of een korte `**`-stijl naam — in plaats van lange labels zoals `GitHub Copilot - Personal (Ruben)`.
 
 ## Notes
 
