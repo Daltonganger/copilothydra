@@ -1,7 +1,7 @@
 import type { AuthMethod, AuthOAuthResult, CopilotAccountMeta, PlanTier } from "../types.js";
 import { createAccountMeta } from "../account.js";
 import { requestDeviceCode, pollForAccessToken, type DeviceCodeResponse } from "./device-flow.js";
-import { findAccountByGitHubUsername, upsertAccount } from "../storage/accounts.js";
+import { findAccount, findAccountByGitHubUsername, upsertAccount } from "../storage/accounts.js";
 import { syncAccountsToOpenCodeConfig } from "../config/sync.js";
 import { checkAccountRuntimeReadiness } from "../runtime-checks.js";
 import { setTokenState } from "./token-state.js";
@@ -11,6 +11,7 @@ import { error, info } from "../log.js";
 const VALID_PLANS: PlanTier[] = ["free", "student", "pro", "pro+"];
 
 export interface LoginMethodDependencies {
+  findAccount: typeof findAccount;
   findAccountByGitHubUsername: typeof findAccountByGitHubUsername;
   createAccountMeta: typeof createAccountMeta;
   upsertAccount: typeof upsertAccount;
@@ -23,6 +24,7 @@ export interface LoginMethodDependencies {
 }
 
 const DEFAULT_DEPS: LoginMethodDependencies = {
+  findAccount,
   findAccountByGitHubUsername,
   createAccountMeta,
   upsertAccount,
@@ -35,20 +37,26 @@ const DEFAULT_DEPS: LoginMethodDependencies = {
 };
 
 export function createCopilotLoginMethods(
+  existingAccounts: CopilotAccountMeta[] = [],
   overrides: Partial<LoginMethodDependencies> = {},
 ): AuthMethod[] {
   const deps = { ...DEFAULT_DEPS, ...overrides };
+  const methods: AuthMethod[] = [];
 
-  return [
-    {
+  if (existingAccounts.length > 0) {
+    methods.push({
       type: "oauth",
       label: "GitHub Copilot (CopilotHydra) — Re-auth existing account",
       prompts: [
         {
-          type: "text",
-          key: "githubUsername",
-          message: "GitHub username for an existing CopilotHydra account",
-          placeholder: "alice",
+          type: "select",
+          key: "accountId",
+          message: "Choose existing CopilotHydra account",
+          options: existingAccounts.map((account) => ({
+            label: `${account.label} (${account.githubUsername})`,
+            value: account.id,
+            hint: account.providerId,
+          })),
         },
       ],
       authorize: async (inputs) => {
@@ -57,8 +65,10 @@ export function createCopilotLoginMethods(
 
         return buildAuthResult(account, deviceCode, true, deps);
       },
-    },
-    {
+    });
+  }
+
+  methods.push({
       type: "oauth",
       label: "GitHub Copilot (CopilotHydra) — Add new account",
       prompts: [
@@ -93,23 +103,24 @@ export function createCopilotLoginMethods(
 
         return buildAuthResult(account, deviceCode, false, deps);
       },
-    },
-  ];
+    });
+
+  return methods;
 }
 
 async function resolveExistingAccount(
   inputs: Record<string, string> | undefined,
   deps: LoginMethodDependencies,
 ): Promise<CopilotAccountMeta> {
-  const githubUsername = requireTextInput(inputs, "githubUsername", "GitHub username");
-  const existing = await deps.findAccountByGitHubUsername(githubUsername);
+  const accountId = requireTextInput(inputs, "accountId", "Existing account");
+  const existing = await deps.findAccount(accountId);
   if (!existing) {
     throw new Error(
-      `[copilothydra] no existing account found for GitHub username \"${githubUsername}\" during re-auth`,
+      `[copilothydra] no existing account found for account id "${accountId}" during re-auth`,
     );
   }
 
-  info("auth", `Re-authenticating existing account \"${existing.label}\" (${existing.githubUsername})`);
+  info("auth", `Re-authenticating existing account "${existing.label}" (${existing.githubUsername})`);
   return existing;
 }
 
@@ -121,7 +132,7 @@ async function createNewAccount(
   const existing = await deps.findAccountByGitHubUsername(githubUsername);
   if (existing) {
     throw new Error(
-      `[copilothydra] GitHub username \"${githubUsername}\" already exists; use the re-auth method instead`,
+      `[copilothydra] GitHub username "${githubUsername}" already exists; use the re-auth method instead`,
     );
   }
 
@@ -140,7 +151,7 @@ async function createNewAccount(
   await deps.upsertAccount(account);
   await deps.syncAccountsToOpenCodeConfig();
 
-  info("auth", `Prepared new CopilotHydra account \"${account.label}\" (${account.githubUsername})`);
+  info("auth", `Prepared new CopilotHydra account "${account.label}" (${account.githubUsername})`);
   return account;
 }
 
@@ -185,7 +196,7 @@ function buildAuthResult(
           accountId: account.id,
         };
       } catch (err_) {
-        error("auth", `Device flow failed for \"${account.label}\": ${String(err_)}`);
+        error("auth", `Device flow failed for "${account.label}": ${String(err_)}`);
         return { type: "failed" };
       }
     },

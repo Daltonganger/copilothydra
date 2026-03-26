@@ -156,12 +156,12 @@ export async function CopilotHydraSetup(input: PluginInput): Promise<Hooks> {
         ? "CopilotHydra: no accounts configured. OpenCode auth login can now create the first account."
         : "CopilotHydra: exposing GitHub Copilot login method for add-account / re-auth flows.",
     );
-  }
+      }
 
   return {
     auth: {
       provider: "github-copilot",
-      methods: createCopilotLoginMethods(),
+      methods: createCopilotLoginMethods(_accounts),
     },
   };
 }
