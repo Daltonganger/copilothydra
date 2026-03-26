@@ -37,7 +37,7 @@ export const COPILOT_MODEL_CATALOG: Record<string, CopilotCatalogModelEntry> = {
   "claude-sonnet-4.5": { id: "claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
   "claude-sonnet-4.6": { id: "claude-sonnet-4.6", name: "Claude Sonnet 4.6" },
   "gemini-2.5-pro": { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
-  "gemini-3-flash-preview": { id: "gemini-3-flash-preview", name: "Gemini 3 Flash" },
+  "gemini-3-flash-preview": { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview" },
   "gemini-3-pro-preview": { id: "gemini-3-pro-preview", name: "Gemini 3 Pro Preview" },
   "gemini-3.1-pro-preview": { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview" },
   "gpt-4.1": { id: "gpt-4.1", name: "GPT-4.1" },
@@ -52,7 +52,7 @@ export const COPILOT_MODEL_CATALOG: Record<string, CopilotCatalogModelEntry> = {
   "gpt-5.2-codex": { id: "gpt-5.2-codex", name: "GPT-5.2-Codex" },
   "gpt-5.3-codex": { id: "gpt-5.3-codex", name: "GPT-5.3-Codex" },
   "gpt-5.4": { id: "gpt-5.4", name: "GPT-5.4" },
-  "gpt-5.4-mini": { id: "gpt-5.4-mini", name: "GPT-5.4 mini" },
+  "gpt-5.4-mini": { id: "gpt-5.4-mini", name: "GPT-5.4 Mini" },
   "grok-code-fast-1": { id: "grok-code-fast-1", name: "Grok Code Fast 1" },
 };
 

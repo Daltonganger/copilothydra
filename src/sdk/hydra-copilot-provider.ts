@@ -54,14 +54,19 @@ export function withHydraCopilotResponsesParity(model: unknown): unknown {
     return model;
   }
 
+  const doStream = maybeStreamModel.doStream;
+
   return {
     ...maybeStreamModel,
     async doStream(...args: unknown[]) {
-      const result = await maybeStreamModel.doStream?.(...args);
+      const result = await doStream(...args);
       if (!result?.stream) {
         return result;
       }
 
+      // Built-in Copilot opens text lazily on the first text-delta. If a stream
+      // contains no text-delta chunks at all (for example tool-only output), we
+      // intentionally forward it without synthesizing empty text boundaries.
       let currentTextId: string | null = null;
       return {
         ...result,
