@@ -9,8 +9,9 @@
  * - fail closed only when runtime assumptions are demonstrably broken
  * - never hard-block on unknown version alone
  *
- * NOTE: This is a scaffold/stub. Real version detection logic is deferred
- * to Spike A, where we confirm what PluginInput exposes.
+ * Detection is intentionally defensive: we only inspect host signals already
+ * present on the PluginInput object and avoid any network calls or hard host
+ * dependencies. Unknown versions remain warn-first.
  */
 
 import { warn, info, debug } from "../log.js";
@@ -25,7 +26,30 @@ import { SKIP_VERSION_CHECK } from "../flags.js";
  * Keep this sorted ascending.
  */
 const KNOWN_GOOD_VERSIONS: string[] = [
-  // populated after Spike A / Spike B testing
+  "1.3.3",
+];
+
+const VERSION_FIELD_CANDIDATES = [
+  "version",
+  "opencodeVersion",
+  "hostVersion",
+  "appVersion",
+  "sdkVersion",
+] as const;
+
+const VERSION_PATH_CANDIDATES: ReadonlyArray<ReadonlyArray<string>> = [
+  ["version"],
+  ["opencodeVersion"],
+  ["hostVersion"],
+  ["client", "version"],
+  ["client", "opencodeVersion"],
+  ["client", "hostVersion"],
+  ["client", "appVersion"],
+  ["project", "version"],
+  ["project", "opencodeVersion"],
+  ["worktree", "version"],
+  ["$", "version"],
+  ["$", "opencodeVersion"],
 ];
 
 // ---------------------------------------------------------------------------
@@ -53,8 +77,9 @@ export function checkCompatibility(pluginInput: unknown): CompatibilityResult {
   }
 
   const warnings: string[] = [];
+  const signalWarnings = detectHostSignalWarnings(pluginInput);
+  warnings.push(...signalWarnings);
 
-  // TODO (Spike A): extract version from pluginInput once we know its shape
   const version = detectVersion(pluginInput);
 
   if (version === null) {
@@ -74,6 +99,10 @@ export function checkCompatibility(pluginInput: unknown): CompatibilityResult {
     info("compat", `OpenCode version "${version}" is in the tested-version matrix.`);
   }
 
+  for (const warningMessage of signalWarnings) {
+    warn("compat", warningMessage);
+  }
+
   return {
     ok: true, // warn-first policy: unknown version alone is not a hard failure
     version,
@@ -88,10 +117,99 @@ export function checkCompatibility(pluginInput: unknown): CompatibilityResult {
 /**
  * Attempt to extract the OpenCode version from the plugin input.
  *
- * TODO (Spike A): determine what PluginInput actually exposes.
- * For now this is always null (no crash, no false positives).
  */
-function detectVersion(_pluginInput: unknown): string | null {
-  // Stub: real implementation after Spike A
+function detectVersion(pluginInput: unknown): string | null {
+  for (const path of VERSION_PATH_CANDIDATES) {
+    const value = readPath(pluginInput, path);
+    const version = normalizeVersionCandidate(value);
+    if (version !== null) {
+      return version;
+    }
+  }
+
+  const objectsToInspect = collectInspectableObjects(pluginInput);
+  for (const value of objectsToInspect) {
+    if (!isRecord(value)) {
+      continue;
+    }
+    for (const key of VERSION_FIELD_CANDIDATES) {
+      const version = normalizeVersionCandidate(value[key]);
+      if (version !== null) {
+        return version;
+      }
+    }
+  }
+
   return null;
+}
+
+function detectHostSignalWarnings(pluginInput: unknown): string[] {
+  if (!isRecord(pluginInput)) {
+    return [
+      "OpenCode plugin input is not an object; host compatibility signals are unavailable. See docs/compatibility-matrix.md.",
+    ];
+  }
+
+  const warnings: string[] = [];
+
+  if (typeof pluginInput.directory !== "string" || pluginInput.directory.length === 0) {
+    warnings.push(
+      "OpenCode plugin input is missing a usable directory string; host hook shape may have changed. See docs/compatibility-matrix.md."
+    );
+  }
+
+  if (typeof pluginInput.serverUrl !== "string" || pluginInput.serverUrl.length === 0) {
+    warnings.push(
+      "OpenCode plugin input is missing a usable serverUrl string; host hook shape may have changed. See docs/compatibility-matrix.md."
+    );
+  }
+
+  return warnings;
+}
+
+function collectInspectableObjects(pluginInput: unknown): unknown[] {
+  if (!isRecord(pluginInput)) {
+    return [];
+  }
+
+  return [
+    pluginInput,
+    pluginInput.client,
+    pluginInput.project,
+    pluginInput.worktree,
+    pluginInput.$,
+  ];
+}
+
+function readPath(value: unknown, path: ReadonlyArray<string>): unknown {
+  let current: unknown = value;
+  for (const key of path) {
+    if (!isRecord(current) || !(key in current)) {
+      return undefined;
+    }
+    current = current[key];
+  }
+  return current;
+}
+
+function normalizeVersionCandidate(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  const match = trimmed.match(/(?:^|[^\d])v?(\d+\.\d+\.\d+(?:[-+][\w.-]+)?)(?:$|[^\d])/);
+  if (match?.[1]) {
+    return match[1];
+  }
+
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

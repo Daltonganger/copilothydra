@@ -100,8 +100,7 @@ Implemented so far:
 
 ## Known limitations
 
-- **OpenCode compatibility is warning-first, not guaranteed.** Unknown or changed host versions may break internal Copilot assumptions.
-- **Version detection is still a stub/hardening TODO.** We warn-first today, but the compatibility matrix and stricter checks still need to be built out.
+- **OpenCode compatibility remains warn-first, not guaranteed.** CopilotHydra now inspects available PluginInput host signals and compares detected versions against the compatibility matrix in `docs/compatibility-matrix.md`.
 - **GPT-5+/Responses API routing is a known gap.** Custom provider IDs like `github-copilot-acct-*` do not automatically get OpenCode's exact `CUSTOM_LOADERS["github-copilot"]` behavior.
 - **Secrets are still plaintext for now.** This is accepted for current feasibility/beta work only, guarded by explicit project policy and env gating.
 - **Capability truth is not authoritative in v1.** Plan/model exposure is user-declared plus runtime mismatch detection, not proven entitlement.
@@ -138,6 +137,7 @@ npm test
 - `docs/IMPLEMENTATION_SEQUENCE.md`
 - `docs/feasibility-notes.md`
 - `docs/Loginmethod.md`
+- `docs/compatibility-matrix.md`
 
 ## Working agreement
 
