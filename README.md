@@ -1,5 +1,7 @@
 # CopilotHydra
 
+![CopilotHydra logo](assets/branding/copilothydra-logo-512.png)
+
 CopilotHydra is an OpenCode plugin that enables multiple GitHub Copilot accounts side by side.
 
 ## Current status
@@ -138,6 +140,15 @@ npm test
 - `docs/feasibility-notes.md`
 - `docs/Loginmethod.md`
 - `docs/compatibility-matrix.md`
+- `assets/branding/README.md`
+
+## Branding assets
+
+Brand assets live in `assets/branding/`.
+
+- Use `assets/branding/copilothydra-logo-512.png` for GitHub-friendly square usage.
+- Use `assets/branding/copilothydra-logo-1024.png` as the canonical high-resolution PNG.
+- GitHub repo avatar/social preview changes still need to be applied manually in GitHub settings; CopilotHydra now includes prepared assets for that step.
 
 ## Working agreement
 
