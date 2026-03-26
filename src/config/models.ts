@@ -32,6 +32,7 @@ export const COPILOT_MODEL_CATALOG: Record<string, CopilotCatalogModelEntry> = {
   "claude-haiku-4.5": { id: "claude-haiku-4.5", name: "Claude Haiku 4.5" },
   "claude-opus-4.5": { id: "claude-opus-4.5", name: "Claude Opus 4.5" },
   "claude-opus-4.6": { id: "claude-opus-4.6", name: "Claude Opus 4.6" },
+  "claude-opus-4.6-fast": { id: "claude-opus-4.6-fast", name: "Claude Opus 4.6 Fast" },
   "claude-opus-41": { id: "claude-opus-41", name: "Claude Opus 4.1" },
   "claude-sonnet-4": { id: "claude-sonnet-4", name: "Claude Sonnet 4" },
   "claude-sonnet-4.5": { id: "claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
@@ -53,7 +54,9 @@ export const COPILOT_MODEL_CATALOG: Record<string, CopilotCatalogModelEntry> = {
   "gpt-5.3-codex": { id: "gpt-5.3-codex", name: "GPT-5.3-Codex" },
   "gpt-5.4": { id: "gpt-5.4", name: "GPT-5.4" },
   "gpt-5.4-mini": { id: "gpt-5.4-mini", name: "GPT-5.4 Mini" },
+  goldeneye: { id: "goldeneye", name: "Goldeneye" },
   "grok-code-fast-1": { id: "grok-code-fast-1", name: "Grok Code Fast 1" },
+  "raptor-mini": { id: "raptor-mini", name: "Raptor Mini" },
 };
 
 export const PLAN_TIER_ORDER: PlanTier[] = ["free", "student", "pro", "pro+"];
@@ -228,5 +231,5 @@ export function getCopilotCatalogModel(modelId: string): CopilotCatalogModelEntr
 }
 
 export function isKnownCopilotModelId(modelId: string): boolean {
-  return modelId in COPILOT_MODEL_CATALOG;
+  return Object.hasOwn(COPILOT_MODEL_CATALOG, modelId);
 }

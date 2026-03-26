@@ -14,9 +14,11 @@ test("plan model table matches current documented plan baselines", async () => {
 
   assert.deepEqual(modelsForPlan("free", { includeUnverified: false }), [
     "claude-haiku-4.5",
+    "goldeneye",
     "gpt-4.1",
     "gpt-5-mini",
     "grok-code-fast-1",
+    "raptor-mini",
   ]);
 
   assert.deepEqual(modelsForPlan("student", { includeUnverified: false }), [
@@ -35,6 +37,7 @@ test("plan model table matches current documented plan baselines", async () => {
     "gpt-5.2-codex",
     "gpt-5.3-codex",
     "grok-code-fast-1",
+    "raptor-mini",
   ]);
 
   assert.deepEqual(modelsForPlan("pro", { includeUnverified: false }), [
@@ -60,12 +63,14 @@ test("plan model table matches current documented plan baselines", async () => {
     "gpt-5.4",
     "gpt-5.4-mini",
     "grok-code-fast-1",
+    "raptor-mini",
   ]);
 
   assert.deepEqual(modelsForPlan("pro+", { includeUnverified: false }), [
     "claude-haiku-4.5",
     "claude-opus-4.5",
     "claude-opus-4.6",
+    "claude-opus-4.6-fast",
     "claude-sonnet-4",
     "claude-sonnet-4.5",
     "claude-sonnet-4.6",
@@ -85,6 +90,7 @@ test("plan model table matches current documented plan baselines", async () => {
     "gpt-5.4",
     "gpt-5.4-mini",
     "grok-code-fast-1",
+    "raptor-mini",
   ]);
 
   assert.deepEqual(modelsForPlan("pro+", { includeUnverified: true }), modelsForPlan("pro+", { includeUnverified: false }));
