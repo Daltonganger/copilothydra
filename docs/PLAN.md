@@ -431,20 +431,20 @@ UI should be implemented after engine correctness is proven.
 
 ### Implementation status note
 
-Current implementation includes a first Phase 5 foundation slice:
+Current implementation now includes a complete Phase 5 v1 slice:
 - a dependency-free line-based TUI entrypoint
 - explicit non-TTY failure for the menu path
 - empty-state guidance when no accounts exist
 - account overview rendering with plan, capability state, lifecycle state, and restart-required notice
+- guided add-account, rename, revalidate, remove, and mismatch review flows in the line-based menu
 
-Still pending in later Phase 5 slices:
-- wiring the remaining add/remove flows into the TUI
-- guided mismatch review from inside the menu
+Still pending after Phase 5:
 - richer confirmations and raw-mode polish
+- any later UX refinement beyond the dependency-free v1 menu
 
 Current follow-up status:
-- rename and revalidate are now wired into the menu
-- add account, remove account, and guided mismatch review remain pending
+- add account, rename, revalidate, remove, and guided mismatch review are now all wired into the menu
+- restart-required and lifecycle/capability state visibility are now part of the default menu flow
 
 ### Auth-login migration note
 

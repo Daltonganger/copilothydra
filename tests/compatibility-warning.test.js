@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 
-test("compatibility check warns when version cannot be detected", () => {
+test("compatibility check stays quiet when version cannot be detected", () => {
   const result = spawnSync(
     process.execPath,
     [
@@ -22,6 +22,5 @@ test("compatibility check warns when version cannot be detected", () => {
   const payload = JSON.parse(result.stdout);
   assert.equal(payload.ok, true);
   assert.equal(payload.version, null);
-  assert.equal(payload.warnings.length, 1);
-  assert.match(payload.warnings[0], /Could not detect OpenCode version/i);
+  assert.equal(payload.warnings.length, 0);
 });

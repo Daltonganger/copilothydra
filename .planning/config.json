@@ -1,0 +1,27 @@
+{
+  "mode": "interactive",
+  "granularity": "standard",
+  "parallelization": true,
+  "commit_docs": true,
+  "model_profile": "inherit",
+  "workflow": {
+    "research": true,
+    "plan_check": true,
+    "verifier": true,
+    "nyquist_validation": true
+  },
+  "model_overrides": {
+    "gsd-planner": "openai/gpt-5.4",
+    "gsd-roadmapper": "openai/gpt-5.4",
+    "gsd-project-researcher": "nano-gpt/minimax/minimax-m2.7",
+    "gsd-phase-researcher": "nano-gpt/minimax/minimax-m2.7",
+    "gsd-research-synthesizer": "nano-gpt/minimax/minimax-m2.7",
+    "gsd-executor": "zai-coding-plan/glm-5",
+    "gsd-debugger": "zai-coding-plan/glm-5",
+    "gsd-codebase-mapper": "zai-coding-plan/glm-5",
+    "gsd-verifier": "qwen/qwen3-coder-plus",
+    "gsd-plan-checker": "qwen/qwen3-coder-plus",
+    "gsd-integration-checker": "qwen/qwen3-coder-plus",
+    "gsd-nyquist-auditor": "qwen/qwen3-coder-plus"
+  }
+}

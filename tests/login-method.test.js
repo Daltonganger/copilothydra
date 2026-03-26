@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { cleanupDir, makeTempDir, readJson } from "./helpers.js";
 
 const PLUGIN_INPUT = {
@@ -12,6 +13,39 @@ const PLUGIN_INPUT = {
   $: {},
 };
 
+test("CopilotHydraSetup does not emit normal startup noise without debug flags", () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `import path from 'node:path';
+import os from 'node:os';
+import { mkdtemp, rm } from 'node:fs/promises';
+const tempDir = await mkdtemp(path.join(os.tmpdir(), 'copilothydra-plugin-load-'));
+process.env.OPENCODE_CONFIG_DIR = tempDir;
+process.env.OPENCODE_CONFIG = path.join(tempDir, 'opencode.json');
+const { CopilotHydraSetup } = await import('./dist/index.js');
+await CopilotHydraSetup({ client: {}, project: {}, worktree: {}, directory: process.cwd(), serverUrl: 'http://localhost:4096', $: {} });
+await rm(tempDir, { recursive: true, force: true });`,
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        COPILOTHYDRA_DEBUG: "",
+        COPILOTHYDRA_DEBUG_AUTH: "",
+        COPILOTHYDRA_DEBUG_ROUTING: "",
+        COPILOTHYDRA_DEBUG_STORAGE: "",
+      },
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr.trim(), "");
+});
+
 test("CopilotHydraSetup exposes a GitHub Copilot auth method for OpenCode auth login", async () => {
   const tempDir = await makeTempDir();
   process.env.OPENCODE_CONFIG_DIR = tempDir;
@@ -22,17 +56,14 @@ test("CopilotHydraSetup exposes a GitHub Copilot auth method for OpenCode auth l
     const hooks = await CopilotHydraSetup(PLUGIN_INPUT);
 
     assert.equal(hooks.auth?.provider, "github-copilot");
-    assert.equal(hooks.auth?.methods.length, 2);
+    assert.equal(hooks.auth?.methods.length, 1);
     assert.deepEqual(
       hooks.auth?.methods.map((method) => method.label),
-      [
-        "GitHub Copilot (CopilotHydra) — Re-auth existing account",
-        "GitHub Copilot (CopilotHydra) — Add new account",
-      ],
+      ["GitHub Copilot (CopilotHydra) — Add new account"],
     );
     assert.deepEqual(
       hooks.auth?.methods.map((method) => method.prompts?.map((prompt) => prompt.key) ?? []),
-      [["githubUsername"], ["githubUsername", "label", "plan", "allowUnverifiedModels"]],
+      [["githubUsername", "label", "plan", "allowUnverifiedModels"]],
     );
   } finally {
     delete process.env.OPENCODE_CONFIG_DIR;
@@ -50,7 +81,7 @@ test("login method can create a new account from OpenCode auth login inputs", as
     const { createCopilotLoginMethods } = await import(`../dist/auth/login-method.js?${Date.now()}`);
 
     let tokenState;
-    const [, method] = createCopilotLoginMethods({
+    const [method] = createCopilotLoginMethods([], {
       requestDeviceCode: async () => ({
         device_code: "device-1",
         user_code: "ABCD-EFGH",
@@ -104,7 +135,7 @@ test("login method can re-auth an existing account without requiring new-account
     await upsertAccount(account, tempDir);
 
     let tokenState;
-    const [method] = createCopilotLoginMethods({
+    const methods = createCopilotLoginMethods([account], {
       requestDeviceCode: async () => ({
         device_code: "device-2",
         user_code: "IJKL-MNOP",
@@ -118,7 +149,13 @@ test("login method can re-auth an existing account without requiring new-account
       },
     });
 
-    const started = await method.authorize({ githubUsername: "bob" });
+    const [method] = methods;
+    assert.equal(method.label, "GitHub Copilot (CopilotHydra) — Re-auth existing account");
+    assert.equal(method.prompts?.[0]?.type, "text");
+    assert.equal(method.prompts?.[0]?.key, "githubUsername");
+    assert.equal(method.prompts?.[0]?.placeholder, "bob");
+
+    const started = await method.authorize({ githubUsername: account.githubUsername });
     assert.doesNotMatch(started.instructions, /reload\/restart OpenCode/i);
 
     const finished = await started.callback();
@@ -149,7 +186,7 @@ test("new-account method rejects duplicate usernames so re-auth stays separate",
     const account = createAccountMeta({ label: "Existing", githubUsername: "alice", plan: "pro" });
     await upsertAccount(account, tempDir);
 
-    const [, method] = createCopilotLoginMethods({
+    const [, method] = createCopilotLoginMethods([account], {
       requestDeviceCode: async () => {
         throw new Error("device flow should not start");
       },
@@ -169,4 +206,13 @@ test("new-account method rejects duplicate usernames so re-auth stays separate",
     delete process.env.OPENCODE_CONFIG;
     await cleanupDir(tempDir);
   }
+});
+
+test("createCopilotLoginMethods omits re-auth when there are no existing accounts", async () => {
+  const { createCopilotLoginMethods } = await import(`../dist/auth/login-method.js?${Date.now()}`);
+
+  const methods = createCopilotLoginMethods([]);
+
+  assert.equal(methods.length, 1);
+  assert.equal(methods[0].label, "GitHub Copilot (CopilotHydra) — Add new account");
 });

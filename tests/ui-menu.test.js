@@ -118,6 +118,164 @@ test("launchMenu can rename an account through the TUI action flow", async () =>
   }
 });
 
+test("launchMenu can add a new account through the TUI action flow", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    const stamp = Date.now();
+    const { loadAccounts } = await import(`../dist/storage/accounts.js?${stamp}`);
+    const { launchMenu } = await import(`../dist/ui/menu.js?${stamp}`);
+
+    const writes = [];
+    let mainMenuCalls = 0;
+    let promptCalls = 0;
+
+    await launchMenu({
+      isTTY: () => true,
+      loadAccounts: () => loadAccounts(tempDir),
+      findAccountByGitHubUsername: (githubUsername) => import(`../dist/storage/accounts.js?${Date.now()}`).then((mod) => mod.findAccountByGitHubUsername(githubUsername, tempDir)),
+      upsertAccount: (account) => import(`../dist/storage/accounts.js?${Date.now()}`).then((mod) => mod.upsertAccount(account, tempDir)),
+      syncAccountsToOpenCodeConfig: () => import(`../dist/config/sync.js?${Date.now()}`).then((mod) => mod.syncAccountsToOpenCodeConfig(path.join(tempDir, "opencode.json"), tempDir)),
+      resolveOpenCodeConfigPath: () => path.join(tempDir, "opencode.json"),
+      selectOne: async (prompt, options) => {
+        if (prompt === "Main menu") {
+          mainMenuCalls += 1;
+          if (mainMenuCalls === 1) {
+            return options.find((option) => option.key === "add-account") ?? null;
+          }
+          return options.find((option) => option.key === "exit") ?? null;
+        }
+        if (prompt === "Plan tier") {
+          return options.find((option) => option.key === "pro") ?? null;
+        }
+        return null;
+      },
+      promptText: async () => {
+        promptCalls += 1;
+        if (promptCalls === 1) return "Personal";
+        if (promptCalls === 2) return "alice";
+        return null;
+      },
+      confirm: async () => false,
+      write: (message) => {
+        writes.push(message);
+      },
+    });
+
+    const accounts = await loadAccounts(tempDir);
+    assert.equal(accounts.accounts.length, 1);
+    assert.equal(accounts.accounts[0].label, "Personal");
+    assert.equal(accounts.accounts[0].githubUsername, "alice");
+    assert.equal(accounts.accounts[0].plan, "pro");
+    assert.match(writes.join(""), /Added account: Personal \(alice\)/);
+    assert.match(writes.join(""), /Hidden uncertain models until explicit override/);
+  } finally {
+    await cleanupDir(tempDir);
+  }
+});
+
+test("launchMenu can add a new account with uncertain-model override enabled", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    const stamp = Date.now();
+    const { loadAccounts } = await import(`../dist/storage/accounts.js?${stamp}`);
+    const { launchMenu } = await import(`../dist/ui/menu.js?${stamp}`);
+
+    const writes = [];
+    let mainMenuCalls = 0;
+    let promptCalls = 0;
+
+    await launchMenu({
+      isTTY: () => true,
+      loadAccounts: () => loadAccounts(tempDir),
+      findAccountByGitHubUsername: (githubUsername) => import(`../dist/storage/accounts.js?${Date.now()}`).then((mod) => mod.findAccountByGitHubUsername(githubUsername, tempDir)),
+      upsertAccount: (account) => import(`../dist/storage/accounts.js?${Date.now()}`).then((mod) => mod.upsertAccount(account, tempDir)),
+      syncAccountsToOpenCodeConfig: () => import(`../dist/config/sync.js?${Date.now()}`).then((mod) => mod.syncAccountsToOpenCodeConfig(path.join(tempDir, "opencode.json"), tempDir)),
+      resolveOpenCodeConfigPath: () => path.join(tempDir, "opencode.json"),
+      selectOne: async (prompt, options) => {
+        if (prompt === "Main menu") {
+          mainMenuCalls += 1;
+          if (mainMenuCalls === 1) {
+            return options.find((option) => option.key === "add-account") ?? null;
+          }
+          return options.find((option) => option.key === "exit") ?? null;
+        }
+        if (prompt === "Plan tier") {
+          return options.find((option) => option.key === "pro") ?? null;
+        }
+        return null;
+      },
+      promptText: async () => {
+        promptCalls += 1;
+        if (promptCalls === 1) return "Override";
+        if (promptCalls === 2) return "override-user";
+        return null;
+      },
+      confirm: async () => true,
+      write: (message) => {
+        writes.push(message);
+      },
+    });
+
+    const accounts = await loadAccounts(tempDir);
+    assert.equal(accounts.accounts.length, 1);
+    assert.equal(accounts.accounts[0].allowUnverifiedModels, true);
+    assert.match(writes.join(""), /Added account: Override \(override-user\)/);
+    assert.doesNotMatch(writes.join(""), /Hidden uncertain models until explicit override/);
+  } finally {
+    await cleanupDir(tempDir);
+  }
+});
+
+test("launchMenu add-account rejects duplicate GitHub usernames", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    const stamp = Date.now();
+    const { createAccountMeta } = await import(`../dist/account.js?${stamp}`);
+    const { upsertAccount, loadAccounts } = await import(`../dist/storage/accounts.js?${stamp}`);
+    const { launchMenu } = await import(`../dist/ui/menu.js?${stamp}`);
+
+    await upsertAccount(createAccountMeta({ label: "Existing", githubUsername: "alice", plan: "free" }), tempDir);
+
+    const writes = [];
+    let mainMenuCalls = 0;
+    let promptCalls = 0;
+
+    await launchMenu({
+      isTTY: () => true,
+      loadAccounts: () => loadAccounts(tempDir),
+      findAccountByGitHubUsername: (githubUsername) => import(`../dist/storage/accounts.js?${Date.now()}`).then((mod) => mod.findAccountByGitHubUsername(githubUsername, tempDir)),
+      selectOne: async (prompt, options) => {
+        if (prompt === "Main menu") {
+          mainMenuCalls += 1;
+          if (mainMenuCalls === 1) {
+            return options.find((option) => option.key === "add-account") ?? null;
+          }
+          return options.find((option) => option.key === "exit") ?? null;
+        }
+        return null;
+      },
+      promptText: async () => {
+        promptCalls += 1;
+        if (promptCalls === 1) return "Duplicate";
+        if (promptCalls === 2) return "alice";
+        return null;
+      },
+      write: (message) => {
+        writes.push(message);
+      },
+    });
+
+    const accounts = await loadAccounts(tempDir);
+    assert.equal(accounts.accounts.length, 1);
+    assert.match(writes.join(""), /already exists/);
+  } finally {
+    await cleanupDir(tempDir);
+  }
+});
+
 test("launchMenu can revalidate an account through the TUI action flow", async () => {
   const tempDir = await makeTempDir();
 
