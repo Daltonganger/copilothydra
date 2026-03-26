@@ -1,6 +1,6 @@
 # CopilotHydra branding assets
 
-These assets were generated from the user-provided `logo.png` source in the repository root.
+These assets were generated from a user-provided source image and prepared for repository branding use.
 
 ## Files
 
