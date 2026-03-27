@@ -107,6 +107,11 @@ Implemented so far:
 - **Secrets are still plaintext for now.** This is accepted for current feasibility/beta work only, guarded by explicit project policy and env gating.
 - **Capability truth is not authoritative in v1.** Plan/model exposure is user-declared plus runtime mismatch detection, not proven entitlement.
 
+## Release status
+
+- CopilotHydra should still be treated as **beta / hardening-phase software**.
+- Use `docs/release-checklist.md` as the current gate before calling the project stable.
+
 ## Development
 
 Install:
@@ -140,6 +145,7 @@ npm test
 - `docs/feasibility-notes.md`
 - `docs/Loginmethod.md`
 - `docs/top-improvements.md`
+- `docs/release-checklist.md`
 - `docs/compatibility-matrix.md`
 - `assets/branding/README.md`
 

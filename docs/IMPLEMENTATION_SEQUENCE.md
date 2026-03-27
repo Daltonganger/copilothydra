@@ -88,6 +88,7 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
 - **Versiedetectie/host-compatibiliteit blijft gevoelig.** Unknown-version gedrag is nu warning-first; echte compatibiliteitsmatrix en hardere checks horen nog bij hardening.
 - **GPT-5+/Responses API routing blijft een expliciete open gap** zolang custom provider IDs niet automatisch OpenCode’s `CUSTOM_LOADERS["github-copilot"]` pad krijgen.
 - **Plaintext secrets blijven tijdelijk beta-only gedrag** en moeten zichtbaar als security caveat blijven bestaan tot keychain/secure storage is toegevoegd.
+- **Stable-release framing moet expliciet blijven.** Gebruik `docs/release-checklist.md` als release gate totdat de grootste blockers zijn weggewerkt.
 
 ---
 
