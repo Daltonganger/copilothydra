@@ -47,6 +47,11 @@ test("auditStorage reports orphan secrets, missing providers, and stale provider
     assert.deepEqual(result.orphanSecretAccountIds, ["acct_orphan"]);
     assert.deepEqual(result.missingProviderIds, [accountMissingSecret.providerId]);
     assert.deepEqual(result.staleProviderIds, ["github-copilot-acct-stale"]);
+    assert.equal(result.modelCatalogConsistent, true);
+    assert.deepEqual(result.modelCatalogDrift, {
+      unknownCopilotModelIds: [],
+      driftedProviderIds: [],
+    });
   } finally {
     delete process.env.OPENCODE_CONFIG;
     delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
@@ -95,7 +100,74 @@ test("cli audit-storage reports detected inconsistencies and repair hint", async
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.match(result.stdout, /Accounts without secrets: 1/);
     assert.match(result.stdout, /Stale provider entries: 1/);
+    assert.match(result.stdout, /Model catalog consistent: yes/);
     assert.match(result.stdout, /repair-storage/);
+  } finally {
+    delete process.env.OPENCODE_CONFIG;
+    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
+    await cleanupDir(tempDir);
+  }
+});
+
+test("auditStorage reports unknown Copilot model ids and drifted Hydra provider model sets without mutating files", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
+    const configPath = path.join(tempDir, "opencode.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { updateAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { updateSecrets } = await import(`../dist/storage/secrets.js?${Date.now()}`);
+    const { saveOpenCodeConfig } = await import(`../dist/config/opencode-config.js?${Date.now()}`);
+    const { auditStorage } = await import(`../dist/storage-audit.js?${Date.now()}`);
+    const { buildProviderConfig } = await import(`../dist/config/providers.js?${Date.now()}`);
+
+    const account = createAccountMeta({ label: "Drift", githubUsername: "drift", plan: "free" });
+
+    await updateAccounts((file) => {
+      file.accounts.push(account);
+    }, tempDir);
+
+    await updateSecrets((file) => {
+      file.secrets.push({ accountId: account.id, githubOAuthToken: "token-drift" });
+    }, tempDir);
+
+    const providerConfig = buildProviderConfig(account);
+    await saveOpenCodeConfig(
+      {
+        provider: {
+          [account.providerId]: {
+            ...providerConfig,
+            models: {
+              ...(providerConfig.models ?? {}),
+              "github-new-hotness": { name: "GitHub New Hotness" },
+            },
+          },
+          "github-copilot": {
+            name: "Built-in",
+            models: {
+              "github-unknown-model": { name: "Unknown" },
+            },
+          },
+        },
+      },
+      configPath,
+    );
+
+    const originalConfig = await import(`node:fs/promises`).then((fs) => fs.readFile(configPath, "utf8"));
+    const result = await auditStorage({ configDir: tempDir, configPath });
+    const afterConfig = await import(`node:fs/promises`).then((fs) => fs.readFile(configPath, "utf8"));
+
+    assert.equal(result.ok, false);
+    assert.equal(result.modelCatalogConsistent, false);
+    assert.deepEqual(result.modelCatalogDrift.unknownCopilotModelIds, [
+      "github-new-hotness",
+      "github-unknown-model",
+    ]);
+    assert.deepEqual(result.modelCatalogDrift.driftedProviderIds, [account.providerId]);
+    assert.equal(afterConfig, originalConfig);
   } finally {
     delete process.env.OPENCODE_CONFIG;
     delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;

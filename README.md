@@ -65,7 +65,7 @@ Implemented so far:
 - Duplicate GitHub usernames are blocked case-insensitively in both account creation and storage validation
 - `copilothydra repair-storage` prunes orphan secrets and removes stale CopilotHydra provider entries from OpenCode config
 - existing accounts can now be renamed, revalidated, and moved to a new declared plan without manual file editing
-- `copilothydra audit-storage` reports orphan secrets and provider drift without mutating storage
+- `copilothydra audit-storage` reports orphan secrets, provider drift, and model-catalog drift signals without mutating storage
 - Stored account enums/timestamps and optional secret token fields are now validated strictly and quarantined on malformed state
 - Runtime routing now has lease-based in-flight tracking and pending-removal guards per account
 - Auth loader requests now sync runtime token state through provider routing and fail closed when routed token state is unavailable
