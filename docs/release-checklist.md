@@ -55,7 +55,7 @@ Mark each section materially complete before calling CopilotHydra stable.
 - [ ] README and docs clearly state current beta/stable status
 - [ ] Known limitations are documented consistently across docs
 - [ ] Operator runbooks for login, mismatch review, and repair are available or explicitly deferred
-- [ ] Supported, best-effort, and out-of-scope boundaries (including Enterprise/GHE) are documented consistently
+- [ ] Supported, best-effort, and out-of-scope boundaries (including enterprise-managed GitHub.com and GHES) are documented consistently
 
 ## Current blockers for stable
 

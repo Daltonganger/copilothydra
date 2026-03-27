@@ -24,7 +24,8 @@ This document defines what CopilotHydra supports today, what remains best-effort
 
 ## Out of scope today
 
-- End-to-end GitHub Enterprise / GHES support as a supported product path
+- End-to-end enterprise-managed GitHub.com behavior as a supported product path
+- End-to-end GitHub Enterprise Server (GHES) behavior as a supported product path
 - Treating `enterpriseUrl` plumbing as a support guarantee by itself
 - Automatic entitlement truth or authoritative plan verification
 - Hidden fallback or automatic switching between Copilot accounts
@@ -32,7 +33,7 @@ This document defines what CopilotHydra supports today, what remains best-effort
 
 ## Enterprise / managed-environment clarification
 
-CopilotHydra contains some enterprise-adjacent plumbing, such as the optional `enterpriseUrl` field in stored auth info, but that is **not** the same as supported GitHub Enterprise or GHES behavior.
+CopilotHydra contains some enterprise-adjacent plumbing, such as the optional `enterpriseUrl` field in stored auth info, but that is **not** the same as supported enterprise-managed GitHub.com or GitHub Enterprise Server (GHES) behavior.
 
 Until enterprise-specific flows are explicitly tested, documented, and added to the compatibility matrix, they should be treated as **out of scope** rather than implied support.
 

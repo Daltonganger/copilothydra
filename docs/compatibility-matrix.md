@@ -54,8 +54,8 @@ document a tighter supported boundary rather than silently overclaim parity.
 ## Support boundary reference
 
 For the broader supported vs best-effort vs out-of-scope policy — including
-Enterprise/GHE positioning — use `docs/support-boundaries.md` as the primary
-reference.
+enterprise-managed GitHub.com and GHES positioning — use
+`docs/support-boundaries.md` as the primary reference.
 
 ## Operator guidance
 
