@@ -15,7 +15,7 @@
  * NOTE: Phase 0 scaffold. Cross-process locking is in src/storage/locking.ts (Phase 2).
  */
 
-import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
+import { chmod, readFile, stat, writeFile, mkdir, rename } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import type { AccountId, CopilotSecretRecord, SecretsFile, AccountsFile } from "../types.js";
 import { debugStorage, warn } from "../log.js";
@@ -31,6 +31,8 @@ import { isRecord, requireIsoTimestamp, requireOptionalString, requireString } f
 export function secretsFilePath(configDir?: string): string {
   return join(configDir ?? resolveConfigDir(), "copilot-secrets.json");
 }
+
+export type SecretsFilePermissionStatus = "ok" | "insecure" | "missing" | "unsupported";
 
 // ---------------------------------------------------------------------------
 // Read
@@ -100,6 +102,8 @@ async function saveSecretsToPath(data: SecretsFile, path: string): Promise<void>
   } else {
     await rename(tmpPath, path);
   }
+
+  await normalizeSecretsFilePermissionsAtPath(path);
 }
 
 // ---------------------------------------------------------------------------
@@ -163,6 +167,14 @@ export async function pruneOrphanSecrets(
   }, configDir);
 }
 
+export async function getSecretsFilePermissionStatus(configDir?: string): Promise<SecretsFilePermissionStatus> {
+  return await getSecretsFilePermissionStatusAtPath(secretsFilePath(configDir));
+}
+
+export async function normalizeSecretsFilePermissions(configDir?: string): Promise<boolean> {
+  return await normalizeSecretsFilePermissionsAtPath(secretsFilePath(configDir));
+}
+
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
@@ -210,6 +222,36 @@ function validateSecretsFile(data: unknown): SecretsFile {
 
 function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return typeof err === "object" && err !== null && "code" in err;
+}
+
+async function getSecretsFilePermissionStatusAtPath(path: string): Promise<SecretsFilePermissionStatus> {
+  if (process.platform === "win32") {
+    return "unsupported";
+  }
+
+  try {
+    const fileStat = await stat(path);
+    return (fileStat.mode & 0o777) === 0o600 ? "ok" : "insecure";
+  } catch (err) {
+    if (isNodeError(err) && err.code === "ENOENT") {
+      return "missing";
+    }
+    throw err;
+  }
+}
+
+async function normalizeSecretsFilePermissionsAtPath(path: string): Promise<boolean> {
+  if (process.platform === "win32") {
+    return false;
+  }
+
+  const status = await getSecretsFilePermissionStatusAtPath(path);
+  if (status !== "insecure") {
+    return false;
+  }
+
+  await chmod(path, 0o600);
+  return true;
 }
 
 function isCorruptionError(err: unknown): boolean {

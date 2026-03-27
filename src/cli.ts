@@ -293,6 +293,8 @@ async function repairStorageCommand(): Promise<void> {
   output.write(`Secrets before repair: ${result.secretCountBefore}\n`);
   output.write(`Secrets after repair: ${result.secretCountAfter}\n`);
   output.write(`Pruned orphan secrets: ${result.prunedSecretCount}\n`);
+  output.write(`Secrets file permissions normalized: ${result.normalizedSecretsFilePermissions ? "yes" : "no"}\n`);
+  output.write(`Secrets file permissions after repair: ${result.secretsFilePermissionStatusAfter}\n`);
   output.write(`OpenCode config reconciled: ${resolveOpenCodeConfigPath()}\n`);
   output.write("Reload/restart OpenCode to apply provider changes if any stale providers were removed.\n");
 }
@@ -305,6 +307,7 @@ async function auditStorageCommand(): Promise<void> {
   output.write(`Orphan secrets: ${result.orphanSecretAccountIds.length}\n`);
   output.write(`Missing provider entries: ${result.missingProviderIds.length}\n`);
   output.write(`Stale provider entries: ${result.staleProviderIds.length}\n`);
+  output.write(`Secrets file permissions: ${result.secretsFilePermissionStatus}\n`);
 
   if (result.ok) {
     output.write("Storage audit is clean. No repair needed.\n");
