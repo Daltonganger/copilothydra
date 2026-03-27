@@ -1,5 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { ReadableStream } from "node:stream/web";
+
+async function readAll(stream) {
+  const reader = stream.getReader();
+  const chunks = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    chunks.push(value);
+  }
+  return chunks;
+}
 
 test("shouldUseCopilotResponsesApi covers the current GPT-5 family routing boundary", async () => {
   const { shouldUseCopilotResponsesApi } = await import(`../dist/config/models.js?${Date.now()}`);
@@ -49,7 +63,7 @@ test("withHydraCopilotResponsesParity leaves tool-only streams unchanged", async
   });
 
   const result = await wrappedModel.doStream({});
-  const chunks = await Array.fromAsync(result.stream);
+  const chunks = await readAll(result.stream);
   assert.deepEqual(chunks, [
     { type: "tool-call", id: "tool-1", toolName: "lookup" },
     { type: "tool-result", id: "tool-1", result: "ok" },
@@ -78,7 +92,7 @@ test("withHydraCopilotResponsesParity preserves non-text chunks while normalizin
   });
 
   const result = await wrappedModel.doStream({});
-  const chunks = await Array.fromAsync(result.stream);
+  const chunks = await readAll(result.stream);
   assert.deepEqual(chunks, [
     { type: "tool-call", id: "tool-1", toolName: "lookup" },
     { type: "text-start", id: "item-1" },
