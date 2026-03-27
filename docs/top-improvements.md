@@ -25,7 +25,7 @@ This list includes one concrete UX/operability addition inspired by the account 
    Detect when OpenCode or Copilot model lists change so stale mappings do not silently break routing or expose incorrect choices.
 
 7. **Secure secret storage hardening**  
-   Improve storage guarantees, validation, and operator safety around token persistence because auth reliability depends on secrets staying both recoverable and protected.
+   Improve storage guarantees, validation, and operator safety around token persistence because auth reliability depends on secrets staying both recoverable and protected. This work now starts with plaintext secret-file permission hardening plus audit/repair visibility before any later keychain migration.
 
 8. **Operator docs and runbooks**  
    Add short operational guides for login issues, mismatch review, recovery, storage repair, and safe restart flows so real-world support is faster and less error-prone.

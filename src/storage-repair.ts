@@ -8,7 +8,8 @@
  */
 
 import { loadAccounts } from "./storage/accounts.js";
-import { loadSecrets, pruneOrphanSecrets } from "./storage/secrets.js";
+import { getSecretsFilePermissionStatus, loadSecrets, normalizeSecretsFilePermissions, pruneOrphanSecrets } from "./storage/secrets.js";
+import type { SecretsFilePermissionStatus } from "./storage/secrets.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 
 export interface RepairStorageResult {
@@ -16,6 +17,8 @@ export interface RepairStorageResult {
   secretCountBefore: number;
   secretCountAfter: number;
   prunedSecretCount: number;
+  normalizedSecretsFilePermissions: boolean;
+  secretsFilePermissionStatusAfter: SecretsFilePermissionStatus;
 }
 
 export async function repairStorage(options?: {
@@ -25,6 +28,8 @@ export async function repairStorage(options?: {
   const accounts = await loadAccounts(options?.configDir);
   const secretsBefore = await loadSecrets(options?.configDir);
   const secretsAfter = await pruneOrphanSecrets(accounts, options?.configDir);
+  const normalizedSecretsFilePermissions = await normalizeSecretsFilePermissions(options?.configDir);
+  const secretsFilePermissionStatusAfter = await getSecretsFilePermissionStatus(options?.configDir);
   await syncAccountsToOpenCodeConfig(options?.configPath, options?.configDir);
 
   return {
@@ -32,5 +37,7 @@ export async function repairStorage(options?: {
     secretCountBefore: secretsBefore.secrets.length,
     secretCountAfter: secretsAfter.secrets.length,
     prunedSecretCount: secretsBefore.secrets.length - secretsAfter.secrets.length,
+    normalizedSecretsFilePermissions,
+    secretsFilePermissionStatusAfter,
   };
 }
