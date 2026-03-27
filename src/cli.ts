@@ -319,7 +319,21 @@ async function auditStorageCommand(): Promise<void> {
     return;
   }
 
-  output.write("Storage audit detected inconsistencies. Run `copilothydra repair-storage` to reconcile storage issues. For model catalog drift, update Hydra's catalog/tier tables manually and then re-sync config if needed.\n");
+  const hasStorageIssues =
+    result.accountsWithoutSecrets.length > 0 ||
+    result.orphanSecretAccountIds.length > 0 ||
+    result.missingProviderIds.length > 0 ||
+    result.staleProviderIds.length > 0;
+
+  if (hasStorageIssues) {
+    output.write("Storage audit detected storage inconsistencies. Run `copilothydra repair-storage` to reconcile storage issues.\n");
+  }
+
+  if (!result.modelCatalogConsistent) {
+    output.write(
+      "Model catalog drift is detect-only. Review Hydra's local model catalog in `src/config/models.ts`, update the tier tables if needed, then run `copilothydra sync-config` and restart OpenCode.\n",
+    );
+  }
 }
 
 async function resolveAccountByIdentifier(identifier: string) {

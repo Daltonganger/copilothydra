@@ -92,7 +92,7 @@ function detectModelCatalogDrift(
   for (const [providerId, providerEntry] of Object.entries(providerConfig)) {
     const models = providerEntry.models ?? {};
     for (const modelId of Object.keys(models)) {
-      if (providerId.includes("github-copilot") && !isKnownCopilotModelId(modelId)) {
+      if (isAuditedCopilotProvider(providerId) && !isKnownCopilotModelId(modelId)) {
         unknownCopilotModelIds.add(modelId);
       }
     }
@@ -100,10 +100,10 @@ function detectModelCatalogDrift(
 
   for (const account of activeAccounts) {
     const currentProviderEntry = providerConfig[account.providerId];
-    if (!currentProviderEntry?.models) continue;
+    if (!currentProviderEntry) continue;
 
     const expectedModelIds = Object.keys(buildProviderConfig(account).models ?? {}).sort();
-    const actualModelIds = Object.keys(currentProviderEntry.models).sort();
+    const actualModelIds = Object.keys(currentProviderEntry.models ?? {}).sort();
     if (!sameStringArray(expectedModelIds, actualModelIds)) {
       driftedProviderIds.add(account.providerId);
     }
@@ -118,4 +118,8 @@ function detectModelCatalogDrift(
 function sameStringArray(left: string[], right: string[]): boolean {
   if (left.length !== right.length) return false;
   return left.every((value, index) => value === right[index]);
+}
+
+function isAuditedCopilotProvider(providerId: string): boolean {
+  return providerId === "github-copilot" || isCopilotHydraProvider(providerId);
 }
