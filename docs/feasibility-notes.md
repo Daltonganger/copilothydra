@@ -186,7 +186,7 @@ Daarnaast is de capability-vraag voldoende beantwoord voor een veilige v1-strate
 Deze drie punten moeten in alle volgende phases expliciet zichtbaar blijven:
 
 - **Version detection / host-compatibiliteit is nog niet hard genoeg.** De huidige strategie is warning-first op onbekende versies; echte matrix + strengere checks moeten nog volgen.
-- **GPT-5+/responses-routing voor custom provider IDs is nog niet opgelost.** Dit blijft een functionele beperking totdat we eigen routing toevoegen of de modelset bewust begrenzen.
+- **GPT-5+/responses-routing voor custom provider IDs is nu gedeeltelijk gehard, maar blijft best-effort.** De hoofdroute voor tekstgeneratie werkt via Hydra’s eigen parity-laag, maar volledige built-in Copilot-equivalentie over alle Responses/Codex-event types is nog geen harde garantie.
 - **Plaintext secret storage is alleen acceptabel voor huidige beta/feasibility-fase.** Dit mag niet stilzwijgend permanent worden.
 
 ### 1. OpenCode interne Copilot detectie is fragiel
@@ -202,12 +202,12 @@ We vertrouwen op ongedocumenteerde hostlogica zoals checks op `includes("github-
 Onze `github-copilot-acct-*` IDs krijgen niet vanzelf OpenCode’s `CUSTOM_LOADERS["github-copilot"]` pad.
 
 **Risico:**
-- GPT-5+/responses-routing kan afwijken
+- GPT-5+/responses/Codex-event gedrag kan nog afwijken van OpenCode’s exacte built-in `github-copilot` pad
 
 **Mitigatie:**
-- starten met veilige modelset
-- dit expliciet testen in Phase 1
-- indien nodig eigen routinglaag toevoegen of modelset beperken
+- parity-laag voor de hoofdroute onderhouden en regressietesten
+- supported boundary expliciet documenteren
+- indien nodig bredere event-surface verder hardenen of strakker begrenzen
 
 ### 3. Capability truth blijft user-declared in v1
 We kunnen entitlement niet betrouwbaar bewijzen.

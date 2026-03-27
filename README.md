@@ -98,12 +98,12 @@ Implemented so far:
 - A mismatch can preserve the current declared plan, or overwrite it with a suggested stricter one after explicit review
 - The TUI Phase 5 scope is now complete as a dependency-free line-based account manager for v1
 - `copilothydra add-account` remains available, but OpenCode auth login is now the preferred path for add-account / re-auth orchestration
-- GPT-5+/responses routing is still a known gap for custom provider IDs
+- GPT-5+/Responses/Codex support is now best-effort through Hydra's local parity layer, not a guarantee of full built-in OpenCode `github-copilot` equivalence
 
 ## Known limitations
 
 - **OpenCode compatibility remains warn-first, not guaranteed.** CopilotHydra now inspects available PluginInput host signals and compares detected versions against the compatibility matrix in `docs/compatibility-matrix.md`.
-- **GPT-5+/Responses API routing is a known gap.** Custom provider IDs like `github-copilot-acct-*` do not automatically get OpenCode's exact `CUSTOM_LOADERS["github-copilot"]` behavior.
+- **GPT-5+/Responses/Codex parity is best-effort, not guaranteed.** CopilotHydra mirrors the main text-generation routing path for custom provider IDs, but broader Responses/Codex event surfaces may still diverge from OpenCode's exact built-in `github-copilot` implementation.
 - **Secrets are still plaintext for now.** This is accepted for current feasibility/beta work only, guarded by explicit project policy and env gating.
 - **Capability truth is not authoritative in v1.** Plan/model exposure is user-declared plus runtime mismatch detection, not proven entitlement.
 
