@@ -317,9 +317,18 @@ async function auditStorageCommand(): Promise<void> {
   if (result.modelCatalogDrift.driftedProviderIds.length > 0) {
     output.write(`Providers with drifted model sets: ${result.modelCatalogDrift.driftedProviderIds.join(", ")}\n`);
   }
+  if (result.modelsDevDriftSignal.checked) {
+    output.write(`models.dev reachable: ${result.modelsDevDriftSignal.reachable ? "yes" : "no"}\n`);
+    if (result.modelsDevDriftSignal.newCopilotModelIds.length > 0) {
+      output.write(`New Copilot model ids seen via models.dev: ${result.modelsDevDriftSignal.newCopilotModelIds.join(", ")}\n`);
+    }
+  }
 
   if (result.ok) {
     output.write("Storage audit is clean. No repair needed.\n");
+    if (result.modelsDevDriftSignal.newCopilotModelIds.length > 0) {
+      output.write("models.dev reports newer Copilot model ids than Hydra currently catalogs. Review GitHub docs and update Hydra manually if appropriate.\n");
+    }
     return;
   }
 

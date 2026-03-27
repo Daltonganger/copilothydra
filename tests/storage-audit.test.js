@@ -7,6 +7,7 @@ import { cleanupDir, makeTempDir } from "./helpers.js";
 
 test("auditStorage reports orphan secrets, missing providers, and stale providers without mutating files", async () => {
   const tempDir = await makeTempDir();
+  const originalFetch = globalThis.fetch;
 
   try {
     process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
@@ -43,6 +44,11 @@ test("auditStorage reports orphan secrets, missing providers, and stale provider
       configPath,
     );
 
+    globalThis.fetch = async () => new Response(JSON.stringify({ models: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
     const result = await auditStorage({ configDir: tempDir, configPath });
     assert.equal(result.ok, false);
     assert.deepEqual(result.accountsWithoutSecrets, [accountMissingSecret.id]);
@@ -54,7 +60,13 @@ test("auditStorage reports orphan secrets, missing providers, and stale provider
       unknownCopilotModelIds: [],
       driftedProviderIds: [],
     });
+    assert.deepEqual(result.modelsDevDriftSignal, {
+      checked: true,
+      reachable: true,
+      newCopilotModelIds: [],
+    });
   } finally {
+    globalThis.fetch = originalFetch;
     delete process.env.OPENCODE_CONFIG;
     delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
@@ -113,6 +125,7 @@ test("cli audit-storage reports detected inconsistencies and repair hint", async
 
 test("auditStorage reports unknown Copilot model ids and drifted Hydra provider model sets without mutating files", async () => {
   const tempDir = await makeTempDir();
+  const originalFetch = globalThis.fetch;
 
   try {
     process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
@@ -155,6 +168,11 @@ test("auditStorage reports unknown Copilot model ids and drifted Hydra provider 
       configPath,
     );
 
+    globalThis.fetch = async () => new Response(JSON.stringify({ models: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
     const originalConfig = await fs.readFile(configPath, "utf8");
     const result = await auditStorage({ configDir: tempDir, configPath });
     const afterConfig = await fs.readFile(configPath, "utf8");
@@ -166,8 +184,89 @@ test("auditStorage reports unknown Copilot model ids and drifted Hydra provider 
       "github-unknown-model",
     ]);
     assert.deepEqual(result.modelCatalogDrift.driftedProviderIds, [account.providerId]);
+    assert.equal(result.modelsDevDriftSignal.reachable, true);
+    assert.deepEqual(result.modelsDevDriftSignal.newCopilotModelIds, []);
     assert.equal(afterConfig, originalConfig);
   } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.OPENCODE_CONFIG;
+    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
+    await cleanupDir(tempDir);
+  }
+});
+
+test("auditStorage reports new Copilot model ids seen via models.dev without mutating files", async () => {
+  const tempDir = await makeTempDir();
+  const originalFetch = globalThis.fetch;
+
+  try {
+    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
+    const configPath = path.join(tempDir, "opencode.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { auditStorage } = await import(`../dist/storage-audit.js?${Date.now()}`);
+    const { saveOpenCodeConfig } = await import(`../dist/config/opencode-config.js?${Date.now()}`);
+    await saveOpenCodeConfig({ provider: {} }, configPath);
+
+    globalThis.fetch = async (url) => {
+      assert.equal(String(url), "https://models.dev/models.json");
+      return new Response(JSON.stringify({
+        models: [
+          { id: "gpt-5.4", provider: "github-copilot" },
+          { id: "github-future-model", provider: "github-copilot" },
+          { id: "not-copilot", provider: "openai" },
+        ],
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+
+    const originalConfig = await import(`node:fs/promises`).then((fs) => fs.readFile(configPath, "utf8"));
+    const result = await auditStorage({ configDir: tempDir, configPath });
+    const afterConfig = await import(`node:fs/promises`).then((fs) => fs.readFile(configPath, "utf8"));
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.modelsDevDriftSignal, {
+      checked: true,
+      reachable: true,
+      newCopilotModelIds: ["github-future-model"],
+    });
+    assert.equal(afterConfig, originalConfig);
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.OPENCODE_CONFIG;
+    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
+    await cleanupDir(tempDir);
+  }
+});
+
+test("auditStorage fails open when models.dev is unavailable", async () => {
+  const tempDir = await makeTempDir();
+  const originalFetch = globalThis.fetch;
+
+  try {
+    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
+    const configPath = path.join(tempDir, "opencode.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { auditStorage } = await import(`../dist/storage-audit.js?${Date.now()}`);
+    const { saveOpenCodeConfig } = await import(`../dist/config/opencode-config.js?${Date.now()}`);
+    await saveOpenCodeConfig({ provider: {} }, configPath);
+
+    globalThis.fetch = async () => {
+      throw new Error("network down");
+    };
+
+    const result = await auditStorage({ configDir: tempDir, configPath });
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.modelsDevDriftSignal, {
+      checked: true,
+      reachable: false,
+      newCopilotModelIds: [],
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
     delete process.env.OPENCODE_CONFIG;
     delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
