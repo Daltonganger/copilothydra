@@ -41,4 +41,4 @@ Until enterprise-specific flows are explicitly tested, documented, and added to 
 
 - If a path is documented in the compatibility matrix and current runbooks, treat it as supported.
 - If a path is described as best-effort, treat it as compatibility-sensitive and validate it before relying on it broadly.
-- If a path is not documented and falls into Enterprise/GHES or broader undocumented host behavior, treat it as out of scope unless a future PR explicitly changes that boundary.
+- If a path is not documented and falls into enterprise-managed GitHub.com or GHES or broader undocumented host behavior, treat it as out of scope unless a future PR explicitly changes that boundary.
