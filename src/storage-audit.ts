@@ -10,7 +10,13 @@ import { loadAccounts } from "./storage/accounts.js";
 import { getSecretsFilePermissionStatus, loadSecrets } from "./storage/secrets.js";
 import type { SecretsFilePermissionStatus } from "./storage/secrets.js";
 import { loadOpenCodeConfig, resolveOpenCodeConfigPath } from "./config/opencode-config.js";
-import { isCopilotHydraProvider } from "./config/providers.js";
+import { buildProviderConfig, isCopilotHydraProvider } from "./config/providers.js";
+import { isKnownCopilotModelId } from "./config/models.js";
+
+interface ModelCatalogDrift {
+  unknownCopilotModelIds: string[];
+  driftedProviderIds: string[];
+}
 
 export interface AuditStorageResult {
   accountCount: number;
@@ -19,6 +25,8 @@ export interface AuditStorageResult {
   orphanSecretAccountIds: string[];
   missingProviderIds: string[];
   staleProviderIds: string[];
+  modelCatalogConsistent: boolean;
+  modelCatalogDrift: ModelCatalogDrift;
   insecureSecretsFilePermissions: boolean;
   secretsFilePermissionStatus: SecretsFilePermissionStatus;
   ok: boolean;
@@ -53,6 +61,10 @@ export async function auditStorage(options?: {
   const staleProviderIds = [...providerIds].filter(
     (providerId) => !activeAccounts.some((account) => account.providerId === providerId),
   );
+  const modelCatalogDrift = detectModelCatalogDrift(activeAccounts, config.provider ?? {});
+  const modelCatalogConsistent =
+    modelCatalogDrift.unknownCopilotModelIds.length === 0 &&
+    modelCatalogDrift.driftedProviderIds.length === 0;
 
   const insecureSecretsFilePermissions = secretsFilePermissionStatus === "insecure";
 
@@ -61,7 +73,8 @@ export async function auditStorage(options?: {
     orphanSecretAccountIds.length === 0 &&
     missingProviderIds.length === 0 &&
     staleProviderIds.length === 0 &&
-    !insecureSecretsFilePermissions;
+    !insecureSecretsFilePermissions &&
+    modelCatalogConsistent;
 
   return {
     accountCount: accountsFile.accounts.length,
@@ -70,8 +83,52 @@ export async function auditStorage(options?: {
     orphanSecretAccountIds,
     missingProviderIds,
     staleProviderIds,
+    modelCatalogConsistent,
+    modelCatalogDrift,
     insecureSecretsFilePermissions,
     secretsFilePermissionStatus,
     ok,
   };
+}
+
+function detectModelCatalogDrift(
+  activeAccounts: Awaited<ReturnType<typeof loadAccounts>>["accounts"],
+  providerConfig: Record<string, { models?: Record<string, unknown> }>,
+): ModelCatalogDrift {
+  const unknownCopilotModelIds = new Set<string>();
+  const driftedProviderIds = new Set<string>();
+
+  for (const [providerId, providerEntry] of Object.entries(providerConfig)) {
+    const models = providerEntry.models ?? {};
+    for (const modelId of Object.keys(models)) {
+      if (isAuditedCopilotProvider(providerId) && !isKnownCopilotModelId(modelId)) {
+        unknownCopilotModelIds.add(modelId);
+      }
+    }
+  }
+
+  for (const account of activeAccounts) {
+    const currentProviderEntry = providerConfig[account.providerId];
+    if (!currentProviderEntry) continue;
+
+    const expectedModelIds = Object.keys(buildProviderConfig(account).models ?? {}).sort();
+    const actualModelIds = Object.keys(currentProviderEntry.models ?? {}).sort();
+    if (!sameStringArray(expectedModelIds, actualModelIds)) {
+      driftedProviderIds.add(account.providerId);
+    }
+  }
+
+  return {
+    unknownCopilotModelIds: [...unknownCopilotModelIds].sort(),
+    driftedProviderIds: [...driftedProviderIds].sort(),
+  };
+}
+
+function sameStringArray(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((value, index) => value === right[index]);
+}
+
+function isAuditedCopilotProvider(providerId: string): boolean {
+  return providerId === "github-copilot" || isCopilotHydraProvider(providerId);
 }

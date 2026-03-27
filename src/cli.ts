@@ -307,14 +307,38 @@ async function auditStorageCommand(): Promise<void> {
   output.write(`Orphan secrets: ${result.orphanSecretAccountIds.length}\n`);
   output.write(`Missing provider entries: ${result.missingProviderIds.length}\n`);
   output.write(`Stale provider entries: ${result.staleProviderIds.length}\n`);
+  output.write(`Model catalog consistent: ${result.modelCatalogConsistent ? "yes" : "no"}\n`);
   output.write(`Secrets file permissions: ${result.secretsFilePermissionStatus}\n`);
+
+  output.write(`Model catalog consistent: ${result.modelCatalogConsistent ? "yes" : "no"}\n`);
+  if (result.modelCatalogDrift.unknownCopilotModelIds.length > 0) {
+    output.write(`Unknown Copilot model ids in config: ${result.modelCatalogDrift.unknownCopilotModelIds.join(", ")}\n`);
+  }
+  if (result.modelCatalogDrift.driftedProviderIds.length > 0) {
+    output.write(`Providers with drifted model sets: ${result.modelCatalogDrift.driftedProviderIds.join(", ")}\n`);
+  }
 
   if (result.ok) {
     output.write("Storage audit is clean. No repair needed.\n");
     return;
   }
 
-  output.write("Storage audit detected inconsistencies. Run `copilothydra repair-storage` to reconcile them.\n");
+  const hasStorageIssues =
+    result.accountsWithoutSecrets.length > 0 ||
+    result.orphanSecretAccountIds.length > 0 ||
+    result.missingProviderIds.length > 0 ||
+    result.staleProviderIds.length > 0 ||
+    result.insecureSecretsFilePermissions;
+
+  if (hasStorageIssues) {
+    output.write("Storage audit detected storage inconsistencies. Run `copilothydra repair-storage` to reconcile storage issues.\n");
+  }
+
+  if (!result.modelCatalogConsistent) {
+    output.write(
+      "Model catalog drift is detect-only. Review Hydra's local model catalog in `src/config/models.ts`, update the tier tables if needed, then run `copilothydra sync-config` and restart OpenCode.\n",
+    );
+  }
 }
 
 async function resolveAccountByIdentifier(identifier: string) {
