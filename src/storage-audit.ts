@@ -7,7 +7,8 @@
  */
 
 import { loadAccounts } from "./storage/accounts.js";
-import { loadSecrets } from "./storage/secrets.js";
+import { getSecretsFilePermissionStatus, loadSecrets } from "./storage/secrets.js";
+import type { SecretsFilePermissionStatus } from "./storage/secrets.js";
 import { loadOpenCodeConfig, resolveOpenCodeConfigPath } from "./config/opencode-config.js";
 import { buildProviderConfig, isCopilotHydraProvider } from "./config/providers.js";
 import { isKnownCopilotModelId } from "./config/models.js";
@@ -26,6 +27,8 @@ export interface AuditStorageResult {
   staleProviderIds: string[];
   modelCatalogConsistent: boolean;
   modelCatalogDrift: ModelCatalogDrift;
+  insecureSecretsFilePermissions: boolean;
+  secretsFilePermissionStatus: SecretsFilePermissionStatus;
   ok: boolean;
 }
 
@@ -34,10 +37,11 @@ export async function auditStorage(options?: {
   configPath?: string;
 }): Promise<AuditStorageResult> {
   const configPath = options?.configPath ?? resolveOpenCodeConfigPath(options?.configDir);
-  const [accountsFile, secretsFile, config] = await Promise.all([
+  const [accountsFile, secretsFile, config, secretsFilePermissionStatus] = await Promise.all([
     loadAccounts(options?.configDir),
     loadSecrets(options?.configDir),
     loadOpenCodeConfig(configPath),
+    getSecretsFilePermissionStatus(options?.configDir),
   ]);
 
   const activeAccounts = accountsFile.accounts.filter((account) => account.lifecycleState === "active");
@@ -62,11 +66,14 @@ export async function auditStorage(options?: {
     modelCatalogDrift.unknownCopilotModelIds.length === 0 &&
     modelCatalogDrift.driftedProviderIds.length === 0;
 
+  const insecureSecretsFilePermissions = secretsFilePermissionStatus === "insecure";
+
   const ok =
     accountsWithoutSecrets.length === 0 &&
     orphanSecretAccountIds.length === 0 &&
     missingProviderIds.length === 0 &&
     staleProviderIds.length === 0 &&
+    !insecureSecretsFilePermissions &&
     modelCatalogConsistent;
 
   return {
@@ -78,6 +85,8 @@ export async function auditStorage(options?: {
     staleProviderIds,
     modelCatalogConsistent,
     modelCatalogDrift,
+    insecureSecretsFilePermissions,
+    secretsFilePermissionStatus,
     ok,
   };
 }
