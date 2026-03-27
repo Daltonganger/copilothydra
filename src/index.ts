@@ -28,6 +28,7 @@ import { validateAccountCount } from "./runtime-checks.js";
 import { registerAccounts } from "./routing/provider-account-map.js";
 import { setTokenState } from "./auth/token-state.js";
 import { createCopilotLoginMethods } from "./auth/login-method.js";
+import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 
 // ---------------------------------------------------------------------------
 // Module-level account loading (top-level await in ESM)
@@ -150,6 +151,10 @@ export async function CopilotHydraSetup(input: PluginInput): Promise<Hooks> {
   if (_loadError) {
     error("plugin", `CopilotHydra could not load accounts: ${_loadError}`);
   } else {
+    if (_accounts.length === 0) {
+      await recoverHostNativeCopilotState();
+    }
+
     debug(
       "plugin",
       _accounts.length === 0
@@ -164,6 +169,17 @@ export async function CopilotHydraSetup(input: PluginInput): Promise<Hooks> {
       methods: createCopilotLoginMethods(_accounts),
     },
   };
+}
+
+async function recoverHostNativeCopilotState(): Promise<void> {
+  try {
+    await syncAccountsToOpenCodeConfig();
+  } catch (err_) {
+    warn(
+      "plugin",
+      `CopilotHydra could not reconcile stale OpenCode takeover state while no accounts are configured: ${String(err_)}`,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

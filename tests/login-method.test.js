@@ -93,6 +93,50 @@ test("CopilotHydraSetup exposes a GitHub Copilot auth method for OpenCode auth l
   }
 });
 
+test("CopilotHydraSetup restores host-native Copilot state when no Hydra accounts remain", async () => {
+  const tempDir = await makeTempDir();
+  process.env.OPENCODE_CONFIG_DIR = tempDir;
+  process.env.OPENCODE_CONFIG = path.join(tempDir, "opencode.json");
+
+  try {
+    const { saveOpenCodeConfig, saveCopilotHydraOpenCodeState } = await import(
+      `../dist/config/opencode-config.js?${Date.now()}`
+    );
+
+    await saveOpenCodeConfig(
+      {
+        disabled_providers: ["github-copilot", "opencode"],
+        provider: {
+          "github-copilot-acct-stale": { name: "Stale Hydra" },
+        },
+      },
+      path.join(tempDir, "opencode.json"),
+    );
+    await saveCopilotHydraOpenCodeState(
+      {
+        managedDisabledProviders: ["github-copilot"],
+      },
+      path.join(tempDir, "copilothydra-opencode-state.json"),
+    );
+
+    const { CopilotHydraSetup } = await import(`../dist/index.js?${Date.now()}`);
+    const hooks = await CopilotHydraSetup(PLUGIN_INPUT);
+
+    assert.equal(hooks.auth?.provider, "github-copilot");
+
+    const config = await readJson(path.join(tempDir, "opencode.json"));
+    const managedState = await readJson(path.join(tempDir, "copilothydra-opencode-state.json"));
+
+    assert.deepEqual(config.disabled_providers, ["opencode"]);
+    assert.equal(config.provider, undefined);
+    assert.deepEqual(managedState, {});
+  } finally {
+    delete process.env.OPENCODE_CONFIG_DIR;
+    delete process.env.OPENCODE_CONFIG;
+    await cleanupDir(tempDir);
+  }
+});
+
 test("login method can create a new account from OpenCode auth login inputs", async () => {
   const tempDir = await makeTempDir();
   process.env.OPENCODE_CONFIG_DIR = tempDir;
