@@ -66,7 +66,7 @@ Implemented so far:
 - `copilothydra repair-storage` prunes orphan secrets and removes stale CopilotHydra provider entries from OpenCode config
 - existing accounts can now be renamed, revalidated, and moved to a new declared plan without manual file editing
 - `copilothydra audit-storage` reports orphan secrets, provider drift, model-catalog drift signals, and detect-only `models.dev` Copilot drift hints without mutating storage
-- `copilothydra usage-snapshot [account-id|provider-id]` performs a read-only, per-account Copilot usage snapshot query using that account's stored OAuth token
+- `copilothydra usage [account-id|provider-id]` performs a read-only, per-account Copilot usage snapshot query using that account's stored OAuth token (`usage-snapshot` remains available as a compatibility alias)
 - Stored account enums/timestamps and optional secret token fields are now validated strictly and quarantined on malformed state
 - Runtime routing now has lease-based in-flight tracking and pending-removal guards per account
 - Auth loader requests now sync runtime token state through provider routing and fail closed when routed token state is unavailable

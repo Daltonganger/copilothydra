@@ -65,6 +65,7 @@ async function main(): Promise<void> {
     case "audit-storage":
       await auditStorageCommand();
       return;
+    case "usage":
     case "usage-snapshot":
       await usageSnapshotCommand(process.argv[3]);
       return;
