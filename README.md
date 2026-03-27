@@ -113,6 +113,10 @@ Implemented so far:
 - CopilotHydra should still be treated as **beta / hardening-phase software**.
 - Use `docs/release-checklist.md` as the current gate before calling the project stable.
 
+## Operator runbook
+
+- For the primary `opencode auth login` path, restart behavior, and first recovery steps, use `docs/operator-auth-recovery-runbook.md`.
+
 ## Development
 
 Install:
@@ -147,6 +151,7 @@ npm test
 - `docs/Loginmethod.md`
 - `docs/top-improvements.md`
 - `docs/release-checklist.md`
+- `docs/operator-auth-recovery-runbook.md`
 - `docs/compatibility-matrix.md`
 - `assets/branding/README.md`
 
