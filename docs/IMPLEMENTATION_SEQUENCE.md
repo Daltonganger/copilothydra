@@ -86,7 +86,7 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
 
 ### Toprisico’s die in elke volgende phase zichtbaar moeten blijven
 - **Versiedetectie/host-compatibiliteit blijft gevoelig.** Unknown-version gedrag is nu warning-first; echte compatibiliteitsmatrix en hardere checks horen nog bij hardening.
-- **GPT-5+/Responses API routing blijft een expliciete open gap** zolang custom provider IDs niet automatisch OpenCode’s `CUSTOM_LOADERS["github-copilot"]` pad krijgen.
+- **GPT-5+/Responses/Codex parity blijft best-effort en host-gevoelig.** De hoofdroute voor tekstgeneratie is nu gespiegeld via Hydra’s lokale parity-laag, maar exacte built-in Copilot-equivalentie voor bredere Responses/Codex-event surfaces is nog geen harde garantie.
 - **Plaintext secrets blijven tijdelijk beta-only gedrag** en moeten zichtbaar als security caveat blijven bestaan tot keychain/secure storage is toegevoegd.
 
 ---

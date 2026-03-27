@@ -31,6 +31,26 @@ CopilotHydra warns when any of the following are true:
 - `PluginInput.serverUrl` is missing or not a non-empty string
 - no version signal is exposed by the host (debug-only; no warning by itself)
 
+## GPT-5+/Responses/Codex support boundary
+
+CopilotHydra currently supports the main GPT-5-family text-generation path for
+account-scoped custom provider IDs through its local parity layer.
+
+Supported today:
+
+- GPT-5-family routing through Hydra's local provider wrapper
+- text-generation flows covered by the current Responses parity tests
+- account-scoped request routing with Hydra-managed bearer-token injection
+
+Best-effort / not guaranteed as exact built-in parity:
+
+- broader Codex-adjacent or tool-heavy Responses event surfaces
+- future OpenCode/GitHub Copilot response event shapes
+- full equivalence with OpenCode's exact built-in `CUSTOM_LOADERS["github-copilot"]` behavior
+
+If these paths regress, CopilotHydra should either harden them explicitly or
+document a tighter supported boundary rather than silently overclaim parity.
+
 ## Operator guidance
 
 If you hit a compatibility warning:
