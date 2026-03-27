@@ -17,7 +17,13 @@ import { capabilityStateLabel, planLabel } from "../config/capabilities.js";
 import { getOverrideRequiredModelsForPlan } from "../config/models.js";
 import { syncAccountsToOpenCodeConfig } from "../config/sync.js";
 import { resolveOpenCodeConfigPath } from "../config/opencode-config.js";
-import { checkAccountRuntimeReadiness, validateAccountCount } from "../runtime-checks.js";
+import {
+  checkAccountRuntimeReadiness,
+  validateAccountCount,
+  validateCanAddAccount,
+  countActiveAccounts,
+  MAX_ACTIVE_ACCOUNTS,
+} from "../runtime-checks.js";
 import { renameAccount, revalidateAccount, updateAccountPlan } from "../account-update.js";
 import { beginAccountRemoval, finalizeAccountRemoval } from "../account-removal.js";
 import { canAccountDrainComplete } from "../routing/provider-account-map.js";
@@ -42,6 +48,7 @@ interface MenuDependencies {
   loadAccounts(): Promise<{ accounts: CopilotAccountMeta[] }>;
   findAccountByGitHubUsername(githubUsername: string): Promise<CopilotAccountMeta | undefined>;
   validateAccountCount(accounts: CopilotAccountMeta[]): void;
+  validateCanAddAccount(accounts: CopilotAccountMeta[]): void;
   selectOne<T extends { label: string; description?: string }>(prompt: string, options: T[]): Promise<T | null>;
   confirm(prompt: string): Promise<boolean>;
   promptText(prompt: string, options?: { defaultValue?: string }): Promise<string | null>;
@@ -70,6 +77,7 @@ const DEFAULT_DEPS: MenuDependencies = {
   loadAccounts,
   findAccountByGitHubUsername,
   validateAccountCount,
+  validateCanAddAccount,
   selectOne,
   confirm,
   promptText,
@@ -116,6 +124,13 @@ export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Pro
     switch (choice.key) {
       case "add-account":
       {
+        try {
+          deps.validateCanAddAccount(accounts);
+        } catch (err_) {
+          deps.write(`${String(err_)}\n`);
+          break;
+        }
+
         const label = await deps.promptText("Account label");
         if (!label) {
           deps.write("Add account cancelled.\n");
@@ -382,13 +397,14 @@ export function formatAccountSummary(account: CopilotAccountMeta): string {
 }
 
 export function buildMenuOptions(accounts: CopilotAccountMeta[]): MenuActionOption[] {
-  const options: MenuActionOption[] = [
-    {
+  const options: MenuActionOption[] = [];
+  if (countActiveAccounts(accounts) < MAX_ACTIVE_ACCOUNTS) {
+    options.push({
       key: "add-account",
       label: accounts.length === 0 ? "Add account" : "Add another account",
       description: "Interactive account setup",
-    },
-  ];
+    });
+  }
 
   if (accounts.length > 0) {
     options.push(

@@ -57,6 +57,11 @@ Mark each section materially complete before calling CopilotHydra stable.
 - [ ] Operator runbooks for login, mismatch review, and repair are available or explicitly deferred
 - [ ] Supported, best-effort, and out-of-scope boundaries (including enterprise-managed GitHub.com and GHES) are documented consistently
 
+Current status:
+
+- Auth/restart recovery runbook: available in `docs/operator-auth-recovery-runbook.md`
+- Mismatch-review and storage-repair runbooks: still to be expanded or explicitly deferred
+
 ## Current blockers for stable
 
 At the time this checklist was added, the biggest blockers were:

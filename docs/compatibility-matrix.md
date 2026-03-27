@@ -39,7 +39,10 @@ account-scoped custom provider IDs through its local parity layer.
 Supported today:
 
 - GPT-5-family routing through Hydra's local provider wrapper
+- routing-selection coverage for the current GPT-5 family boundary (`gpt-5*` except `gpt-5-mini`)
 - text-generation flows covered by the current Responses parity tests
+- tool-only stream passthrough without synthetic text boundaries
+- mixed text and non-text chunk preservation with normalized single-text-part output
 - account-scoped request routing with Hydra-managed bearer-token injection
 
 Best-effort / not guaranteed as exact built-in parity:
