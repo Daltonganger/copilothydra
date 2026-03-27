@@ -23,6 +23,7 @@ import { join, dirname } from "node:path";
 import type { AccountId, CopilotAccountMeta, AccountsFile } from "../types.js";
 import { debugStorage, warn } from "../log.js";
 import { withLock } from "./locking.js";
+import { buildAccountLimitMessage, countActiveAccounts, MAX_ACTIVE_ACCOUNTS } from "../runtime-checks.js";
 import {
   isRecord,
   requireEnumValue,
@@ -171,6 +172,14 @@ export async function upsertAccount(
     }
 
     const idx = file.accounts.findIndex((a) => a.id === account.id);
+    const otherAccounts = idx >= 0
+      ? file.accounts.filter((a) => a.id !== account.id)
+      : file.accounts;
+    const activeAccountCount = countActiveAccounts(otherAccounts);
+    if (account.lifecycleState === "active" && activeAccountCount >= MAX_ACTIVE_ACCOUNTS) {
+      throw new Error(buildAccountLimitMessage(activeAccountCount));
+    }
+
     if (idx >= 0) {
       file.accounts[idx] = account;
     } else {

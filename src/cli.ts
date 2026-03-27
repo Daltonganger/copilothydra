@@ -23,7 +23,7 @@ import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 import { getOverrideRequiredModelsForPlan } from "./config/models.js";
 import { buildMismatchMessage, capabilityStateLabel, planLabel } from "./config/capabilities.js";
 import { resolveOpenCodeConfigPath } from "./config/opencode-config.js";
-import { checkAccountRuntimeReadiness, validateAccountCount } from "./runtime-checks.js";
+import { checkAccountRuntimeReadiness, validateAccountCount, validateCanAddAccount } from "./runtime-checks.js";
 
 const VALID_PLANS: PlanTier[] = ["free", "student", "pro", "pro+"];
 
@@ -75,7 +75,7 @@ async function addAccountInteractive(): Promise<void> {
   }
 
   const existing = await loadAccounts();
-  validateAccountCount(existing.accounts);
+  validateCanAddAccount(existing.accounts);
 
   const rl = createInterface({ input, output });
   try {
