@@ -311,6 +311,80 @@ test("createCopilotLoginMethods omits add-account when 8 active accounts already
   assert.deepEqual(labels, ["GitHub Copilot (CopilotHydra) — Re-auth existing account"]);
 });
 
+test("createCopilotLoginMethods still offers add-account when only 7 active accounts exist and one is pending-removal", async () => {
+  const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+  const { createCopilotLoginMethods } = await import(`../dist/auth/login-method.js?${Date.now()}`);
+
+  const accounts = Array.from({ length: 8 }, (_, index) => {
+    const account = createAccountMeta({
+      label: `Account ${index + 1}`,
+      githubUsername: `user${index + 1}`,
+      plan: "free",
+    });
+    if (index === 7) {
+      account.lifecycleState = "pending-removal";
+    }
+    return account;
+  });
+
+  const labels = createCopilotLoginMethods(accounts).map((method) => method.label);
+  assert.deepEqual(labels, [
+    "GitHub Copilot (CopilotHydra) — Re-auth existing account",
+    "GitHub Copilot (CopilotHydra) — Add new account",
+  ]);
+});
+
+test("new-account authorize fails when another active account was added after methods were created", async () => {
+  const tempDir = await makeTempDir();
+  process.env.OPENCODE_CONFIG_DIR = tempDir;
+  process.env.OPENCODE_CONFIG = path.join(tempDir, "opencode.json");
+
+  try {
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { upsertAccount, loadAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { createCopilotLoginMethods } = await import(`../dist/auth/login-method.js?${Date.now()}`);
+
+    const initialAccounts = Array.from({ length: 7 }, (_, index) =>
+      createAccountMeta({
+        label: `Account ${index + 1}`,
+        githubUsername: `user${index + 1}`,
+        plan: "free",
+      })
+    );
+    for (const account of initialAccounts) {
+      await upsertAccount(account, tempDir);
+    }
+
+    const methods = createCopilotLoginMethods(await loadAccounts(tempDir).then((file) => file.accounts));
+    const addAccountMethod = methods.find((method) => method.label === "GitHub Copilot (CopilotHydra) — Add new account");
+    assert.ok(addAccountMethod);
+
+    await upsertAccount(createAccountMeta({
+      label: "Account 8",
+      githubUsername: "user8",
+      plan: "free",
+    }), tempDir);
+
+    await assert.rejects(
+      addAccountMethod.authorize({
+        githubUsername: "user9",
+        label: "Account 9",
+        plan: "free",
+        allowUnverifiedModels: "no",
+      }),
+      /Cannot add another active account: 8 active accounts already configured/
+    );
+
+    const accounts = await loadAccounts(tempDir);
+    assert.equal(accounts.accounts.length, 8);
+    assert.equal(accounts.accounts.some((account) => account.githubUsername === "user9"), false);
+   } finally {
+    delete process.env.OPENCODE_CONFIG_DIR;
+    delete process.env.OPENCODE_CONFIG;
+    await cleanupDir(tempDir);
+  }
+});
+
 test("CopilotHydraSetup does not rewrite clean host config when no Hydra takeover state exists", async () => {
   const tempDir = await makeTempDir();
   const configPath = path.join(tempDir, "opencode.jsonc");

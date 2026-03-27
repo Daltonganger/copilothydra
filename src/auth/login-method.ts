@@ -3,7 +3,12 @@ import { createAccountMeta } from "../account.js";
 import { requestDeviceCode, pollForAccessToken, type DeviceCodeResponse } from "./device-flow.js";
 import { findAccount, findAccountByGitHubUsername, upsertAccount } from "../storage/accounts.js";
 import { syncAccountsToOpenCodeConfig } from "../config/sync.js";
-import { checkAccountRuntimeReadiness, validateCanAddAccount, MAX_ACTIVE_ACCOUNTS } from "../runtime-checks.js";
+import {
+  checkAccountRuntimeReadiness,
+  validateCanAddAccount,
+  MAX_ACTIVE_ACCOUNTS,
+  countActiveAccounts,
+} from "../runtime-checks.js";
 import { setTokenState } from "./token-state.js";
 import { resolveOpenCodeConfigPath } from "../config/opencode-config.js";
 import { error, info } from "../log.js";
@@ -64,7 +69,7 @@ export function createCopilotLoginMethods(
     });
   }
 
-  if (existingAccounts.length < MAX_ACTIVE_ACCOUNTS) {
+  if (countActiveAccounts(existingAccounts) < MAX_ACTIVE_ACCOUNTS) {
     methods.push({
       type: "oauth",
       label: "GitHub Copilot (CopilotHydra) — Add new account",

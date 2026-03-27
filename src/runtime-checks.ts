@@ -10,6 +10,10 @@ import { getOverrideRequiredModelsForPlan } from "./config/models.js";
 
 export const MAX_ACTIVE_ACCOUNTS = 8;
 
+export function countActiveAccounts(accounts: CopilotAccountMeta[]): number {
+  return accounts.filter((account) => account.lifecycleState === "active").length;
+}
+
 export function buildAccountLimitMessage(activeCount: number): string {
   return (
     `[copilothydra] Cannot add another active account: ${activeCount} active accounts already configured, ` +
@@ -51,15 +55,17 @@ export function checkAccountRuntimeReadiness(account: CopilotAccountMeta): Runti
 }
 
 export function validateAccountCount(accounts: CopilotAccountMeta[]): void {
-  if (accounts.length > MAX_ACTIVE_ACCOUNTS) {
+  const activeCount = countActiveAccounts(accounts);
+  if (activeCount > MAX_ACTIVE_ACCOUNTS) {
     throw new Error(
-      `[copilothydra] ${accounts.length} active accounts configured, but only ${MAX_ACTIVE_ACCOUNTS} static plugin slots exist.`
+      `[copilothydra] ${activeCount} active accounts configured, but only ${MAX_ACTIVE_ACCOUNTS} static plugin slots exist.`
     );
   }
 }
 
 export function validateCanAddAccount(accounts: CopilotAccountMeta[]): void {
-  if (accounts.length >= MAX_ACTIVE_ACCOUNTS) {
-    throw new Error(buildAccountLimitMessage(accounts.length));
+  const activeCount = countActiveAccounts(accounts);
+  if (activeCount >= MAX_ACTIVE_ACCOUNTS) {
+    throw new Error(buildAccountLimitMessage(activeCount));
   }
 }

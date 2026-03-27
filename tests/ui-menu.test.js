@@ -281,7 +281,7 @@ test("launchMenu add-account rejects duplicate GitHub usernames", async () => {
   }
 });
 
-test("launchMenu blocks add-account once 8 active accounts already exist", async () => {
+test("launchMenu hides add-account once 8 active accounts already exist", async () => {
   const tempDir = await makeTempDir();
 
   try {
@@ -301,6 +301,7 @@ test("launchMenu blocks add-account once 8 active accounts already exist", async
     const writes = [];
     let mainMenuCalls = 0;
     let promptCalls = 0;
+    let mainMenuOptionKeys = [];
 
     await launchMenu({
       isTTY: () => true,
@@ -311,10 +312,8 @@ test("launchMenu blocks add-account once 8 active accounts already exist", async
       resolveOpenCodeConfigPath: () => path.join(tempDir, "opencode.json"),
       selectOne: async (prompt, options) => {
         if (prompt === "Main menu") {
+          mainMenuOptionKeys = options.map((option) => option.key);
           mainMenuCalls += 1;
-          if (mainMenuCalls === 1) {
-            return options.find((option) => option.key === "add-account") ?? null;
-          }
           return options.find((option) => option.key === "exit") ?? null;
         }
         return null;
@@ -331,10 +330,47 @@ test("launchMenu blocks add-account once 8 active accounts already exist", async
     const accounts = await loadAccounts(tempDir);
     assert.equal(accounts.accounts.length, 8);
     assert.equal(promptCalls, 0);
-    assert.match(writes.join(""), /Cannot add another active account: 8 active accounts already configured/i);
+    assert.equal(mainMenuCalls, 1);
+    assert.equal(mainMenuOptionKeys.includes("add-account"), false);
   } finally {
     await cleanupDir(tempDir);
   }
+});
+
+test("buildMenuOptions hides add-account when 8 active accounts already exist", async () => {
+  const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+  const { buildMenuOptions } = await import(`../dist/ui/menu.js?${Date.now()}`);
+
+  const accounts = Array.from({ length: 8 }, (_, index) =>
+    createAccountMeta({
+      label: `Account ${index + 1}`,
+      githubUsername: `user${index + 1}`,
+      plan: "free",
+    })
+  );
+
+  const options = buildMenuOptions(accounts).map((option) => option.key);
+  assert.equal(options.includes("add-account"), false);
+});
+
+test("buildMenuOptions still shows add-account when only 7 active accounts remain and one is pending-removal", async () => {
+  const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+  const { buildMenuOptions } = await import(`../dist/ui/menu.js?${Date.now()}`);
+
+  const accounts = Array.from({ length: 8 }, (_, index) => {
+    const account = createAccountMeta({
+      label: `Account ${index + 1}`,
+      githubUsername: `user${index + 1}`,
+      plan: "free",
+    });
+    if (index === 7) {
+      account.lifecycleState = "pending-removal";
+    }
+    return account;
+  });
+
+  const options = buildMenuOptions(accounts).map((option) => option.key);
+  assert.equal(options.includes("add-account"), true);
 });
 
 test("launchMenu can revalidate an account through the TUI action flow", async () => {
