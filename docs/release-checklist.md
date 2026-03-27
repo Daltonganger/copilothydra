@@ -56,6 +56,11 @@ Mark each section materially complete before calling CopilotHydra stable.
 - [ ] Known limitations are documented consistently across docs
 - [ ] Operator runbooks for login, mismatch review, and repair are available or explicitly deferred
 
+Current status:
+
+- Auth/restart recovery runbook: available in `docs/operator-auth-recovery-runbook.md`
+- Mismatch-review and storage-repair runbooks: still to be expanded or explicitly deferred
+
 ## Current blockers for stable
 
 At the time this checklist was added, the biggest blockers were:
