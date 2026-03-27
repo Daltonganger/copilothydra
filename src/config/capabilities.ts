@@ -11,7 +11,7 @@ import type { AccountId, CapabilityState, CopilotAccountMeta, PlanTier } from ".
 import { warn } from "../log.js";
 import { markAccountCapabilityMismatch } from "../account-update.js";
 import { loadAccounts } from "../storage/accounts.js";
-import { suggestDowngradePlanForModel } from "./models.js";
+import { isKnownCopilotModelId, modelsForPlan, suggestDowngradePlanForModel } from "./models.js";
 
 export interface PlanMismatchResult {
   account: CopilotAccountMeta;
@@ -29,9 +29,7 @@ export async function handlePlanMismatch(
     return null;
   }
 
-  const suggestedPlan = rejectedModelId
-    ? suggestDowngradePlanForModel(account.plan, rejectedModelId)
-    : undefined;
+  const suggestedPlan = resolveMismatchSuggestedPlan(account, rejectedModelId);
 
   const updated = await markAccountCapabilityMismatch(account.id, {
     ...(rejectedModelId ? { rejectedModelId } : {}),
@@ -92,7 +90,7 @@ export function buildMismatchMessage(
     : ` Declared plan "${account.plan}" no longer matches runtime capability.`;
   const suggestionPart = suggestedPlan
     ? ` Suggested stricter stored plan: "${suggestedPlan}". Run \`copilothydra review-mismatch ${account.id}\` to apply or preserve the current declaration.`
-    : " No automatic stricter plan suggestion is available yet.";
+    : " No automatic stricter plan suggestion is available for this mismatch; review the account manually if the declared plan may still be wrong.";
 
   return `[copilothydra] Capability mismatch detected for account "${account.label}" (${account.githubUsername}).${modelPart}${suggestionPart}`;
 }
@@ -118,4 +116,27 @@ function extractErrorText(error: unknown): string {
   }
 
   return "";
+}
+
+function resolveMismatchSuggestedPlan(
+  account: CopilotAccountMeta,
+  rejectedModelId?: string,
+): PlanTier | undefined {
+  if (!rejectedModelId) {
+    return undefined;
+  }
+
+  if (!isKnownCopilotModelId(rejectedModelId)) {
+    return undefined;
+  }
+
+  const includeUnverified =
+    account.capabilityState === "verified" ||
+    (account.capabilityState === "user-declared" && account.allowUnverifiedModels === true);
+
+  if (!modelsForPlan(account.plan, { includeUnverified }).includes(rejectedModelId)) {
+    return undefined;
+  }
+
+  return suggestDowngradePlanForModel(account.plan, rejectedModelId);
 }
