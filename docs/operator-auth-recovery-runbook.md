@@ -1,6 +1,8 @@
 # CopilotHydra Operator Auth & Recovery Runbook
 
-This runbook covers the primary operator path around `opencode auth login`, restart behavior, and the first recovery steps when the expected CopilotHydra flow does not appear.
+This runbook covers the primary operator path around `opencode auth login`, restart or reload behavior, and the first recovery steps when the expected CopilotHydra flow does not appear.
+
+Scope note: this runbook is written for the currently tested OpenCode/CopilotHydra path documented in [docs/compatibility-matrix.md](./compatibility-matrix.md). If you are on an untested host version, treat these steps as best-effort and validate them against the current compatibility matrix first.
 
 ## Current auth method labels
 
@@ -13,9 +15,9 @@ If no CopilotHydra accounts exist yet, the expected first path is usually:
 
 - `GitHub Copilot (CopilotHydra) — Add new account`
 
-## Restart / reload rules
+## Restart or reload rules
 
-### Restart is required
+### Restart or reload is required
 
 Restart or reload OpenCode after any action that changes generated provider/config state, including:
 
@@ -27,7 +29,7 @@ Restart or reload OpenCode after any action that changes generated provider/conf
 
 Reason: CopilotHydra writes account-scoped provider entries into OpenCode config, and those are picked up on reload.
 
-### Restart is not the primary step
+### Restart or reload is not the primary step
 
 Re-authing an existing account does **not** primarily exist to change provider structure. It refreshes the account's auth state. If re-auth succeeds and no provider/config shape changed, a restart should not be your first recovery step.
 
@@ -43,7 +45,7 @@ Re-authing an existing account does **not** primarily exist to change provider s
    - declared plan
    - whether uncertain models should be exposed
 4. Complete the GitHub device flow
-5. After success, reload/restart OpenCode
+5. After success, restart or reload OpenCode
 6. Confirm the new account-scoped provider/models appear
 
 ### 2. Re-auth an existing account
@@ -119,9 +121,14 @@ If recovery does not seem correct:
 
 ## Related fallback/admin commands
 
+Read-only:
+
 - `copilothydra list-accounts`
-- `copilothydra sync-config`
 - `copilothydra audit-storage`
+
+Mutating / repair:
+
+- `copilothydra sync-config`
 - `copilothydra repair-storage`
 - `copilothydra review-mismatch <account-id|provider-id>`
 
