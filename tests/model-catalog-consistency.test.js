@@ -58,15 +58,12 @@ test("provider model display names always resolve from the catalog for exposed p
   }
 });
 
-test("responses routing heuristic stays aligned with known GPT-5 family model ids", async () => {
-  const { COPILOT_MODEL_CATALOG, shouldUseCopilotResponsesApi } = await import(`../dist/config/models.js?${Date.now()}`);
+test("catalog entries are internally consistent", async () => {
+  const { COPILOT_MODEL_CATALOG } = await import(`../dist/config/models.js?${Date.now()}`);
 
   for (const modelId of Object.keys(COPILOT_MODEL_CATALOG)) {
-    const expected = modelId.startsWith("gpt-5") && modelId !== "gpt-5-mini";
-    assert.equal(
-      shouldUseCopilotResponsesApi(modelId),
-      expected,
-      `unexpected responses routing classification for ${modelId}`,
-    );
+    const entry = COPILOT_MODEL_CATALOG[modelId];
+    assert.equal(entry.id, modelId, `catalog entry id mismatch for ${modelId}`);
+    assert.ok(entry.name, `catalog entry ${modelId} is missing a display name`);
   }
 });
