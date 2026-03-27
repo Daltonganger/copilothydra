@@ -126,6 +126,28 @@ test("capability mismatch helpers detect entitlement failures and suggest strict
   assert.match(message, /review-mismatch acct_test/);
 });
 
+test("capability mismatch message explains when no automatic downgrade suggestion is available", async () => {
+  const { buildMismatchMessage } = await import(`../dist/config/capabilities.js?${Date.now()}`);
+
+  const message = buildMismatchMessage(
+    {
+      id: "acct_test",
+      providerId: "github-copilot-acct-acct_test",
+      label: "Personal",
+      githubUsername: "alice",
+      plan: "pro",
+      capabilityState: "mismatch",
+      lifecycleState: "active",
+      addedAt: "2026-03-25T00:00:00.000Z",
+    },
+    "o1",
+    undefined,
+  );
+
+  assert.match(message, /No automatic stricter plan suggestion is available for this mismatch/);
+  assert.match(message, /review the account manually/i);
+});
+
 test("runtime readiness no longer warns about GPT-5+/Codex hiding once Hydra mirrors built-in routing", async () => {
   const { checkAccountRuntimeReadiness } = await import(`../dist/runtime-checks.js?${Date.now()}`);
 
