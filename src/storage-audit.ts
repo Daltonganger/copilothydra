@@ -17,6 +17,12 @@ interface ModelCatalogDrift {
   driftedProviderIds: string[];
 }
 
+export interface ModelsDevDriftSignal {
+  checked: boolean;
+  reachable: boolean;
+  newCopilotModelIds: string[];
+}
+
 export interface AuditStorageResult {
   accountCount: number;
   secretCount: number;
@@ -26,6 +32,7 @@ export interface AuditStorageResult {
   staleProviderIds: string[];
   modelCatalogConsistent: boolean;
   modelCatalogDrift: ModelCatalogDrift;
+  modelsDevDriftSignal: ModelsDevDriftSignal;
   ok: boolean;
 }
 
@@ -58,6 +65,7 @@ export async function auditStorage(options?: {
     (providerId) => !activeAccounts.some((account) => account.providerId === providerId),
   );
   const modelCatalogDrift = detectModelCatalogDrift(activeAccounts, config.provider ?? {});
+  const modelsDevDriftSignal = await detectModelsDevDrift();
   const modelCatalogConsistent =
     modelCatalogDrift.unknownCopilotModelIds.length === 0 &&
     modelCatalogDrift.driftedProviderIds.length === 0;
@@ -78,8 +86,50 @@ export async function auditStorage(options?: {
     staleProviderIds,
     modelCatalogConsistent,
     modelCatalogDrift,
+    modelsDevDriftSignal,
     ok,
   };
+}
+
+async function detectModelsDevDrift(): Promise<ModelsDevDriftSignal> {
+  const modelsDevUrl = process.env.COPILOTHYDRA_MODELS_DEV_URL?.trim() || "https://models.dev/models.json";
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      const response = await fetch(modelsDevUrl, { signal: controller.signal });
+      if (!response.ok) {
+        return {
+          checked: true,
+          reachable: false,
+          newCopilotModelIds: [],
+        };
+      }
+
+      const payload = await response.json() as { models?: Array<{ id?: unknown, provider?: unknown }> };
+      const newCopilotModelIds = (payload.models ?? [])
+        .filter((entry) => entry.provider === "github-copilot" && typeof entry.id === "string")
+        .map((entry) => entry.id as string)
+        .filter((modelId) => !isKnownCopilotModelId(modelId))
+        .sort();
+
+      return {
+        checked: true,
+        reachable: true,
+        newCopilotModelIds,
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch {
+    return {
+      checked: true,
+      reachable: false,
+      newCopilotModelIds: [],
+    };
+  }
 }
 
 function detectModelCatalogDrift(
