@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
+import fs from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { cleanupDir, makeTempDir, readJson } from "./helpers.js";
 
@@ -292,4 +293,32 @@ test("createCopilotLoginMethods omits re-auth when there are no existing account
 
   assert.equal(methods.length, 1);
   assert.equal(methods[0].label, "GitHub Copilot (CopilotHydra) — Add new account");
+});
+
+test("CopilotHydraSetup does not rewrite clean host config when no Hydra takeover state exists", async () => {
+  const tempDir = await makeTempDir();
+  const configPath = path.join(tempDir, "opencode.jsonc");
+  const statePath = path.join(tempDir, "copilothydra-opencode-state.json");
+  process.env.OPENCODE_CONFIG_DIR = tempDir;
+  process.env.OPENCODE_CONFIG = configPath;
+
+  const originalConfig = `{
+  // keep this comment
+  "plugin": []
+}\n`;
+
+  try {
+    await fs.writeFile(configPath, originalConfig, "utf8");
+
+    const { CopilotHydraSetup } = await import(`../dist/index.js?${Date.now()}`);
+    const hooks = await CopilotHydraSetup(PLUGIN_INPUT);
+
+    assert.equal(hooks.auth?.provider, "github-copilot");
+    assert.equal(await fs.readFile(configPath, "utf8"), originalConfig);
+    await assert.rejects(fs.stat(statePath), /ENOENT/);
+  } finally {
+    delete process.env.OPENCODE_CONFIG_DIR;
+    delete process.env.OPENCODE_CONFIG;
+    await cleanupDir(tempDir);
+  }
 });

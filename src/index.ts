@@ -29,6 +29,13 @@ import { registerAccounts } from "./routing/provider-account-map.js";
 import { setTokenState } from "./auth/token-state.js";
 import { createCopilotLoginMethods } from "./auth/login-method.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
+import {
+  loadCopilotHydraOpenCodeState,
+  loadOpenCodeConfig,
+  resolveCopilotHydraOpenCodeStatePath,
+  resolveOpenCodeConfigPath,
+} from "./config/opencode-config.js";
+import { isCopilotHydraProvider } from "./config/providers.js";
 
 // ---------------------------------------------------------------------------
 // Module-level account loading (top-level await in ESM)
@@ -173,6 +180,10 @@ export async function CopilotHydraSetup(input: PluginInput): Promise<Hooks> {
 
 async function recoverHostNativeCopilotState(): Promise<void> {
   try {
+    if (!(await hasStaleHostNativeCopilotState())) {
+      return;
+    }
+
     await syncAccountsToOpenCodeConfig();
   } catch (err_) {
     warn(
@@ -180,6 +191,29 @@ async function recoverHostNativeCopilotState(): Promise<void> {
       `CopilotHydra could not reconcile stale OpenCode takeover state while no accounts are configured: ${String(err_)}`,
     );
   }
+}
+
+async function hasStaleHostNativeCopilotState(): Promise<boolean> {
+  const configPath = resolveOpenCodeConfigPath();
+  const statePath = resolveCopilotHydraOpenCodeStatePath();
+  const [config, managedState] = await Promise.all([
+    loadOpenCodeConfig(configPath),
+    loadCopilotHydraOpenCodeState(statePath),
+  ]);
+
+  const legacyManagedState =
+    (config as { copilothydra?: { managedDisabledProviders?: string[] } }).copilothydra
+      ?.managedDisabledProviders ?? [];
+  const managedDisabledProviders = new Set([
+    ...(managedState.managedDisabledProviders ?? []),
+    ...legacyManagedState,
+  ]);
+  const hasManagedBuiltInDisable = managedDisabledProviders.has("github-copilot");
+  const hasHydraProviders = Object.keys(config.provider ?? {}).some((providerId) =>
+    isCopilotHydraProvider(providerId),
+  );
+
+  return hasManagedBuiltInDisable || hasHydraProviders;
 }
 
 // ---------------------------------------------------------------------------
