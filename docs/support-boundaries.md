@@ -21,6 +21,7 @@ This document defines what CopilotHydra supports today, what remains best-effort
 - GPT-5+/Responses/Codex parity outside the specifically documented and tested surfaces
 - Any path that depends on host behavior not yet covered by the tested compatibility matrix or regression suite
 - Capability truth beyond the current hybrid model of user-declared plan exposure plus runtime mismatch detection
+- Token-bound usage or quota snapshots until a trustworthy per-account percentage source is validated
 
 ## Out of scope today
 
@@ -28,6 +29,7 @@ This document defines what CopilotHydra supports today, what remains best-effort
 - End-to-end GitHub Enterprise Server (GHES) behavior as a supported product path
 - Treating `enterpriseUrl` plumbing as a support guarantee by itself
 - Automatic entitlement truth or authoritative plan verification
+- Authoritative per-account Copilot usage percentages from unsupported or cross-account billing sources
 - Hidden fallback or automatic switching between Copilot accounts
 - More than the currently enforced 8 simultaneously exported runtime account slots as a guaranteed supported scale target
 
