@@ -295,6 +295,22 @@ test("createCopilotLoginMethods omits re-auth when there are no existing account
   assert.equal(methods[0].label, "GitHub Copilot (CopilotHydra) — Add new account");
 });
 
+test("createCopilotLoginMethods omits add-account when 8 active accounts already exist", async () => {
+  const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+  const { createCopilotLoginMethods } = await import(`../dist/auth/login-method.js?${Date.now()}`);
+
+  const accounts = Array.from({ length: 8 }, (_, index) =>
+    createAccountMeta({
+      label: `Account ${index + 1}`,
+      githubUsername: `user${index + 1}`,
+      plan: "free",
+    })
+  );
+
+  const labels = createCopilotLoginMethods(accounts).map((method) => method.label);
+  assert.deepEqual(labels, ["GitHub Copilot (CopilotHydra) — Re-auth existing account"]);
+});
+
 test("CopilotHydraSetup does not rewrite clean host config when no Hydra takeover state exists", async () => {
   const tempDir = await makeTempDir();
   const configPath = path.join(tempDir, "opencode.jsonc");

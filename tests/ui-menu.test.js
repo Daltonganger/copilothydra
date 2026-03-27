@@ -281,6 +281,62 @@ test("launchMenu add-account rejects duplicate GitHub usernames", async () => {
   }
 });
 
+test("launchMenu blocks add-account once 8 active accounts already exist", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    const stamp = Date.now();
+    const { createAccountMeta } = await import(`../dist/account.js?${stamp}`);
+    const { upsertAccount, loadAccounts } = await import(`../dist/storage/accounts.js?${stamp}`);
+    const { launchMenu } = await import(`../dist/ui/menu.js?${stamp}`);
+
+    for (let index = 0; index < 8; index += 1) {
+      await upsertAccount(createAccountMeta({
+        label: `Account ${index + 1}`,
+        githubUsername: `user${index + 1}`,
+        plan: "free",
+      }), tempDir);
+    }
+
+    const writes = [];
+    let mainMenuCalls = 0;
+    let promptCalls = 0;
+
+    await launchMenu({
+      isTTY: () => true,
+      loadAccounts: () => loadAccounts(tempDir),
+      findAccountByGitHubUsername: (githubUsername) => import(`../dist/storage/accounts.js?${Date.now()}`).then((mod) => mod.findAccountByGitHubUsername(githubUsername, tempDir)),
+      upsertAccount: (account) => import(`../dist/storage/accounts.js?${Date.now()}`).then((mod) => mod.upsertAccount(account, tempDir)),
+      syncAccountsToOpenCodeConfig: () => import(`../dist/config/sync.js?${Date.now()}`).then((mod) => mod.syncAccountsToOpenCodeConfig(path.join(tempDir, "opencode.json"), tempDir)),
+      resolveOpenCodeConfigPath: () => path.join(tempDir, "opencode.json"),
+      selectOne: async (prompt, options) => {
+        if (prompt === "Main menu") {
+          mainMenuCalls += 1;
+          if (mainMenuCalls === 1) {
+            return options.find((option) => option.key === "add-account") ?? null;
+          }
+          return options.find((option) => option.key === "exit") ?? null;
+        }
+        return null;
+      },
+      promptText: async () => {
+        promptCalls += 1;
+        return promptCalls === 1 ? "Should not happen" : null;
+      },
+      write: (message) => {
+        writes.push(message);
+      },
+    });
+
+    const accounts = await loadAccounts(tempDir);
+    assert.equal(accounts.accounts.length, 8);
+    assert.equal(promptCalls, 0);
+    assert.match(writes.join(""), /Cannot add another active account: 8 active accounts already configured/i);
+  } finally {
+    await cleanupDir(tempDir);
+  }
+});
+
 test("launchMenu can revalidate an account through the TUI action flow", async () => {
   const tempDir = await makeTempDir();
 
