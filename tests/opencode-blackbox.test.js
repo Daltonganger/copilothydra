@@ -58,21 +58,20 @@ test("black-box host discovery exposes setup hook and empty runtime slots when n
   await withTempOpenCodeConfig(async () => {
     const pluginModule = await importFresh("dist/index.js");
     const discovered = discoverPluginExports(pluginModule);
+    const discoveredNames = discovered.map((entry) => entry.name).sort();
+    const expectedNames = [
+      "CopilotHydraSetup",
+      "CopilotHydraSlot0",
+      "CopilotHydraSlot1",
+      "CopilotHydraSlot2",
+      "CopilotHydraSlot3",
+      "CopilotHydraSlot4",
+      "CopilotHydraSlot5",
+      "CopilotHydraSlot6",
+      "CopilotHydraSlot7",
+    ].sort();
 
-    assert.deepEqual(
-      discovered.map((entry) => entry.name),
-      [
-        "CopilotHydraSetup",
-        "CopilotHydraSlot0",
-        "CopilotHydraSlot1",
-        "CopilotHydraSlot2",
-        "CopilotHydraSlot3",
-        "CopilotHydraSlot4",
-        "CopilotHydraSlot5",
-        "CopilotHydraSlot6",
-        "CopilotHydraSlot7",
-      ],
-    );
+    assert.deepEqual(discoveredNames, expectedNames);
 
     const setupHooks = await pluginModule.CopilotHydraSetup(PLUGIN_INPUT);
     assert.equal(setupHooks.auth?.provider, "github-copilot");
@@ -95,21 +94,33 @@ test("black-box host add-account flow persists config and survives restart into 
       const url = typeof request === "string" ? request : request instanceof URL ? request.href : request.url;
 
       if (url === "https://github.com/login/device/code") {
-        return Response.json({
-          device_code: "device-blackbox",
-          user_code: "WXYZ-1234",
-          verification_uri: "https://github.com/login/device",
-          expires_in: 900,
-          interval: 0,
-        });
+        return new Response(
+          JSON.stringify({
+            device_code: "device-blackbox",
+            user_code: "WXYZ-1234",
+            verification_uri: "https://github.com/login/device",
+            expires_in: 900,
+            interval: 0,
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
       }
 
       if (url === "https://github.com/login/oauth/access_token") {
-        return Response.json({
-          access_token: "gho_blackbox_token",
-          token_type: "bearer",
-          scope: "read:user",
-        });
+        return new Response(
+          JSON.stringify({
+            access_token: "gho_blackbox_token",
+            token_type: "bearer",
+            scope: "read:user",
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
       }
 
       runtimeRequests.push({
@@ -122,7 +133,9 @@ test("black-box host add-account flow persists config and survives restart into 
     try {
       const setupModule = await importFresh("dist/index.js");
       const setupHooks = await setupModule.CopilotHydraSetup(PLUGIN_INPUT);
-      const [addAccountMethod] = setupHooks.auth?.methods ?? [];
+      const addAccountMethod = setupHooks.auth?.methods?.find(
+        (method) => method.label === "GitHub Copilot (CopilotHydra) — Add new account",
+      );
 
       assert.ok(addAccountMethod, "expected CopilotHydraSetup to expose an add-account method");
 
