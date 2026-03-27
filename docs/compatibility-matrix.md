@@ -54,6 +54,12 @@ Best-effort / not guaranteed as exact built-in parity:
 If these paths regress, CopilotHydra should either harden them explicitly or
 document a tighter supported boundary rather than silently overclaim parity.
 
+## Support boundary reference
+
+For the broader supported vs best-effort vs out-of-scope policy — including
+enterprise-managed GitHub.com and GHES positioning — use
+`docs/support-boundaries.md` as the primary reference.
+
 ## Operator guidance
 
 If you hit a compatibility warning:

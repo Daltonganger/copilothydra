@@ -106,6 +106,7 @@ Implemented so far:
 - **GPT-5+/Responses/Codex parity is best-effort, not guaranteed.** CopilotHydra mirrors the main text-generation routing path for custom provider IDs, but broader Responses/Codex event surfaces may still diverge from OpenCode's exact built-in `github-copilot` implementation.
 - **Secrets are still plaintext for now.** This is accepted for current feasibility/beta work only, guarded by explicit project policy and env gating.
 - **Capability truth is not authoritative in v1.** Plan/model exposure is user-declared plus runtime mismatch detection, not proven entitlement.
+- **Enterprise-managed GitHub.com and GHES are not supported v1 paths.** Support boundaries for GitHub.com, best-effort surfaces, and out-of-scope enterprise behavior are documented in `docs/support-boundaries.md`.
 - **Current multi-account runtime support is capped at 8 active CopilotHydra accounts.** The plugin currently relies on 8 static runtime export slots, so adding a 9th active account is blocked until that architecture changes.
 
 ## Release status
@@ -153,6 +154,7 @@ npm test
 - `docs/release-checklist.md`
 - `docs/operator-auth-recovery-runbook.md`
 - `docs/compatibility-matrix.md`
+- `docs/support-boundaries.md`
 - `assets/branding/README.md`
 
 ## Branding assets
