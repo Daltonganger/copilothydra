@@ -24,6 +24,7 @@ import { getOverrideRequiredModelsForPlan } from "./config/models.js";
 import { buildMismatchMessage, capabilityStateLabel, planLabel } from "./config/capabilities.js";
 import { resolveOpenCodeConfigPath } from "./config/opencode-config.js";
 import { checkAccountRuntimeReadiness, validateAccountCount, validateCanAddAccount } from "./runtime-checks.js";
+import { fetchAccountUsageSnapshot, formatUsageSnapshotLines } from "./auth/usage-snapshot.js";
 
 const VALID_PLANS: PlanTier[] = ["free", "student", "pro", "pro+"];
 
@@ -63,6 +64,9 @@ async function main(): Promise<void> {
       return;
     case "audit-storage":
       await auditStorageCommand();
+      return;
+    case "usage-snapshot":
+      await usageSnapshotCommand(process.argv[3]);
       return;
     default:
       throw new Error(`Unknown command: ${command}`);
@@ -125,6 +129,29 @@ async function listAccounts(): Promise<void> {
     output.write(
       `${account.label} | ${account.githubUsername} | ${account.plan} | ${capabilityStateLabel(account.capabilityState)} | ${account.providerId} | ${account.lifecycleState}\n`
     );
+  }
+}
+
+async function usageSnapshotCommand(identifier?: string): Promise<void> {
+  const accounts = (await loadAccounts()).accounts;
+  if (accounts.length === 0) {
+    output.write("No CopilotHydra accounts configured.\n");
+    return;
+  }
+
+  const selectedAccounts = identifier
+    ? accounts.filter((account) => account.id === identifier || account.providerId === identifier)
+    : accounts;
+
+  if (selectedAccounts.length === 0) {
+    throw new Error(`[copilothydra] account not found: ${identifier}`);
+  }
+
+  for (const account of selectedAccounts) {
+    const snapshot = await fetchAccountUsageSnapshot(account);
+    for (const line of formatUsageSnapshotLines(snapshot)) {
+      output.write(`${line}\n`);
+    }
   }
 }
 
