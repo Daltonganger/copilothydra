@@ -245,13 +245,34 @@ async function normalizeSecretsFilePermissionsAtPath(path: string): Promise<bool
     return false;
   }
 
-  const status = await getSecretsFilePermissionStatusAtPath(path);
-  if (status !== "insecure") {
-    return false;
+  try {
+    const status = await getSecretsFilePermissionStatusAtPath(path);
+    if (status !== "insecure") {
+      return false;
+    }
+  } catch (err) {
+    if (isNodeError(err) && err.code === "ENOENT") {
+      return false;
+    }
+    throw err;
   }
 
-  await chmod(path, 0o600);
-  return true;
+  try {
+    await chmod(path, 0o600);
+    return true;
+  } catch (err) {
+    if (isNodeError(err) && (
+      err.code === "ENOENT" ||
+      err.code === "EACCES" ||
+      err.code === "EPERM" ||
+      err.code === "EINVAL" ||
+      err.code === "ENOTSUP"
+    )) {
+      warn("storage", `Unable to normalize secrets file permissions safely: ${String(err)}`);
+      return false;
+    }
+    throw err;
+  }
 }
 
 function isCorruptionError(err: unknown): boolean {
