@@ -115,6 +115,18 @@ function extractErrorText(error: unknown): string {
     if (typeof nested === "string") return nested;
   }
 
+  const reason = record["reason"];
+  if (typeof reason === "string") {
+    return reason;
+  }
+  if (reason !== undefined) {
+    try {
+      return JSON.stringify(reason);
+    } catch {
+      return String(reason);
+    }
+  }
+
   return "";
 }
 

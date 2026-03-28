@@ -21,10 +21,10 @@ export interface HydraCopilotProviderOptions {
 }
 
 interface HydraCopilotLanguageProvider {
-  (modelId: string): unknown;
-  languageModel: (modelId: string) => unknown;
-  chat: (modelId: string) => unknown;
-  responses: (modelId: string) => unknown;
+  (modelId: string, settings?: Record<string, unknown>): unknown;
+  languageModel: (modelId: string, settings?: Record<string, unknown>) => unknown;
+  chat: (modelId: string, settings?: Record<string, unknown>) => unknown;
+  responses: (modelId: string, settings?: Record<string, unknown>) => unknown;
 }
 
 interface StreamChunk {
@@ -38,10 +38,99 @@ interface StreamResultLike {
   [key: string]: unknown;
 }
 
+interface ModelLike {
+  doGenerate?: (...args: unknown[]) => Promise<unknown>;
+  doStream?: (...args: unknown[]) => Promise<StreamResultLike>;
+  [key: string]: unknown;
+}
+
 function withDefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(
     Object.entries(value).filter(([, entry]) => entry !== undefined && entry !== ""),
   ) as T;
+}
+
+function stringifyUnknown(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean" || value === null) {
+    return String(value);
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function extractErrorText(error: unknown): string {
+  if (error instanceof Error && typeof error.message === "string" && error.message.length > 0) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    const directMessage = record["message"];
+    if (typeof directMessage === "string" && directMessage.length > 0) {
+      return directMessage;
+    }
+
+    const reason = record["reason"];
+    if (reason !== undefined) {
+      return stringifyUnknown(reason);
+    }
+
+    const nestedError = record["error"];
+    if (nestedError && typeof nestedError === "object") {
+      const nestedMessage = (nestedError as Record<string, unknown>)["message"];
+      if (typeof nestedMessage === "string" && nestedMessage.length > 0) {
+        return nestedMessage;
+      }
+    }
+  }
+
+  return stringifyUnknown(error);
+}
+
+function normalizeModelError(error: unknown): Error {
+  const message = extractErrorText(error);
+  return new Error(message.length > 0 ? message : "Unknown Copilot provider error");
+}
+
+export function withHydraCopilotErrorNormalization(model: unknown): unknown {
+  if (!model || typeof model !== "object") {
+    return model;
+  }
+
+  const maybeModel = model as ModelLike;
+  const wrapped: ModelLike = { ...maybeModel };
+
+  if (typeof maybeModel.doGenerate === "function") {
+    const doGenerate = maybeModel.doGenerate;
+    wrapped.doGenerate = async (...args: unknown[]) => {
+      try {
+        return await doGenerate(...args);
+      } catch (error) {
+        throw normalizeModelError(error);
+      }
+    };
+  }
+
+  if (typeof maybeModel.doStream === "function") {
+    const doStream = maybeModel.doStream;
+    wrapped.doStream = async (...args: unknown[]) => {
+      try {
+        return await doStream(...args);
+      } catch (error) {
+        throw normalizeModelError(error);
+      }
+    };
+  }
+
+  return wrapped;
 }
 
 export function withHydraCopilotResponsesParity(model: unknown): unknown {
@@ -106,6 +195,10 @@ export function withHydraCopilotResponsesParity(model: unknown): unknown {
   };
 }
 
+function wrapHydraCopilotModel(model: unknown): unknown {
+  return withHydraCopilotErrorNormalization(withHydraCopilotResponsesParity(model));
+}
+
 export function createHydraCopilotProvider(
   options: HydraCopilotProviderOptions = {},
 ): HydraCopilotLanguageProvider {
@@ -126,18 +219,20 @@ export function createHydraCopilotProvider(
     name: options.name,
   }) as never);
 
-  const languageModel = (modelId: string) => {
+  const languageModel = (modelId: string, _settings?: Record<string, unknown>) => {
     return shouldUseCopilotResponsesApi(modelId)
-      ? withHydraCopilotResponsesParity(responsesProvider.responses(modelId))
-      : chatProvider(modelId);
+      ? wrapHydraCopilotModel(responsesProvider.responses(modelId))
+      : wrapHydraCopilotModel(chatProvider(modelId));
   };
 
-  const provider = ((modelId: string) => languageModel(modelId)) as HydraCopilotLanguageProvider;
+  const provider = ((modelId: string, settings?: Record<string, unknown>) =>
+    languageModel(modelId, settings)) as HydraCopilotLanguageProvider;
 
   provider.languageModel = languageModel;
-  provider.chat = (modelId: string) => chatProvider(modelId);
-  provider.responses = (modelId: string) =>
-    withHydraCopilotResponsesParity(responsesProvider.responses(modelId));
+  provider.chat = (modelId: string, _settings?: Record<string, unknown>) =>
+    wrapHydraCopilotModel(chatProvider(modelId));
+  provider.responses = (modelId: string, _settings?: Record<string, unknown>) =>
+    wrapHydraCopilotModel(responsesProvider.responses(modelId));
 
   return provider;
 }
