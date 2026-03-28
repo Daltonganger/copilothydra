@@ -6,6 +6,7 @@ This checklist is the current gate for deciding when CopilotHydra can move from 
 
 - **Current posture:** beta / hardening phase
 - **Do not call stable yet** while plaintext secret storage remains beta-only and compatibility validation remains narrow
+- **Current beta target:** `0.1.0-beta` for GitHub.com Copilot on OpenCode `1.3.0`, `1.3.2`, and `1.3.3`.
 
 ## Stable-release gate
 

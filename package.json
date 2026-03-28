@@ -1,9 +1,14 @@
 {
   "name": "copilothydra",
-  "version": "0.0.1",
+  "version": "0.1.0-beta",
   "description": "OpenCode plugin: multiple GitHub Copilot accounts",
   "type": "module",
   "main": "dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    "assets/branding/copilothydra-logo-512.png"
+  ],
   "bin": {
     "copilothydra": "dist/cli.js"
   },

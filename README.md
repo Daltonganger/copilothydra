@@ -113,6 +113,7 @@ Implemented so far:
 
 - CopilotHydra should still be treated as **beta / hardening-phase software**.
 - Use `docs/release-checklist.md` as the current gate before calling the project stable.
+- The intended npm release scope for `0.1.0-beta` is: **OpenCode 1.3.0 / 1.3.2 / 1.3.3 tested**, GitHub.com Copilot only, macOS/Linux first, Windows best-effort.
 
 ## Operator runbook
 
