@@ -40,7 +40,7 @@ export async function fetchAccountUsageSnapshot(
       Authorization: `token ${secret.githubOAuthToken}`,
       Accept: "application/json",
       "Editor-Version": COPILOT_USAGE_EDITOR_VERSION,
-      "X-Github-Api-Version": COPILOT_USAGE_API_VERSION,
+      "X-GitHub-Api-Version": COPILOT_USAGE_API_VERSION,
     },
   });
 
