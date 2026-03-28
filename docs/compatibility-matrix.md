@@ -20,6 +20,8 @@ No network probing or undocumented host calls are performed.
 
 | OpenCode version | Status | Notes |
 | --- | --- | --- |
+| 1.3.0 | Tested | Locally verified during real host validation of auth/login takeover behavior. |
+| 1.3.2 | Tested | Locally verified during host validation after startup-noise/auth-login hardening. |
 | 1.3.3 | Tested | Locally verified during Hydra auth/login + provider parity hardening. |
 
 ## Warning cases
