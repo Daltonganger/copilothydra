@@ -19,7 +19,7 @@ This list includes one concrete UX/operability addition inspired by the account 
    Tighten declared-plan vs observed-behavior handling so mismatches are visible, actionable, and less confusing during model selection and runtime failures.
 
 5. **Percentage usage visibility for GitHub Copilot accounts**  
-   Show a clear per-account usage percentage (and recent history where possible) so operators can tell which Copilot account is nearing quota, borrowing the practical visibility pattern proven by `opgginc/opencode-bar` without changing Hydra's explicit routing model.
+   Show a clear per-account usage percentage (and recent history where possible) so operators can tell which Copilot account is nearing quota, borrowing the practical visibility pattern proven by `opgginc/opencode-bar` without changing Hydra's explicit routing model. This must remain visibility-only until a trustworthy per-account signal is proven.
 
 6. **Model catalog drift detection**  
    Detect when OpenCode or Copilot model lists change so stale mappings do not silently break routing or expose incorrect choices.
@@ -47,3 +47,4 @@ This list includes one concrete UX/operability addition inspired by the account 
 - These items are ranked for hardening impact, not implementation ease.
 - The emphasis is on dependable `opencode auth login` takeover, explicit routing, and safer multi-account operation inside OpenCode.
 - The new usage-percentage item is intended as operator visibility only, not automatic account switching or hidden fallback.
+- See `docs/usage-visibility.md` for the current contract and support boundary for this item.

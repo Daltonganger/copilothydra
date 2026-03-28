@@ -108,6 +108,7 @@ Implemented so far:
 - **Capability truth is not authoritative in v1.** Plan/model exposure is user-declared plus runtime mismatch detection, not proven entitlement.
 - **Enterprise-managed GitHub.com and GHES are not supported v1 paths.** Support boundaries for GitHub.com, best-effort surfaces, and out-of-scope enterprise behavior are documented in `docs/support-boundaries.md`.
 - **Current multi-account runtime support is capped at 8 active CopilotHydra accounts.** The plugin currently relies on 8 static runtime export slots, so adding a 9th active account is blocked until that architecture changes.
+- **Per-account Copilot usage percentage is not authoritative yet.** Usage visibility remains a future operator-facing feature until a trustworthy account-scoped signal is validated; see `docs/usage-visibility.md`.
 
 ## Release status
 
@@ -156,6 +157,7 @@ npm test
 - `docs/operator-auth-recovery-runbook.md`
 - `docs/compatibility-matrix.md`
 - `docs/support-boundaries.md`
+- `docs/usage-visibility.md`
 - `assets/branding/README.md`
 
 ## Branding assets
