@@ -23,6 +23,26 @@ This document defines what CopilotHydra supports today, what remains best-effort
 - Capability truth beyond the current hybrid model of user-declared plan exposure plus runtime mismatch detection
 - Token-bound usage or quota snapshots until a trustworthy per-account percentage source is validated
 
+## Usage visibility boundary
+
+Usage visibility is intended for operator awareness only.
+
+Supported today:
+
+- read-only, account-scoped usage snapshots queried with the account's own OAuth token
+- explicit/manual operator interpretation of returned plan, reset-date, and quota-style snapshot fields
+
+Best-effort / not authoritative:
+
+- turning token-bound snapshots into a fully trustworthy percentage for every account and plan shape
+- any signal that implies billing truth beyond the exact returned account-bound API payload
+
+Out of scope today:
+
+- browser-cookie billing scraping as a source of per-account truth
+- automatic routing/fallback based on usage or quota state
+- presenting guessed percentages as if they were authoritative GitHub quota truth
+
 ## Out of scope today
 
 - End-to-end enterprise-managed GitHub.com behavior as a supported product path
