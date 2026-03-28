@@ -51,7 +51,7 @@ They are **not yet sufficient** to claim a trustworthy usage percentage unless t
 
 Status: **local activity signal only**
 
-Hydra can count its own routed requests, but that only proves local Hydra activity, not GitHub Copilot quota truth.
+CopilotHydra can count its own routed requests, but that only proves local CopilotHydra activity, not GitHub Copilot quota truth.
 
 Local counters may be useful later as supplementary telemetry, but they must not be presented as GitHub quota percentage.
 
