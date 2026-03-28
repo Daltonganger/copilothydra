@@ -1,6 +1,6 @@
 {
   "name": "copilothydra",
-  "version": "0.1.0-beta",
+  "version": "0.1.0-beta.2",
   "description": "OpenCode plugin: multiple GitHub Copilot accounts",
   "type": "module",
   "main": "dist/index.js",
@@ -21,7 +21,11 @@
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["opencode", "copilot", "plugin"],
+  "keywords": [
+    "opencode",
+    "copilot",
+    "plugin"
+  ],
   "license": "MIT",
   "dependencies": {
     "@ai-sdk/openai": "^2.0.51",
