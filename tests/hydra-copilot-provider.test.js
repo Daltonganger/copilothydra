@@ -70,6 +70,37 @@ test("withHydraCopilotResponsesParity leaves tool-only streams unchanged", async
   ]);
 });
 
+test("withHydraCopilotResponsesParity preserves instance-bound doStream methods", async () => {
+  const { withHydraCopilotResponsesParity } = await import(`../dist/sdk/hydra-copilot-provider.js?${Date.now()}`);
+
+  class StreamModel {
+    constructor() {
+      this.streamId = "bound-stream";
+    }
+
+    async doStream() {
+      return {
+        stream: new ReadableStream({
+          start: (controller) => {
+            controller.enqueue({ type: "text-delta", id: this.streamId, delta: "Hallo" });
+            controller.close();
+          },
+        }),
+      };
+    }
+  }
+
+  const wrappedModel = withHydraCopilotResponsesParity(new StreamModel());
+  const result = await wrappedModel.doStream({});
+  const chunks = await readAll(result.stream);
+
+  assert.deepEqual(chunks, [
+    { type: "text-start", id: "bound-stream" },
+    { type: "text-delta", id: "bound-stream", delta: "Hallo" },
+    { type: "text-end", id: "bound-stream" },
+  ]);
+});
+
 test("withHydraCopilotResponsesParity preserves non-text chunks while normalizing text lifecycle", async () => {
   const { withHydraCopilotResponsesParity } = await import(`../dist/sdk/hydra-copilot-provider.js?${Date.now()}`);
 
@@ -153,4 +184,57 @@ test("withHydraCopilotErrorNormalization extracts nested provider error messages
     () => model.doGenerate({}),
     /The requested model is not supported/,
   );
+});
+
+test("withHydraCopilotErrorNormalization preserves instance-bound generate and stream methods", async () => {
+  const {
+    withHydraCopilotErrorNormalization,
+  } = await import(`../dist/sdk/hydra-copilot-provider.js?${Date.now()}`);
+
+  class BoundModel {
+    constructor() {
+      this.calls = 0;
+    }
+
+    getArgs(payload) {
+      return { ...payload, call: ++this.calls };
+    }
+
+    async doGenerate(payload) {
+      return this.getArgs(payload);
+    }
+
+    async doStream(payload) {
+      const chunk = this.getArgs(payload);
+      return {
+        stream: new ReadableStream({
+          start(controller) {
+            controller.enqueue({ type: "tool-result", id: "tool-1", result: chunk });
+            controller.close();
+          },
+        }),
+      };
+    }
+  }
+
+  const model = withHydraCopilotErrorNormalization(new BoundModel());
+
+  assert.deepEqual(await model.doGenerate({ model: "claude-opus-4.6" }), {
+    model: "claude-opus-4.6",
+    call: 1,
+  });
+
+  const streamResult = await model.doStream({ model: "claude-opus-4.6" });
+  const chunks = await readAll(streamResult.stream);
+
+  assert.deepEqual(chunks, [
+    {
+      type: "tool-result",
+      id: "tool-1",
+      result: {
+        model: "claude-opus-4.6",
+        call: 2,
+      },
+    },
+  ]);
 });

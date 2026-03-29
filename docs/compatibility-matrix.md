@@ -24,6 +24,27 @@ No network probing or undocumented host calls are performed.
 | 1.3.2 | Tested | Locally verified during host validation after startup-noise/auth-login hardening. |
 | 1.3.3 | Tested | Locally verified during Hydra auth/login + provider parity hardening. |
 
+For the current step-1 host-compatibility gate, the matrix above is the source of
+truth for tested OpenCode versions.
+
+## Built-in `github-copilot` coexistence and recovery
+
+Current verified behavior for the tested host line:
+
+- unknown or untested OpenCode versions stay warn-first rather than hard-failing
+- CopilotHydra config sync removes only Hydra-managed `github-copilot` disable
+  state and keeps the built-in provider available for login/add-account flows
+- zero-account recovery restores host-native `github-copilot` availability by
+  reconciling stale takeover state on startup
+
+Implementation and regression references:
+
+- `src/auth/compatibility-check.ts`
+- `tests/compatibility-warning.test.js`
+- `src/config/sync.ts`
+- `src/index.ts`
+- `tests/smoke-sync.test.js`
+
 ## Warning cases
 
 CopilotHydra warns when any of the following are true:
