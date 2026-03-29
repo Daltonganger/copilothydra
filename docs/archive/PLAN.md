@@ -1,5 +1,10 @@
 # opencode-multi-copilot (CopilotHydra) — Revised Implementation Plan
 
+> Archived historical plan. This document captures the revised implementation
+> plan before later hardening work landed. For current source-of-truth docs, use
+> `docs/OPENCODE_INTEGRATION_PARITY.md`, `docs/support-boundaries.md`,
+> `docs/compatibility-matrix.md`, and `docs/release-checklist.md`.
+
 ## Status of this document
 
 This is a **revised, feasibility-first plan** for building an OpenCode plugin that supports **multiple GitHub Copilot accounts**.
@@ -19,7 +24,7 @@ This document is intentionally written to reduce project risk **before** impleme
 
 ## User decisions captured
 
-These decisions are now part of scope unless changed later.
+These decisions were captured as scope assumptions unless changed later.
 
 1. **No version pinning** to a single OpenCode version/range.
 2. **Restart/reload after account changes is acceptable**.
@@ -452,14 +457,14 @@ Current follow-up status:
 
 ### Auth-login migration note
 
-In parallel with Phase 5, the project is now actively moving account add / re-auth into OpenCode’s own auth-login path.
+In parallel with Phase 5, the project was moving account add / re-auth into OpenCode’s own auth-login path.
 
-Current implementation status:
+Implementation status at the time of this plan snapshot:
 - `CopilotHydraSetup` now exposes a login method under provider `github-copilot`
 - that login method can either re-auth an existing account by username or create a new account and sync provider config before the device flow completes
 - successful callback returns the account-specific provider id so OpenCode can bind stored auth to `github-copilot-acct-*`
 
-Still to validate/harden:
+Still to validate/harden at the time of this plan snapshot:
 - exact coexistence with built-in `github-copilot` behavior across OpenCode versions
 - whether additional host-specific UX adjustments are needed to make this fully replace the built-in expectation
 
@@ -559,9 +564,9 @@ copilothydra/
 │   └── ui/
 │       ├── menu.ts
 │       └── select.ts
-└── docs/
-    ├── feasibility-notes.md
-    └── compatibility-matrix.md
+    └── docs/
+        ├── archive/feasibility-notes.md
+        └── compatibility-matrix.md
 ```
 
 ---

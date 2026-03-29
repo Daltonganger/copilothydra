@@ -1,5 +1,9 @@
 # CopilotHydra Usage Visibility Contract
 
+> Archived historical snapshot. This document captures the earlier usage-visibility
+> contract draft. For the current support boundary, use
+> `docs/support-boundaries.md`.
+
 This document defines what CopilotHydra may and may not claim for per-account GitHub Copilot usage visibility.
 
 ## Goal

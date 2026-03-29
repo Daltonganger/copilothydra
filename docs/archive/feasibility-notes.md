@@ -131,7 +131,7 @@ CopilotHydra bewaart eigen metadata/secrets in de **config dir** op basis van ex
 - non-TTY clean failure behouden
 - Windows best effort blijven documenteren
 
-### Huidige implementatiestatus
+### Historische implementatiestatus op het moment van deze notitie
 - Phase 5 foundation gebruikt nu een dependency-free, line-based TUI-entrypoint
 - non-TTY clean failure blijft expliciet aanwezig op het menu-pad
 - rename- en revalidate-acties zijn nu direct vanuit het menu bruikbaar
@@ -238,9 +238,9 @@ Deze integratie blijft compatibiliteitsgevoelig.
 
 ---
 
-## Aanbevolen vervolg
+## Destijds aanbevolen vervolg
 
-### Direct volgende stap
+### Destijds direct volgende stap
 **Early tests op de single-account reference path**
 
 ### Concreet
@@ -251,7 +251,7 @@ Deze integratie blijft compatibiliteitsgevoelig.
 
 ---
 
-## Phase 1 status update
+## Historische Phase 1 status update
 
 Phase 1 is afgerond op reference-path niveau:
 
@@ -262,7 +262,7 @@ Phase 1 is afgerond op reference-path niveau:
 - non-TTY guard werkt voor interactieve add-account flow
 - smoke test bevestigde correcte output in `copilot-accounts.json` en `opencode.json`
 
-Nog open buiten Phase 1:
+Nog open buiten Phase 1 op het moment van deze notitie:
 - echte OpenCode runtime auth/login validatie in hostcontext
 - GPT-5+/responses-routing gap verder beperken of oplossen
 - test-suite automatiseren
@@ -273,7 +273,7 @@ Nog open buiten Phase 1:
 
 CopilotHydra is **haalbaar als best-effort, compatibility-sensitive OpenCode plugin** voor meerdere GitHub Copilot accounts.
 
-Het project moet verdergaan met:
+Het project moest vanaf dit punt verdergaan met:
 - fail-closed routing
 - restart-based lifecycle
 - user-declared capability policy

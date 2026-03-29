@@ -1,8 +1,13 @@
 # CopilotHydra — Concrete Implementation Sequence
 
+> Archived historical snapshot. This file captures the implementation sequence and
+> status language from the hardening period when it was written. For current
+> source-of-truth docs, use `docs/OPENCODE_INTEGRATION_PARITY.md`,
+> `docs/support-boundaries.md`, and `docs/release-checklist.md`.
+
 ## Goal
 
-Deze volgorde vertaalt `PLAN.md` naar een concrete uitvoerbare implementatiefase, zodat we direct kunnen starten met bouwen zonder de feasibility-first aanpak los te laten.
+Deze volgorde vertaalt `docs/archive/PLAN.md` naar een concrete uitvoerbare implementatiefase, zodat we direct kunnen starten met bouwen zonder de feasibility-first aanpak los te laten.
 
 ## Werkafspraak per stap
 
@@ -21,7 +26,7 @@ Dus: **geen volgende phase zonder bijgewerkte docs en PR voor de vorige phase**.
 
 ## Status snapshot
 
-This file is the current implementation/status tracker. For the consolidated
+This file is an archived implementation/status snapshot. For the consolidated
 "what upstream OpenCode does vs what Hydra mirrors" explanation, use
 `docs/OPENCODE_INTEGRATION_PARITY.md`.
 
@@ -51,7 +56,7 @@ This file is the current implementation/status tracker. For the consolidated
     - audit pass done: detect-only storage/config audit reports drift before mutating repair is run
     - edge-case validation pass done: enum/timestamp/optional secret field validation now fail-closes malformed persisted state
 
-### Nu bezig
+### Historisch: toen in uitvoering
 11. ✅ **Phase 3 — multi-account routing**
     - routing foundation started: lease-based provider→account resolution now tracks in-flight requests and blocks new work for pending-removal accounts
     - routed token pass done: auth loader now syncs provider→account→token state and fails closed when routed oauth state is missing
@@ -71,9 +76,9 @@ This file is the current implementation/status tracker. For the consolidated
     - menu foundation, account actions, removal/mismatch review, and guided add-account are now complete in the line-based menu
     - auth-login prep also landed so OpenCode auth login can create/re-auth accounts via CopilotHydra
 
-### Nu bezig
+### Historisch: toen in uitvoering
 14. ▶️ **Auth-login integration / Hardening prep**
-    - next work is host-behavior hardening around `github-copilot` coexistence/replacement plus broader post-Phase-5 hardening
+    - at the time of this snapshot, the next work was host-behavior hardening around `github-copilot` coexistence/replacement plus broader post-Phase-5 hardening
 
 ### Belangrijkste bewezen aannames tot nu toe
 - OpenCode laadt **alle named exports** uit een pluginmodule en elke export kan één `Hooks.auth` registreren.
@@ -185,7 +190,7 @@ Verdergaan met implementatie is verantwoord binnen scope, met expliciete documen
 - capability beperkingen
 - GPT-5+/responses-routing risico
 
-Zie: `docs/feasibility-notes.md`
+Zie: `docs/archive/feasibility-notes.md`
 
 ---
 

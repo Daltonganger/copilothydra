@@ -102,6 +102,8 @@ test("capability mismatch helpers detect entitlement failures and suggest strict
 
   assert.equal(isCapabilityMismatchError({ message: "Model not enabled for your plan" }), true);
   assert.equal(isCapabilityMismatchError({ message: "The requested model is not supported" }), true);
+  assert.equal(isCapabilityMismatchError({ body: { message: "Model not enabled for your plan" } }), true);
+  assert.equal(isCapabilityMismatchError({ reason: { message: "The requested model is not supported" } }), true);
   assert.equal(isCapabilityMismatchError({ message: "rate limited" }), false);
   assert.equal(suggestDowngradePlanForModel("pro", "gpt-5.4"), "student");
   assert.equal(suggestDowngradePlanForModel("free", "gpt-4.1"), undefined);

@@ -21,7 +21,7 @@ This document defines what CopilotHydra supports today, what remains best-effort
 - GPT-5+/Responses/Codex parity outside the specifically documented and tested surfaces
 - Any path that depends on host behavior not yet covered by the tested compatibility matrix or regression suite
 - Capability truth beyond the current hybrid model of user-declared plan exposure plus runtime mismatch detection
-- Token-bound usage or quota snapshots until a trustworthy per-account percentage source is validated
+- Token-bound usage or quota snapshots as authoritative per-account percentage or billing truth until their semantics are validated
 
 ## Usage visibility boundary
 
@@ -34,8 +34,8 @@ Supported today:
 
 Best-effort / not authoritative:
 
-- turning token-bound snapshots into a fully trustworthy percentage for every account and plan shape
-- any signal that implies billing truth beyond the exact returned account-bound API payload
+- turning supported token-bound snapshots into a fully trustworthy percentage for every account and plan shape
+- interpreting snapshot fields as billing truth beyond the exact returned account-bound API payload
 
 Out of scope today:
 

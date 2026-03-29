@@ -1,5 +1,8 @@
 # CopilotHydra Top 12 Improvement Priorities
 
+> Archived historical snapshot. This ranking reflects the hardening priorities at
+> the time it was written and should not be treated as the current roadmap.
+
 A concise, ranked view of the highest-value hardening work for CopilotHydra based on the current improvement inventory.
 
 This list includes one concrete UX/operability addition inspired by the account usage visibility shown in `opgginc/opencode-bar`.
@@ -18,8 +21,8 @@ This list includes one concrete UX/operability addition inspired by the account 
 4. **Capability truth improvements**  
    Tighten declared-plan vs observed-behavior handling so mismatches are visible, actionable, and less confusing during model selection and runtime failures.
 
-5. **Percentage usage visibility for GitHub Copilot accounts**  
-   Show a clear per-account usage percentage (and recent history where possible) so operators can tell which Copilot account is nearing quota, borrowing the practical visibility pattern proven by `opgginc/opencode-bar` without changing Hydra's explicit routing model. This must remain visibility-only until a trustworthy per-account signal is proven.
+5. **Usage visibility for GitHub Copilot accounts**
+   Show clearer per-account usage visibility (and recent history where possible) so operators can tell which Copilot account may be nearing quota pressure, borrowing the practical visibility pattern proven by `opgginc/opencode-bar` without changing Hydra's explicit routing model. Any percentage or quota interpretation must remain non-authoritative until a trustworthy per-account signal is proven.
 
 6. **Model catalog drift detection**  
    Detect when OpenCode or Copilot model lists change so stale mappings do not silently break routing or expose incorrect choices.
@@ -46,5 +49,5 @@ This list includes one concrete UX/operability addition inspired by the account 
 
 - These items are ranked for hardening impact, not implementation ease.
 - The emphasis is on dependable `opencode auth login` takeover, explicit routing, and safer multi-account operation inside OpenCode.
-- The new usage-percentage item is intended as operator visibility only, not automatic account switching or hidden fallback.
-- See `docs/usage-visibility.md` for the current contract and support boundary for this item.
+- The usage-visibility item is intended as operator visibility only, not automatic account switching or hidden fallback.
+- See `docs/archive/usage-visibility.md` for the historical contract draft behind this item, and `docs/support-boundaries.md` for the current support boundary.

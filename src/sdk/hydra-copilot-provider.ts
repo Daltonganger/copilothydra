@@ -7,6 +7,7 @@
 
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { extractErrorText } from "../error-text.js";
 import { shouldUseCopilotResponsesApi } from "../config/models.js";
 
 const RESPONSES_SENTINEL_API_KEY = "copilothydra-managed";
@@ -21,10 +22,10 @@ export interface HydraCopilotProviderOptions {
 }
 
 interface HydraCopilotLanguageProvider {
-  (modelId: string): unknown;
-  languageModel: (modelId: string) => unknown;
-  chat: (modelId: string) => unknown;
-  responses: (modelId: string) => unknown;
+  (modelId: string, settings?: Record<string, unknown>): unknown;
+  languageModel: (modelId: string, settings?: Record<string, unknown>) => unknown;
+  chat: (modelId: string, settings?: Record<string, unknown>) => unknown;
+  responses: (modelId: string, settings?: Record<string, unknown>) => unknown;
 }
 
 interface StreamChunk {
@@ -38,10 +39,56 @@ interface StreamResultLike {
   [key: string]: unknown;
 }
 
+interface ModelLike {
+  doGenerate?: (...args: unknown[]) => Promise<unknown>;
+  doStream?: (...args: unknown[]) => Promise<StreamResultLike>;
+  [key: string]: unknown;
+}
+
+type ModelFactory = (modelId: string, settings?: Record<string, unknown>) => unknown;
+
 function withDefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(
     Object.entries(value).filter(([, entry]) => entry !== undefined && entry !== ""),
   ) as T;
+}
+
+function normalizeModelError(error: unknown): Error {
+  const message = extractErrorText(error);
+  return new Error(message.length > 0 ? message : "Unknown Copilot provider error");
+}
+
+export function withHydraCopilotErrorNormalization(model: unknown): unknown {
+  if (!model || typeof model !== "object") {
+    return model;
+  }
+
+  const maybeModel = model as ModelLike;
+  const wrapped: ModelLike = { ...maybeModel };
+
+  if (typeof maybeModel.doGenerate === "function") {
+    const doGenerate = maybeModel.doGenerate;
+    wrapped.doGenerate = async (...args: unknown[]) => {
+      try {
+        return await doGenerate(...args);
+      } catch (error) {
+        throw normalizeModelError(error);
+      }
+    };
+  }
+
+  if (typeof maybeModel.doStream === "function") {
+    const doStream = maybeModel.doStream;
+    wrapped.doStream = async (...args: unknown[]) => {
+      try {
+        return await doStream(...args);
+      } catch (error) {
+        throw normalizeModelError(error);
+      }
+    };
+  }
+
+  return wrapped;
 }
 
 export function withHydraCopilotResponsesParity(model: unknown): unknown {
@@ -106,6 +153,10 @@ export function withHydraCopilotResponsesParity(model: unknown): unknown {
   };
 }
 
+function wrapHydraCopilotModel(model: unknown): unknown {
+  return withHydraCopilotErrorNormalization(withHydraCopilotResponsesParity(model));
+}
+
 export function createHydraCopilotProvider(
   options: HydraCopilotProviderOptions = {},
 ): HydraCopilotLanguageProvider {
@@ -126,18 +177,23 @@ export function createHydraCopilotProvider(
     name: options.name,
   }) as never);
 
-  const languageModel = (modelId: string) => {
+  const chatModel = chatProvider as unknown as ModelFactory;
+  const responsesModel = responsesProvider.responses as unknown as ModelFactory;
+
+  const languageModel = (modelId: string, settings?: Record<string, unknown>) => {
     return shouldUseCopilotResponsesApi(modelId)
-      ? withHydraCopilotResponsesParity(responsesProvider.responses(modelId))
-      : chatProvider(modelId);
+      ? wrapHydraCopilotModel(responsesModel(modelId, settings))
+      : wrapHydraCopilotModel(chatModel(modelId, settings));
   };
 
-  const provider = ((modelId: string) => languageModel(modelId)) as HydraCopilotLanguageProvider;
+  const provider = ((modelId: string, settings?: Record<string, unknown>) =>
+    languageModel(modelId, settings)) as HydraCopilotLanguageProvider;
 
   provider.languageModel = languageModel;
-  provider.chat = (modelId: string) => chatProvider(modelId);
-  provider.responses = (modelId: string) =>
-    withHydraCopilotResponsesParity(responsesProvider.responses(modelId));
+  provider.chat = (modelId: string, settings?: Record<string, unknown>) =>
+    wrapHydraCopilotModel(chatModel(modelId, settings));
+  provider.responses = (modelId: string, settings?: Record<string, unknown>) =>
+    wrapHydraCopilotModel(responsesModel(modelId, settings));
 
   return provider;
 }

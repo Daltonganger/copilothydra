@@ -102,3 +102,55 @@ test("withHydraCopilotResponsesParity preserves non-text chunks while normalizin
     { type: "text-end", id: "item-1" },
   ]);
 });
+
+test("createHydraCopilotProvider accepts optional model settings for chat-path models", async () => {
+  const { createHydraCopilotProvider } = await import(`../dist/sdk/hydra-copilot-provider.js?${Date.now()}`);
+
+  const provider = createHydraCopilotProvider({
+    apiKey: "test-key",
+    baseURL: "https://example.com",
+  });
+
+  assert.doesNotThrow(() => {
+    provider.languageModel("claude-sonnet-4.6", { mode: { type: "regular" } });
+  });
+});
+
+test("withHydraCopilotErrorNormalization normalizes object-shaped provider errors into string Errors", async () => {
+  const { withHydraCopilotErrorNormalization } = await import(`../dist/sdk/hydra-copilot-provider.js?${Date.now()}`);
+
+  const model = withHydraCopilotErrorNormalization({
+    async doStream() {
+      throw {
+        reason: {
+          message: "Invalid input: expected string, received object",
+          path: ["reason"],
+        },
+      };
+    },
+  });
+
+  await assert.rejects(
+    () => model.doStream({}),
+    /Invalid input: expected string, received object/,
+  );
+});
+
+test("withHydraCopilotErrorNormalization extracts nested provider error messages consistently", async () => {
+  const { withHydraCopilotErrorNormalization } = await import(`../dist/sdk/hydra-copilot-provider.js?${Date.now()}`);
+
+  const model = withHydraCopilotErrorNormalization({
+    async doGenerate() {
+      throw {
+        body: {
+          message: "The requested model is not supported",
+        },
+      };
+    },
+  });
+
+  await assert.rejects(
+    () => model.doGenerate({}),
+    /The requested model is not supported/,
+  );
+});

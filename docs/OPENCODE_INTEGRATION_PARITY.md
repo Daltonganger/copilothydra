@@ -6,6 +6,8 @@ remains for a stronger `0.2` / `0.3` release.
 
 Use this file when comparing CopilotHydra against upstream OpenCode behavior.
 
+Last verified against the public `anomalyco/opencode` codebase: **2026-03-28**.
+
 ---
 
 ## What upstream OpenCode does for built-in `github-copilot`
@@ -208,5 +210,5 @@ To reduce overlap, use the docs set like this:
 - `docs/release-checklist.md` → release gate
 - `docs/support-boundaries.md` → supported vs best-effort vs out-of-scope policy
 - `docs/operator-auth-recovery-runbook.md` → operator steps for auth/recovery
-- `docs/IMPLEMENTATION_SEQUENCE.md` → implementation history/status tracking
-- `docs/PLAN.md` / `docs/feasibility-notes.md` → archived planning and spike context
+- `docs/archive/IMPLEMENTATION_SEQUENCE.md` → archived implementation history/status tracking
+- `docs/archive/PLAN.md` / `docs/archive/feasibility-notes.md` → archived planning and spike context

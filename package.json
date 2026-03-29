@@ -29,7 +29,7 @@
   "license": "MIT",
   "dependencies": {
     "@ai-sdk/openai": "^2.0.51",
-    "@ai-sdk/openai-compatible": "^0.2.15",
+    "@ai-sdk/openai-compatible": "^2.0.37",
     "zod": "^3.25.76"
   },
   "devDependencies": {

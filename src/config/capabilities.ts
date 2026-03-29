@@ -11,6 +11,7 @@ import type { AccountId, CapabilityState, CopilotAccountMeta, PlanTier } from ".
 import { warn } from "../log.js";
 import { markAccountCapabilityMismatch } from "../account-update.js";
 import { loadAccounts } from "../storage/accounts.js";
+import { extractErrorText } from "../error-text.js";
 import { isKnownCopilotModelId, modelsForPlan, suggestDowngradePlanForModel } from "./models.js";
 
 export interface PlanMismatchResult {
@@ -98,24 +99,6 @@ export function buildMismatchMessage(
 async function findAccountById(accountId: AccountId): Promise<CopilotAccountMeta | undefined> {
   const accounts = await loadAccounts();
   return accounts.accounts.find((candidate) => candidate.id === accountId);
-}
-
-function extractErrorText(error: unknown): string {
-  if (typeof error === "string") return error;
-  if (!error || typeof error !== "object") return "";
-
-  const record = error as Record<string, unknown>;
-  const direct = record["message"];
-  if (typeof direct === "string") return direct;
-
-  const body = record["body"];
-  if (typeof body === "string") return body;
-  if (body && typeof body === "object") {
-    const nested = (body as Record<string, unknown>)["message"];
-    if (typeof nested === "string") return nested;
-  }
-
-  return "";
 }
 
 function resolveMismatchSuggestedPlan(

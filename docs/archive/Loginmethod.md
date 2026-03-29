@@ -1,5 +1,10 @@
 # CopilotHydra Login Method
 
+> Archived historical snapshot. This file records the login-method design at the
+> time it landed. For the current source-of-truth boundary/behavior docs, use
+> `docs/OPENCODE_INTEGRATION_PARITY.md`, `docs/support-boundaries.md`, and
+> `README.md`.
+
 ## Goal
 
 Deze documentatie legt vast hoe CopilotHydra onder `opencode auth login` moet verschijnen, zodat account-toevoegen en re-auth niet alleen via de losse `copilothydra` TUI lopen.
@@ -84,7 +89,7 @@ De echte runtime providers blijven:
 
 Voor **nieuwe** accounts wordt tijdens login wel direct metadata + `opencode.json` bijgewerkt, maar de nieuwe provider-hook is nog steeds afhankelijk van reload/startup om als slot-plugin geladen te worden.
 
-Daarom meldt de login-instructie bij nieuwe accounts expliciet dat OpenCode daarna moet reloaden/herstarten.
+Daarom meldt de login-instructie bij nieuwe accounts expliciet dat OpenCode daarna moet reloaden of herstarten.
 
 Voor **re-auth van een bestaand account** is die extra restart-notitie niet nodig.
 
@@ -116,7 +121,7 @@ Voor **re-auth van een bestaand account** is die extra restart-notitie niet nodi
 
 ## Praktische conclusie
 
-CopilotHydra verschuift hiermee van:
+CopilotHydra verschoof hiermee van:
 
 - **"beheer eerst via eigen CLI, daarna pas OpenCode auth"**
 
@@ -124,4 +129,4 @@ naar:
 
 - **"OpenCode auth login is nu ook een primaire ingang voor add-account en re-auth"**
 
-Dat is dichter bij de bedoelde UX-richting: de gebruiker hoort dit onder OpenCode auth te kunnen starten.
+Dit was de stap richting de bedoelde UX-richting: de gebruiker hoort dit onder OpenCode auth te kunnen starten.
