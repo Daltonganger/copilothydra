@@ -1,4 +1,3 @@
-<!-- GSD:project-start source:PROJECT.md -->
 ## Project
 
 **CopilotHydra: GitHub Copilot Host Hardening**
@@ -17,9 +16,7 @@ CopilotHydra is a brownfield OpenCode plugin project that extends GitHub Copilot
 - **Provider scope**: Work is Copilot-only — no non-Copilot provider expansion in this initiative
 - **Platform scope**: macOS/Linux first, Windows best effort — current docs already bound platform expectations this way
 - **Architecture**: Sidecar/broker fallback and broad rewrites are out of scope — hardening must build on the existing plugin/storage/routing design
-<!-- GSD:project-end -->
 
-<!-- GSD:stack-start source:codebase/STACK.md -->
 ## Technology Stack
 
 ## Languages
@@ -60,9 +57,7 @@ CopilotHydra is a brownfield OpenCode plugin project that extends GitHub Copilot
 - Development assumes an OpenCode-compatible host runtime because plugin hooks and provider config synchronization target OpenCode files from `src/index.ts` and `src/config/sync.ts`.
 - Deployment target is an OpenCode plugin package/CLI consumed by a local OpenCode installation; runtime provider entries are written to the user OpenCode config via `src/config/opencode-config.ts` and `src/config/sync.ts`.
 - Persistent local state is stored in the OpenCode config directory as `copilot-accounts.json`, `copilot-secrets.json`, and `opencode.json` / `opencode.jsonc` via `src/storage/accounts.ts`, `src/storage/secrets.ts`, and `src/config/opencode-config.ts`.
-<!-- GSD:stack-end -->
 
-<!-- GSD:conventions-start source:CONVENTIONS.md -->
 ## Conventions
 
 ## Naming Patterns
@@ -111,9 +106,7 @@ CopilotHydra is a brownfield OpenCode plugin project that extends GitHub Copilot
 - Prefer named exports only. Files such as `src/account.ts`, `src/log.ts`, `src/storage/accounts.ts`, and `src/ui/menu.ts` expose explicit named APIs; default exports are not used.
 - Co-locate dependencies behind overridable defaults when testability matters. `src/ui/menu.ts` and `src/auth/login-method.ts` define `DEFAULT_DEPS` objects and merge `Partial<...>` overrides.
 - Barrel files are not used. Import modules from their concrete paths such as `src/config/sync.ts`, `src/auth/login-method.ts`, and `src/storage/secrets.ts`.
-<!-- GSD:conventions-end -->
 
-<!-- GSD:architecture-start source:ARCHITECTURE.md -->
 ## Architecture
 
 ## Pattern Overview
@@ -189,26 +182,3 @@ CopilotHydra is a brownfield OpenCode plugin project that extends GitHub Copilot
 - `src/storage/accounts.ts` and `src/storage/secrets.ts` quarantine corrupt JSON to `*.corrupt-*` and recover to empty version-1 state.
 - `src/cli.ts` and `src/ui/menu.ts` surface actionable operator messages and require restart after storage/config changes.
 ## Cross-Cutting Concerns
-<!-- GSD:architecture-end -->
-
-<!-- GSD:workflow-start source:GSD defaults -->
-## GSD Workflow Enforcement
-
-Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
-
-Use these entry points:
-- `/gsd:quick` for small fixes, doc updates, and ad-hoc tasks
-- `/gsd:debug` for investigation and bug fixing
-- `/gsd:execute-phase` for planned phase work
-
-Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
-<!-- GSD:workflow-end -->
-
-
-
-<!-- GSD:profile-start -->
-## Developer Profile
-
-> Profile not yet configured. Run `/gsd:profile-user` to generate your developer profile.
-> This section is managed by `generate-claude-profile` -- do not edit manually.
-<!-- GSD:profile-end -->
