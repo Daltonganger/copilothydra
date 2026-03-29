@@ -51,11 +51,13 @@ copilothydra usage
 
 ## Docs
 
+- `docs/OPENCODE_INTEGRATION_PARITY.md`
 - `docs/release-checklist.md`
 - `docs/compatibility-matrix.md`
 - `docs/operator-auth-recovery-runbook.md`
 - `docs/support-boundaries.md`
-- `docs/top-improvements.md`
+
+Historical planning/spike notes are being moved under `docs/archive/`.
 
 ## Development
 
