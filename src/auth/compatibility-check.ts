@@ -158,13 +158,21 @@ function detectHostSignalWarnings(pluginInput: unknown): string[] {
     );
   }
 
-  if (typeof pluginInput.serverUrl !== "string" || pluginInput.serverUrl.length === 0) {
+  if (!hasUsableServerUrl(pluginInput.serverUrl)) {
     warnings.push(
-      "OpenCode plugin input is missing a usable serverUrl string; host hook shape may have changed. See docs/compatibility-matrix.md."
+      "OpenCode plugin input is missing a usable serverUrl string/URL; host hook shape may have changed. See docs/compatibility-matrix.md."
     );
   }
 
   return warnings;
+}
+
+function hasUsableServerUrl(value: unknown): boolean {
+  if (typeof value === "string") {
+    return value.length > 0;
+  }
+
+  return value instanceof URL && value.href.length > 0;
 }
 
 function collectInspectableObjects(pluginInput: unknown): unknown[] {

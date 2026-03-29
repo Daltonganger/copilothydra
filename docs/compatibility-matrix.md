@@ -30,7 +30,7 @@ CopilotHydra warns when any of the following are true:
 
 - a detectable OpenCode version is not in the tested matrix
 - `PluginInput.directory` is missing or not a non-empty string
-- `PluginInput.serverUrl` is missing or not a non-empty string
+- `PluginInput.serverUrl` is missing or not a non-empty string/URL
 - no version signal is exposed by the host (debug-only; no warning by itself)
 
 ## GPT-5+/Responses/Codex support boundary

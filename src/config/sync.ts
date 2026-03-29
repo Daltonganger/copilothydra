@@ -49,17 +49,16 @@ export async function syncAccountsToOpenCodeConfig(configPath?: string, configDi
     providerEntries[account.providerId] = buildProviderConfig(account);
   }
 
-  const { config: configWithManagedDisable, state: nextManagedState } =
-    reconcileBuiltInCopilotDisable(
+  const { config: configWithCleanedBuiltInState, state: nextManagedState } =
+    reconcileBuiltInCopilotAvailability(
       hostCompatibleConfig,
       mergeManagedDisableState(managedState, legacyManagedState),
-      activeAccounts.length > 0,
     );
 
   const nextConfig: OpenCodeConfigFile =
     Object.keys(providerEntries).length > 0
-      ? { ...configWithManagedDisable, provider: providerEntries }
-      : omitProvider(configWithManagedDisable);
+      ? { ...configWithCleanedBuiltInState, provider: providerEntries }
+      : omitProvider(configWithCleanedBuiltInState);
 
   debugStorage(
     `syncing ${activeAccounts.length} CopilotHydra account(s) into OpenCode config: ${path}`
@@ -75,29 +74,13 @@ function omitProvider(config: OpenCodeConfigFile): OpenCodeConfigFile {
   return rest;
 }
 
-function reconcileBuiltInCopilotDisable(
+function reconcileBuiltInCopilotAvailability(
   config: OpenCodeConfigFile,
   managedState: { managedDisabledProviders?: string[] },
-  shouldDisableBuiltInCopilot: boolean,
 ): { config: OpenCodeConfigFile; state: { managedDisabledProviders?: string[] } } {
   const disabledProviders = [...(config.disabled_providers ?? [])];
   const managedDisabledProviders = new Set(managedState.managedDisabledProviders ?? []);
   const builtInIndex = disabledProviders.indexOf(BUILTIN_COPILOT_PROVIDER_ID);
-
-  if (shouldDisableBuiltInCopilot) {
-    if (builtInIndex === -1) {
-      disabledProviders.push(BUILTIN_COPILOT_PROVIDER_ID);
-      managedDisabledProviders.add(BUILTIN_COPILOT_PROVIDER_ID);
-    }
-
-    return {
-      config: {
-        ...config,
-        disabled_providers: disabledProviders,
-      },
-      state: { managedDisabledProviders: [...managedDisabledProviders] },
-    };
-  }
 
   if (managedDisabledProviders.has(BUILTIN_COPILOT_PROVIDER_ID)) {
     managedDisabledProviders.delete(BUILTIN_COPILOT_PROVIDER_ID);

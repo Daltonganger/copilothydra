@@ -127,7 +127,7 @@ export interface PluginInput {
   project: unknown;
   worktree: unknown;
   directory: string;
-  serverUrl: string;
+  serverUrl: string | URL;
   $: unknown;
 }
 

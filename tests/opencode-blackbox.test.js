@@ -159,7 +159,7 @@ test("black-box host add-account flow persists config and survives restart into 
       assert.equal(accounts.accounts[0].githubUsername, "blackbox-user");
       assert.equal(finished.provider, accounts.accounts[0].providerId);
       assert.ok(config.provider[accounts.accounts[0].providerId]);
-      assert.deepEqual(config.disabled_providers, ["github-copilot"]);
+      assert.equal(config.disabled_providers, undefined);
 
       const restartedModule = await importFresh("dist/index.js");
       const restartedExports = discoverPluginExports(restartedModule);

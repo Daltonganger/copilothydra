@@ -63,5 +63,17 @@ test("compatibility check warns when required host hook signals are missing", ()
   assert.equal(payload.version, "1.3.3");
   assert.equal(payload.warnings.length, 2);
   assert.match(payload.warnings[0], /missing a usable directory string/);
-  assert.match(payload.warnings[1], /missing a usable serverUrl string/);
+  assert.match(payload.warnings[1], /missing a usable serverUrl string\/URL/);
+});
+
+test("compatibility check accepts URL-shaped serverUrl host input", async () => {
+  const { checkCompatibility } = await import(`../dist/auth/compatibility-check.js?${Date.now()}`);
+  const payload = checkCompatibility({
+    client: { version: "1.3.3" },
+    directory: ".",
+    serverUrl: new URL("http://localhost:4096"),
+  });
+
+  assert.equal(payload.version, "1.3.3");
+  assert.deepEqual(payload.warnings, []);
 });
