@@ -44,7 +44,7 @@ CopilotHydra is a brownfield OpenCode plugin project that extends GitHub Copilot
 - `typescript` 5.9.3 resolved in `package-lock.json` - compiles all plugin, CLI, config, storage, and auth code from `src/` to `dist/`.
 - `@types/node` 22.19.15 resolved in `package-lock.json` - provides Node typings for `node:fs/promises`, `node:path`, `node:crypto`, `node:process`, and `node:readline/promises` imports used across `src/`.
 - `@opencode-ai/plugin` (optional peer dependency in `package.json`) - the code mirrors its runtime hook shapes in `src/types.ts` and integrates with OpenCode through `src/index.ts`.
-- `@ai-sdk/openai-compatible` - referenced as the provider npm package written into OpenCode config by `src/config/providers.ts`; it is not installed here because the package expects OpenCode to provide/bundle it at runtime.
+- `@ai-sdk/openai-compatible` - installed provider dependency used by `src/sdk/hydra-copilot-provider.ts` and also written into OpenCode config by `src/config/providers.ts`.
 - Native `fetch` - used for GitHub and Copilot HTTP calls in `src/auth/device-flow.ts` and `src/auth/loader.ts`.
 ## Configuration
 - OpenCode path resolution uses `OPENCODE_CONFIG`, `OPENCODE_CONFIG_DIR`, `XDG_CONFIG_HOME`, `OPENCODE_TEST_HOME`, `HOME`, and `USERPROFILE` in `src/config/opencode-config.ts` and `src/storage/accounts.ts`.
@@ -53,7 +53,7 @@ CopilotHydra is a brownfield OpenCode plugin project that extends GitHub Copilot
 - Compiler config: `tsconfig.json`.
 - Package manifest and scripts: `package.json`.
 - Lockfile: `package-lock.json`.
-- Plugin/runtime behavior reference docs: `README.md`, `docs/PLAN.md`, `docs/IMPLEMENTATION_SEQUENCE.md`, and `docs/Loginmethod.md`.
+- Plugin/runtime behavior reference docs: `README.md`, `docs/OPENCODE_INTEGRATION_PARITY.md`, `docs/compatibility-matrix.md`, `docs/support-boundaries.md`, `docs/release-checklist.md`, and `docs/archive/*.md` for historical context.
 ## Platform Requirements
 - Install dependencies with npm as described in `README.md` and `package.json`.
 - Build before testing because tests run compiled output from `dist/` (`package.json` and `tests/*.test.js`).

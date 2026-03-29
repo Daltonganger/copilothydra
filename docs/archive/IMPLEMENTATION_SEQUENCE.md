@@ -425,7 +425,7 @@ Doel: van werkend naar verantwoord beta-niveau.
 12. `src/config/capabilities.ts`
 13. `src/ui/menu.ts`
 14. `src/ui/select.ts`
-15. `docs/feasibility-notes.md`
+15. `docs/archive/feasibility-notes.md`
 16. `docs/compatibility-matrix.md`
 
 ---

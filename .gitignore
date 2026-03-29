@@ -3,3 +3,4 @@ dist/
 .tmp-phase1/
 .DS_Store
 *.log
+.planning/

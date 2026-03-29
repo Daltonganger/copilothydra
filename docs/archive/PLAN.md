@@ -634,7 +634,7 @@ This does **not** remove risk; it only manages it.
 ## Suggested implementation order
 
 1. Phase 0 feasibility spikes
-2. Write `docs/feasibility-notes.md` with results
+2. Write `docs/archive/feasibility-notes.md` with results
 3. Decide whether architecture remains viable
 4. Build single-account reference path
 5. Add compatibility/runtime checks in the reference path
