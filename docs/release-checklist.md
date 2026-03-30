@@ -35,7 +35,7 @@ Mark each section materially complete before calling CopilotHydra stable.
 
 **Audit findings (2026-03-30):**
 
-- 🔴 `src/auth/device-flow.ts` has **zero test coverage**. Every test stubs out `requestDeviceCode` and `pollForAccessToken`. The `slow_down`, `expired_token`, and `access_denied` error branches are completely untested.
+- ✅ `src/auth/device-flow.ts` now covered by `tests/device-flow.test.js` — 10 tests: happy path, `slow_down`, `authorization_pending`, `expired_token`, `access_denied`, timeout, network failure.
 - ⚠️ No black-box host test — "works on tested host versions" requires an actual `opencode auth login` invocation against a real host, not module imports.
 - ⚠️ Restart instruction is emitted via `info("auth", ...)` to stderr only — it is not included in `AuthOAuthResult.instructions`. Operators watching the OpenCode auth UI may never see the restart notice.
 - ⚠️ `operator-auth-recovery-runbook.md` does not mention that `CopilotHydraSetup` auto-calls `recoverHostNativeCopilotState` on startup — operators may run manual recovery unnecessarily.
@@ -69,7 +69,7 @@ Mark each section materially complete before calling CopilotHydra stable.
 - ✅ Corrupt storage quarantine and repair are covered across 6+ test files.
 - ⚠️ Atomic write: orphaned `.tmp` files (crash between write and rename) are not detected or cleaned up in load or repair paths.
 - ✅ Permission hardening tests added (`tests/storage-recovery.test.js`): new file created with `0o600`, `0o644` detected as insecure, `normalizeSecretsFilePermissions` fixes to `0o600`, missing file returns `"missing"`, already-ok returns no-op.
-- 🔴 **No stable-release decision exists for plaintext secret storage.** Every doc acknowledges it is beta-only, but no document records a decision: neither (a) a keychain/credential-store integration plan with timeline, nor (b) a formal risk-acceptance decision that upgrades the `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM` gate to an accepted production posture. This is the primary hard blocker for stable.
+- ✅ **Plaintext secret storage formally accepted.** See `docs/plaintext-secret-storage-decision.md`. Consistent with established norm (`opencode-antigravity-auth` ships stable with identical model). `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM` gate retained. Keychain deferred to future phase.
 
 ### 5. Capability truth
 
@@ -129,19 +129,18 @@ Ordered by impact. Items marked 🔴 are hard blockers. Items marked ⚠️ are 
 
 ### Hard blockers 🔴
 
-1. **No plaintext-secret storage decision** — every doc says beta-only but no decision exists: neither a keychain integration plan nor a formal risk-acceptance document. This is the primary blocker per the checklist's own release decision rule.
-2. **`device-flow.ts` has zero test coverage** — the core OAuth polling loop, and all error branches (`slow_down`, `expired_token`, `access_denied`), are completely untested.
+*All hard blockers resolved. See "Resolved since initial audit" below.*
 
 ### Significant gaps ⚠️
 
-3. **No GPT-5+ integration test** via the real `createHydraCopilotProvider()` factory — all coverage is unit-level.
-4. **Downgrade suggestion language overclaims certainty** — `suggestDowngradePlanForModel` semantics are confusing and the message does not hedge.
-5. **Black-box tests use a stubbed host** — no real OpenCode process is ever exercised.
-6. **Restart instruction is stderr-only** — not surfaced in `AuthOAuthResult.instructions`, so operators may not see it in the OpenCode auth UI.
-7. **Known limitations scattered across 3+ docs** — no canonical list, inconsistent framing.
-8. **`capabilityState: "verified"` is dead code** — no path ever sets it; related branches can never fire.
-9. **`RESPONSES_SENTINEL_API_KEY` override by auth loader is untested.**
-10. **Forward-matching for unknown future `gpt-5.x` variants is undocumented.**
+1. **No GPT-5+ integration test** via the real `createHydraCopilotProvider()` factory — all coverage is unit-level.
+2. **Downgrade suggestion language overclaims certainty** — `suggestDowngradePlanForModel` semantics are confusing and the message does not hedge.
+3. **Black-box tests use a stubbed host** — no real OpenCode process is ever exercised.
+4. **Restart instruction is stderr-only** — not surfaced in `AuthOAuthResult.instructions`, so operators may not see it in the OpenCode auth UI.
+5. **Known limitations scattered across 3+ docs** — no canonical list, inconsistent framing.
+6. **`capabilityState: "verified"` is dead code** — no path ever sets it; related branches can never fire.
+7. **`RESPONSES_SENTINEL_API_KEY` override by auth loader is untested.**
+8. **Forward-matching for unknown future `gpt-5.x` variants is undocumented.**
 
 ### Resolved since initial audit ✅
 
@@ -152,6 +151,8 @@ Ordered by impact. Items marked 🔴 are hard blockers. Items marked ⚠️ are 
 - ~~Plaintext secrets absent from `support-boundaries.md`~~ — **fixed**: security note added to best-effort section.
 - ~~8-account framing inconsistent~~ — **fixed**: unified framing in `support-boundaries.md`.
 - ~~`SKIP_VERSION_CHECK` flag bypass path is untested~~ — **documented**: module-level const makes in-process testing unreliable; warn-first contract covered by untested-version warning test.
+- ~~No plaintext-secret storage decision~~ — **formally accepted**: see `docs/plaintext-secret-storage-decision.md`. Consistent with `opencode-antigravity-auth` (the established norm). `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM` gate retained. Keychain deferred to future phase.
+- ~~`device-flow.ts` has zero test coverage~~ — **fixed**: `tests/device-flow.test.js` added with 10 tests covering happy path, `slow_down`, `authorization_pending`, `expired_token`, `access_denied`, timeout, and network failure.
 
 ## Cross-document inconsistencies
 
