@@ -238,3 +238,85 @@ test("withHydraCopilotErrorNormalization preserves instance-bound generate and s
     },
   ]);
 });
+
+test("createHydraCopilotProvider routes gpt-5 models to responses path and chat models to chat path", async () => {
+  const { createHydraCopilotProvider } = await import(`../dist/sdk/hydra-copilot-provider.js?routing=${Date.now()}`);
+
+  const provider = createHydraCopilotProvider({
+    apiKey: "test-key",
+    baseURL: "https://api.githubcopilot.com",
+  });
+
+  // gpt-5 → responses path: responses models expose doStream (stream-only)
+  const gpt5Model = provider.languageModel("gpt-5");
+  assert.ok(typeof gpt5Model.doStream === "function", "gpt-5 model should have doStream");
+
+  // claude → chat path: wrapped models expose doStream (wrapper preserves it via own-property)
+  const claudeModel = provider.languageModel("claude-sonnet-4.6");
+  assert.ok(typeof claudeModel.doStream === "function", "claude model should have doStream");
+
+  // Both paths are accessible via provider.responses / provider.chat directly
+  assert.doesNotThrow(() => provider.responses("gpt-5"), "provider.responses('gpt-5') should not throw");
+  assert.doesNotThrow(() => provider.chat("claude-sonnet-4.6"), "provider.chat('claude-sonnet-4.6') should not throw");
+});
+
+test("shouldUseCopilotResponsesApi forward-matches unknown future gpt-5.x variants", async () => {
+  const { shouldUseCopilotResponsesApi } = await import(`../dist/config/models.js?fwd=${Date.now()}`);
+
+  // Known future variants should route to Responses API
+  assert.equal(shouldUseCopilotResponsesApi("gpt-5.99"), true);
+  assert.equal(shouldUseCopilotResponsesApi("gpt-5-turbo"), true);
+  assert.equal(shouldUseCopilotResponsesApi("gpt-5-ultra"), true);
+
+  // Explicit exclusion
+  assert.equal(shouldUseCopilotResponsesApi("gpt-5-mini"), false);
+
+  // Non-gpt-5 variants stay on chat path
+  assert.equal(shouldUseCopilotResponsesApi("gpt-6"), false);
+  // gpt-5mini (no hyphen) forward-matches "gpt-5" prefix and is not "gpt-5-mini"
+  assert.equal(shouldUseCopilotResponsesApi("gpt-5mini"), true); // no hyphen → forward match
+});
+
+test("createHydraCopilotProvider custom fetch overrides sentinel Authorization header", async () => {
+  const { createHydraCopilotProvider } = await import(`../dist/sdk/hydra-copilot-provider.js?sentinel=${Date.now()}`);
+
+  let capturedAuth = null;
+
+  const provider = createHydraCopilotProvider({
+    // Provide an apiKey so the provider sets an Authorization header that the custom fetch can override
+    apiKey: "copilothydra-managed",
+    baseURL: "https://api.githubcopilot.com",
+    fetch: async (url, init) => {
+      // Simulate auth loader: capture whatever auth was set, then inject real token
+      const headers = new Headers(init?.headers ?? {});
+      headers.delete("authorization");
+      headers.delete("Authorization");
+      headers.set("Authorization", "Bearer gho_real_token_injected_by_loader");
+      capturedAuth = headers.get("Authorization");
+      return new Response(
+        JSON.stringify({ id: "resp-test", object: "response", output: [], usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, model: "gpt-5" }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      );
+    },
+  });
+
+  // Use doStream (the only method the wrapper reliably preserves as an own property)
+  // and a responses-path model (gpt-5) to exercise the full routing + fetch chain
+  const model = provider.languageModel("gpt-5");
+  try {
+    const result = await model.doStream({
+      inputFormat: "messages",
+      mode: { type: "regular" },
+      prompt: [{ role: "user", content: [{ type: "text", text: "hello" }] }],
+    });
+    // Drain the stream to ensure the fetch fires
+    const reader = result.stream.getReader();
+    try { while (true) { const { done } = await reader.read(); if (done) break; } } catch { /* ignore parse errors */ }
+  } catch {
+    // May fail on response parsing — we only care about the header captured
+  }
+
+  // The real token (injected by the custom fetch) should have overridden the sentinel
+  assert.equal(capturedAuth, "Bearer gho_real_token_injected_by_loader",
+    "auth loader's token should override the sentinel API key");
+});

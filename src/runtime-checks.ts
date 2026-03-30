@@ -34,8 +34,7 @@ export function checkAccountRuntimeReadiness(account: CopilotAccountMeta): Runti
   }
 
   const includeUnverified =
-    account.capabilityState === "verified" ||
-    (account.capabilityState === "user-declared" && account.allowUnverifiedModels === true);
+    account.capabilityState === "user-declared" && account.allowUnverifiedModels === true;
   const hiddenUnverifiedModels = includeUnverified ? [] : getOverrideRequiredModelsForPlan(account.plan);
 
   if (hiddenUnverifiedModels.length > 0) {

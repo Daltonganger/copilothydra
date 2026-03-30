@@ -50,7 +50,6 @@ export async function handlePlanMismatch(
 export function capabilityStateLabel(state: CapabilityState): string {
   switch (state) {
     case "user-declared": return "user-declared";
-    case "verified": return "verified";
     case "mismatch": return "⚠ mismatch";
   }
 }
@@ -114,8 +113,7 @@ function resolveMismatchSuggestedPlan(
   }
 
   const includeUnverified =
-    account.capabilityState === "verified" ||
-    (account.capabilityState === "user-declared" && account.allowUnverifiedModels === true);
+    account.capabilityState === "user-declared" && account.allowUnverifiedModels === true;
 
   if (!modelsForPlan(account.plan, { includeUnverified }).includes(rejectedModelId)) {
     return undefined;

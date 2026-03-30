@@ -70,6 +70,8 @@ Supported today:
 - mixed text and non-text chunk preservation with normalized single-text-part output
 - account-scoped request routing with Hydra-managed bearer-token injection
 
+**Forward-matching note:** `shouldUseCopilotResponsesApi` returns `true` for any model ID starting with `gpt-5` except `gpt-5-mini`. This means unknown future `gpt-5.x` variants will automatically route to the Responses API path. This is intentional for forward compatibility but means new variants receive best-effort rather than verified support until explicitly tested and added to this matrix.
+
 Best-effort / not guaranteed as exact built-in parity:
 
 - broader Codex-adjacent or tool-heavy Responses event surfaces
