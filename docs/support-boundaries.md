@@ -1,5 +1,7 @@
 # CopilotHydra Support Boundaries
 
+> **Beta / hardening phase.** CopilotHydra is not yet stable software. See `docs/release-checklist.md` for the current release gate.
+
 This document defines what CopilotHydra supports today, what remains best-effort, and what is currently out of scope.
 
 ## Supported today
@@ -22,6 +24,7 @@ This document defines what CopilotHydra supports today, what remains best-effort
 - Any path that depends on host behavior not yet covered by the tested compatibility matrix or regression suite
 - Capability truth beyond the current hybrid model of user-declared plan exposure plus runtime mismatch detection
 - Token-bound usage or quota snapshots as authoritative per-account percentage or billing truth until their semantics are validated
+- Secret storage security: tokens are currently stored in plaintext (`copilot-secrets.json`) with `0o600` file permissions. A stable-release decision for replacing or formally accepting this storage model has not yet been made. See `docs/release-checklist.md` blocker #1.
 
 ## Usage visibility boundary
 
@@ -51,7 +54,7 @@ Out of scope today:
 - Automatic entitlement truth or authoritative plan verification
 - Authoritative per-account Copilot usage percentages from unsupported or cross-account billing sources
 - Hidden fallback or automatic switching between Copilot accounts
-- More than the currently enforced 8 simultaneously exported runtime account slots as a guaranteed supported scale target
+- More than 8 simultaneously active accounts: the current runtime is capped at 8 exported slot exports by design. This is a deliberate architecture boundary for this release, not a temporary implementation limit.
 
 ## Enterprise / managed-environment clarification
 
