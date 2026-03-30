@@ -1,0 +1,3 @@
+# Source maps — not needed in published package
+dist/**/*.js.map
+dist/**/*.d.ts.map
