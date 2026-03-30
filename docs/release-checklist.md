@@ -82,9 +82,8 @@ Mark each section materially complete before calling CopilotHydra stable.
 - ⚠️ No integration test exercises the loader→mismatch detection chain. The `loader.ts` 400/403 interception path is only tested indirectly through unit tests on helper functions, never through an actual HTTP response body.
 - ⚠️ `capabilityState: "verified"` is a dead enum value — no code path ever sets it to `"verified"`. Logic branches that depend on it can never fire in production.
 - ✅ Mismatch-review operator runbook available at `docs/operator-mismatch-review-runbook.md`.
-- ⚠️ Mismatch message uses jargon: "stricter stored plan" reads as higher-security to most operators but means lower-tier. "Preserve" is ambiguous.
+- ✅ Mismatch message wording improved: "A lower plan tier may match your actual entitlement" replaces "Suggested stricter stored plan". No-suggestion message now mentions enterprise-only/org-restricted possibility. All `isCapabilityMismatchError` patterns covered by tests.
 - ⚠️ Non-TTY `review-mismatch` (e.g., CI) gives zero actionable guidance.
-- ⚠️ `suggestDowngradePlanForModel` semantics are confusing: it returns the first *lower* plan that does not include the model, which can suggest a plan that does not solve the operator's problem (e.g., suggesting `student` when the model is enterprise-only). Suggestion language does not hedge uncertainty.
 
 ### 6. GPT-5+/Responses/Codex boundary
 
@@ -134,13 +133,11 @@ Ordered by impact. Items marked 🔴 are hard blockers. Items marked ⚠️ are 
 ### Significant gaps ⚠️
 
 1. **No GPT-5+ integration test** via the real `createHydraCopilotProvider()` factory — all coverage is unit-level.
-2. **Downgrade suggestion language overclaims certainty** — `suggestDowngradePlanForModel` semantics are confusing and the message does not hedge.
-3. **Black-box tests use a stubbed host** — no real OpenCode process is ever exercised.
-4. **Restart instruction is stderr-only** — not surfaced in `AuthOAuthResult.instructions`, so operators may not see it in the OpenCode auth UI.
-5. **Known limitations scattered across 3+ docs** — no canonical list, inconsistent framing.
-6. **`capabilityState: "verified"` is dead code** — no path ever sets it; related branches can never fire.
-7. **`RESPONSES_SENTINEL_API_KEY` override by auth loader is untested.**
-8. **Forward-matching for unknown future `gpt-5.x` variants is undocumented.**
+2. **Black-box tests use a stubbed host** — no real OpenCode process is ever exercised.
+3. **Known limitations scattered across 3+ docs** — no canonical list, inconsistent framing.
+4. **`capabilityState: "verified"` is dead code** — no path ever sets it; related branches can never fire.
+5. **`RESPONSES_SENTINEL_API_KEY` override by auth loader is untested.**
+6. **Forward-matching for unknown future `gpt-5.x` variants is undocumented.**
 
 ### Resolved since initial audit ✅
 
@@ -152,7 +149,10 @@ Ordered by impact. Items marked 🔴 are hard blockers. Items marked ⚠️ are 
 - ~~8-account framing inconsistent~~ — **fixed**: unified framing in `support-boundaries.md`.
 - ~~`SKIP_VERSION_CHECK` flag bypass path is untested~~ — **documented**: module-level const makes in-process testing unreliable; warn-first contract covered by untested-version warning test.
 - ~~No plaintext-secret storage decision~~ — **formally accepted**: see `docs/plaintext-secret-storage-decision.md`. Consistent with `opencode-antigravity-auth` (the established norm). `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM` gate retained. Keychain deferred to future phase.
-- ~~`device-flow.ts` has zero test coverage~~ — **fixed**: `tests/device-flow.test.js` added with 10 tests covering happy path, `slow_down`, `authorization_pending`, `expired_token`, `access_denied`, timeout, and network failure.
+- ~~`device-flow.ts` has zero test coverage~~ — **fixed**: `tests/device-flow.test.js` with 10 tests: happy path, `slow_down`, `authorization_pending`, `expired_token`, `access_denied`, timeout, network failure.
+- ~~Downgrade suggestion language overclaims certainty~~ — **fixed**: message now says "A lower plan tier may match your actual entitlement" and explains enterprise-only/org-restricted cases. Full pattern coverage added to `tests/capabilities.test.js`.
+- ~~Restart instruction is stderr-only~~ — **fixed**: `instructions` field now includes "reload or restart OpenCode" for new-account flows. Re-auth omits it correctly. Tests updated.
+- ~~Black-box tests cover only single-account happy path~~ — **fixed**: multi-account routing test (2 accounts, isolated tokens post-restart) and callback-failure test (`access_denied` → `{ type: "failed" }`) added to `tests/opencode-blackbox.test.js`.
 
 ## Cross-document inconsistencies
 

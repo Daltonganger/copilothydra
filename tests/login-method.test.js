@@ -169,9 +169,9 @@ test("login method can create a new account from OpenCode auth login inputs", as
     });
 
     assert.equal(started.url, "https://github.com/login/device");
-    assert.equal(started.instructions, "Enter this code:\nABCD-EFGH\n(Code expires in 900s; account: Personal / alice)");
+    assert.equal(started.instructions, "Enter this code:\nABCD-EFGH\n(Code expires in 900s; account: Personal / alice)\n\nAfter authorization completes, reload or restart OpenCode so the new provider entry is picked up.");
     assert.doesNotMatch(started.instructions, /https:\/\/github\.com\/login\/device/i);
-    assert.doesNotMatch(started.instructions, /reload\/restart OpenCode/i);
+    assert.match(started.instructions, /reload or restart OpenCode/i);
 
     const { result: finished, output } = await captureStderr(() => started.callback());
     assert.equal(finished.type, "success");

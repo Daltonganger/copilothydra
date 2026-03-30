@@ -104,6 +104,17 @@ test("capability mismatch helpers detect entitlement failures and suggest strict
   assert.equal(isCapabilityMismatchError({ message: "The requested model is not supported" }), true);
   assert.equal(isCapabilityMismatchError({ body: { message: "Model not enabled for your plan" } }), true);
   assert.equal(isCapabilityMismatchError({ reason: { message: "The requested model is not supported" } }), true);
+  // Remaining match patterns
+  assert.equal(isCapabilityMismatchError({ message: "not authorized to use this copilot feature" }), true);
+  assert.equal(isCapabilityMismatchError({ message: "model not enabled for your account" }), true);
+  assert.equal(isCapabilityMismatchError({ message: "model not enabled for your org" }), true);
+  assert.equal(isCapabilityMismatchError({ message: "access denied by organization policy" }), true);
+  assert.equal(isCapabilityMismatchError({ message: "you don't have access to github copilot" }), true);
+  assert.equal(isCapabilityMismatchError({ message: "access to this endpoint is forbidden" }), true);
+  // Plain string response body
+  assert.equal(isCapabilityMismatchError("The requested model is not supported"), true);
+  // Non-mismatch 403 body
+  assert.equal(isCapabilityMismatchError({ message: "rate limit exceeded" }), false);
   assert.equal(isCapabilityMismatchError({ message: "rate limited" }), false);
   assert.equal(suggestDowngradePlanForModel("pro", "gpt-5.4"), "student");
   assert.equal(suggestDowngradePlanForModel("free", "gpt-4.1"), undefined);
@@ -125,6 +136,8 @@ test("capability mismatch helpers detect entitlement failures and suggest strict
 
   assert.match(message, /Capability mismatch detected/);
   assert.match(message, /Model "gpt-5.4" was rejected/);
+  assert.match(message, /lower plan tier may match your actual entitlement/);
+  assert.match(message, /apply the suggested plan or keep the current declaration/);
   assert.match(message, /review-mismatch acct_test/);
 });
 
@@ -146,8 +159,9 @@ test("capability mismatch message explains when no automatic downgrade suggestio
     undefined,
   );
 
-  assert.match(message, /No automatic stricter plan suggestion is available for this mismatch/);
-  assert.match(message, /review the account manually/i);
+  assert.match(message, /No automatic plan suggestion is available/);
+  assert.match(message, /enterprise-only or org-restricted/);
+  assert.match(message, /review-mismatch acct_test/);
 });
 
 test("runtime readiness no longer warns about GPT-5+/Codex hiding once Hydra mirrors built-in routing", async () => {

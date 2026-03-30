@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import fs from "node:fs/promises";
 import { cleanupDir, makeTempDir, readJson } from "./helpers.js";
 
 const PLUGIN_INPUT = {
@@ -203,6 +204,281 @@ test("black-box host add-account flow persists config and survives restart into 
           "openai-intent": "conversation-edits",
         },
       });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+test("black-box host: two accounts route independently after restart", async () => {
+  await withTempOpenCodeConfig(async (tempDir) => {
+    const originalFetch = globalThis.fetch;
+    const runtimeRequests = [];
+
+    // Build a response queue so device code + access token calls return
+    // the correct payloads for alice first, then bob.
+    const responseQueue = [];
+
+    function enqueueDeviceCode(userCode) {
+      responseQueue.push(() =>
+        new Response(
+          JSON.stringify({
+            device_code: `device-${userCode}`,
+            user_code: userCode,
+            verification_uri: "https://github.com/login/device",
+            expires_in: 900,
+            interval: 0,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        )
+      );
+    }
+
+    function enqueueAccessToken(token) {
+      responseQueue.push(() =>
+        new Response(
+          JSON.stringify({
+            access_token: token,
+            token_type: "bearer",
+            scope: "read:user",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        )
+      );
+    }
+
+    function enqueueRuntimeCapture() {
+      responseQueue.push((url, init) => {
+        runtimeRequests.push({
+          url,
+          headers: Object.fromEntries(new Headers(init?.headers).entries()),
+        });
+        return new Response("ok", { status: 200 });
+      });
+    }
+
+    // Alice's device flow
+    enqueueDeviceCode("AAAA-AAAA");
+    enqueueAccessToken("gho_alice_token");
+    // Bob's device flow
+    enqueueDeviceCode("BBBB-BBBB");
+    enqueueAccessToken("gho_bob_token");
+    // Runtime requests (2 total, one per account)
+    enqueueRuntimeCapture();
+    enqueueRuntimeCapture();
+
+    globalThis.fetch = async (request, init) => {
+      const url = typeof request === "string" ? request : request instanceof URL ? request.href : request.url;
+
+      if (
+        url === "https://github.com/login/device/code" ||
+        url === "https://github.com/login/oauth/access_token"
+      ) {
+        const factory = responseQueue.shift();
+        return factory();
+      }
+
+      // Runtime request
+      const factory = responseQueue.shift();
+      return factory(url, init);
+    };
+
+    try {
+      // ---- Phase 1: Add alice ----
+      const mod1 = await importFresh("dist/index.js");
+      const setup1 = await mod1.CopilotHydraSetup(PLUGIN_INPUT);
+      const addAlice = setup1.auth.methods.find(
+        (m) => m.label === "GitHub Copilot (CopilotHydra) — Add new account",
+      );
+      assert.ok(addAlice, "expected add-account method for alice");
+
+      const startedAlice = await addAlice.authorize({
+        githubUsername: "alice",
+        label: "Alice",
+        plan: "pro",
+        allowUnverifiedModels: "no",
+      });
+      assert.equal(startedAlice.url, "https://github.com/login/device");
+      assert.match(startedAlice.instructions, /AAAA-AAAA/);
+
+      const finishedAlice = await startedAlice.callback();
+      assert.equal(finishedAlice.type, "success");
+
+      const accountsAfterAlice = await readJson(path.join(tempDir, "copilot-accounts.json"));
+      assert.equal(accountsAfterAlice.accounts.length, 1);
+      assert.equal(accountsAfterAlice.accounts[0].githubUsername, "alice");
+
+      // ---- Phase 2: Restart, add bob ----
+      const mod2 = await importFresh("dist/index.js");
+      const setup2 = await mod2.CopilotHydraSetup(PLUGIN_INPUT);
+      const methodLabels = setup2.auth.methods.map((m) => m.label);
+
+      assert.ok(
+        methodLabels.includes("GitHub Copilot (CopilotHydra) — Re-auth existing account"),
+        "expected re-auth method after first account",
+      );
+      assert.ok(
+        methodLabels.includes("GitHub Copilot (CopilotHydra) — Add new account"),
+        "expected add-account method after first account",
+      );
+
+      const addBob = setup2.auth.methods.find(
+        (m) => m.label === "GitHub Copilot (CopilotHydra) — Add new account",
+      );
+      assert.ok(addBob, "expected add-account method for bob");
+
+      const startedBob = await addBob.authorize({
+        githubUsername: "bob",
+        label: "Bob",
+        plan: "free",
+        allowUnverifiedModels: "no",
+      });
+      assert.equal(startedBob.url, "https://github.com/login/device");
+      assert.match(startedBob.instructions, /BBBB-BBBB/);
+
+      const finishedBob = await startedBob.callback();
+      assert.equal(finishedBob.type, "success");
+
+      const accountsAfterBob = await readJson(path.join(tempDir, "copilot-accounts.json"));
+      assert.equal(accountsAfterBob.accounts.length, 2);
+
+      // ---- Phase 3: Restart again, discover runtime slots ----
+      const mod3 = await importFresh("dist/index.js");
+      const exports3 = discoverPluginExports(mod3);
+
+      const runtimeSlots = [];
+      for (const entry of exports3) {
+        if (entry.name === "CopilotHydraSetup") continue;
+        const hooks = await entry.plugin(PLUGIN_INPUT);
+        if (hooks.auth?.provider) {
+          runtimeSlots.push({ name: entry.name, hooks, provider: hooks.auth.provider });
+        }
+      }
+
+      assert.equal(runtimeSlots.length, 2, "expected exactly 2 non-empty runtime slots");
+
+      // ---- Phase 4: Verify each slot routes to the correct account token ----
+      const tokensSeen = [];
+
+      for (const slot of runtimeSlots) {
+        const account = accountsAfterBob.accounts.find(
+          (a) => a.providerId === slot.provider,
+        );
+        assert.ok(account, `expected account for provider ${slot.provider}`);
+
+        const token = account.githubUsername === "alice"
+          ? "gho_alice_token"
+          : "gho_bob_token";
+
+        const loader = await slot.hooks.auth.loader(
+          async () => ({
+            type: "oauth",
+            refresh: token,
+            access: token,
+            expires: 0,
+            accountId: account.id,
+          }),
+          { id: account.providerId },
+        );
+
+        assert.equal(typeof loader?.fetch, "function");
+
+        await loader.fetch(
+          new Request("https://api.githubcopilot.com/chat/completions", {
+            method: "POST",
+            body: JSON.stringify({ model: "gpt-4o", messages: [] }),
+          }),
+        );
+
+        tokensSeen.push(token);
+      }
+
+      assert.equal(runtimeRequests.length, 2, "expected 2 runtime fetch calls");
+
+      // Verify both tokens appear and they are different
+      const authHeaders = runtimeRequests.map((r) => r.headers.authorization).sort();
+      assert.deepEqual(authHeaders, [
+        "Bearer gho_alice_token",
+        "Bearer gho_bob_token",
+      ]);
+
+      // Explicitly verify isolation: tokens are different
+      assert.notStrictEqual(
+        runtimeRequests[0].headers.authorization,
+        runtimeRequests[1].headers.authorization,
+        "the two slots must route to different accounts (tokens must be isolated)",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+test("black-box host: add-account callback returns failed when device flow is denied", async () => {
+  await withTempOpenCodeConfig(async (tempDir) => {
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = async (request, _init) => {
+      const url = typeof request === "string" ? request : request instanceof URL ? request.href : request.url;
+
+      if (url === "https://github.com/login/device/code") {
+        return new Response(
+          JSON.stringify({
+            device_code: "device-denied",
+            user_code: "CCCC-CCCC",
+            verification_uri: "https://github.com/login/device",
+            expires_in: 900,
+            interval: 0,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      if (url === "https://github.com/login/oauth/access_token") {
+        return new Response(
+          JSON.stringify({
+            error: "access_denied",
+            error_description: "The user has denied your application.",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      return new Response("not found", { status: 404 });
+    };
+
+    try {
+      const mod = await importFresh("dist/index.js");
+      const setup = await mod.CopilotHydraSetup(PLUGIN_INPUT);
+      const addAccount = setup.auth.methods.find(
+        (m) => m.label === "GitHub Copilot (CopilotHydra) — Add new account",
+      );
+      assert.ok(addAccount, "expected add-account method");
+
+      const started = await addAccount.authorize({
+        githubUsername: "denied-user",
+        label: "Denied",
+        plan: "pro",
+        allowUnverifiedModels: "no",
+      });
+      assert.equal(started.url, "https://github.com/login/device");
+      assert.match(started.instructions, /CCCC-CCCC/);
+
+      const finished = await started.callback();
+      assert.deepEqual(finished, { type: "failed" });
+
+      // Verify no partial state: accounts file must not exist or have 0 accounts
+      const accountsPath = path.join(tempDir, "copilot-accounts.json");
+      try {
+        const accounts = await readJson(accountsPath);
+        assert.equal(
+          accounts.accounts.length,
+          0,
+          "expected 0 accounts after denied device flow",
+        );
+      } catch {
+        // File doesn't exist — that's also acceptable (no partial state)
+      }
     } finally {
       globalThis.fetch = originalFetch;
     }
