@@ -50,7 +50,6 @@ export async function handlePlanMismatch(
 export function capabilityStateLabel(state: CapabilityState): string {
   switch (state) {
     case "user-declared": return "user-declared";
-    case "verified": return "verified";
     case "mismatch": return "⚠ mismatch";
   }
 }
@@ -90,8 +89,8 @@ export function buildMismatchMessage(
     ? ` Model "${rejectedModelId}" was rejected for declared plan "${account.plan}".`
     : ` Declared plan "${account.plan}" no longer matches runtime capability.`;
   const suggestionPart = suggestedPlan
-    ? ` Suggested stricter stored plan: "${suggestedPlan}". Run \`copilothydra review-mismatch ${account.id}\` to apply or preserve the current declaration.`
-    : " No automatic stricter plan suggestion is available for this mismatch; review the account manually if the declared plan may still be wrong.";
+    ? ` A lower plan tier may match your actual entitlement: "${suggestedPlan}". Run \`copilothydra review-mismatch ${account.id}\` to apply the suggested plan or keep the current declaration.`
+    : ` No automatic plan suggestion is available (the rejected model may be enterprise-only or org-restricted). Review the account manually with \`copilothydra review-mismatch ${account.id}\`.`;
 
   return `[copilothydra] Capability mismatch detected for account "${account.label}" (${account.githubUsername}).${modelPart}${suggestionPart}`;
 }
@@ -114,8 +113,7 @@ function resolveMismatchSuggestedPlan(
   }
 
   const includeUnverified =
-    account.capabilityState === "verified" ||
-    (account.capabilityState === "user-declared" && account.allowUnverifiedModels === true);
+    account.capabilityState === "user-declared" && account.allowUnverifiedModels === true;
 
   if (!modelsForPlan(account.plan, { includeUnverified }).includes(rejectedModelId)) {
     return undefined;

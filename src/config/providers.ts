@@ -165,8 +165,7 @@ export function buildProviderConfig(account: CopilotAccountMeta): ProviderConfig
  */
 function buildModelEntries(_account: CopilotAccountMeta): Record<string, ModelConfigEntry> {
   const includeUnverified =
-    _account.capabilityState === "verified" ||
-    (_account.capabilityState === "user-declared" && _account.allowUnverifiedModels === true);
+    _account.capabilityState === "user-declared" && _account.allowUnverifiedModels === true;
   const modelIds = modelsForPlan(_account.plan, { includeUnverified });
 
   return Object.fromEntries(

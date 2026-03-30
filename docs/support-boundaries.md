@@ -1,5 +1,7 @@
 # CopilotHydra Support Boundaries
 
+> **Beta / hardening phase.** CopilotHydra is not yet stable software. See `docs/release-checklist.md` for the current release gate.
+
 This document defines what CopilotHydra supports today, what remains best-effort, and what is currently out of scope.
 
 ## Supported today
@@ -22,6 +24,7 @@ This document defines what CopilotHydra supports today, what remains best-effort
 - Any path that depends on host behavior not yet covered by the tested compatibility matrix or regression suite
 - Capability truth beyond the current hybrid model of user-declared plan exposure plus runtime mismatch detection
 - Token-bound usage or quota snapshots as authoritative per-account percentage or billing truth until their semantics are validated
+- Secret storage security: tokens are currently stored in plaintext (`copilot-secrets.json`) with `0o600` file permissions. A stable-release decision for replacing or formally accepting this storage model has not yet been made. See `docs/release-checklist.md` blocker #1.
 
 ## Usage visibility boundary
 
@@ -51,7 +54,7 @@ Out of scope today:
 - Automatic entitlement truth or authoritative plan verification
 - Authoritative per-account Copilot usage percentages from unsupported or cross-account billing sources
 - Hidden fallback or automatic switching between Copilot accounts
-- More than the currently enforced 8 simultaneously exported runtime account slots as a guaranteed supported scale target
+- More than 8 simultaneously active accounts: the current runtime is capped at 8 exported slot exports by design. This is a deliberate architecture boundary for this release, not a temporary implementation limit.
 
 ## Enterprise / managed-environment clarification
 
@@ -64,3 +67,15 @@ Until enterprise-specific flows are explicitly tested, documented, and added to 
 - If a path is documented in the compatibility matrix and current runbooks, treat it as supported.
 - If a path is described as best-effort, treat it as compatibility-sensitive and validate it before relying on it broadly.
 - If a path is not documented and falls into enterprise-managed GitHub.com or GHES or broader undocumented host behavior, treat it as out of scope unless a future PR explicitly changes that boundary.
+
+## Known limitations (canonical list)
+
+This is the single authoritative list of known limitations. Other docs may reference these but this section is the source of truth.
+
+- **Plaintext token storage** — OAuth tokens are stored as plaintext JSON with `0600` file permissions. No encryption at rest. See `docs/plaintext-secret-storage-decision.md` for the formal risk-acceptance decision.
+- **8-account cap** — The runtime is architecturally capped at 8 simultaneously active accounts (8 exported plugin slots). This is a deliberate boundary for v1, not a temporary limit.
+- **User-declared plans** — CopilotHydra does not verify your actual GitHub Copilot plan. You declare your plan on add-account. Mismatches are detected at runtime and flagged.
+- **macOS/Linux primary, Windows best-effort** — File permission hardening (`chmod 0600`) is not supported on Windows. Atomic writes fall back to a direct write on Windows rename failure.
+- **No enterprise or GHES support** — Enterprise-managed GitHub.com and GitHub Enterprise Server are explicitly out of scope for v1.
+- **GPT-5+/Responses/Codex parity is best-effort** outside the documented and tested surfaces.
+- **No keychain integration** — Tokens are stored in plaintext. Keychain/credential-store integration is deferred to a future release.

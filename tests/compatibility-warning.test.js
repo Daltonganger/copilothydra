@@ -77,3 +77,33 @@ test("compatibility check accepts URL-shaped serverUrl host input", async () => 
   assert.equal(payload.version, "1.3.3");
   assert.deepEqual(payload.warnings, []);
 });
+
+test("compatibility check accepts all three documented tested versions without warning", async () => {
+  const { checkCompatibility } = await import(`../dist/auth/compatibility-check.js?${Date.now()}`);
+
+  for (const version of ["1.3.0", "1.3.2", "1.3.3"]) {
+    const payload = checkCompatibility({
+      client: { version },
+      directory: ".",
+      serverUrl: "http://localhost:4096",
+    });
+    assert.equal(payload.ok, true, `version ${version} should be ok`);
+    assert.deepEqual(payload.warnings, [], `version ${version} should have no warnings`);
+  }
+});
+
+test("compatibility check always returns ok:true and warns (not errors) for unknown versions", async () => {
+  // SKIP_VERSION_CHECK is a module-level const in flags.ts evaluated at import
+  // time, making in-process env mutation unreliable for testing that path.
+  // Instead we verify the warn-first contract: any unrecognised version produces
+  // exactly one warning but never sets ok:false.
+  const { checkCompatibility } = await import(`../dist/auth/compatibility-check.js?${Date.now()}`);
+  const payload = checkCompatibility({
+    client: { version: "99.99.99" },
+    directory: ".",
+    serverUrl: "http://localhost:4096",
+  });
+  assert.equal(payload.ok, true);
+  assert.equal(payload.warnings.length, 1);
+  assert.match(payload.warnings[0], /not in the tested-version matrix/);
+});

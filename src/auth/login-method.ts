@@ -169,7 +169,10 @@ function buildAuthResult(
     url: deviceCode.verification_uri,
     instructions:
       `Enter this code:\n${deviceCode.user_code}\n` +
-      `(Code expires in ${deviceCode.expires_in}s; account: ${account.label} / ${account.githubUsername})`,
+      `(Code expires in ${deviceCode.expires_in}s; account: ${account.label} / ${account.githubUsername})` +
+      (!isExistingAccount
+        ? `\n\nAfter authorization completes, reload or restart OpenCode so the new provider entry is picked up.`
+        : ``),
     method: "auto",
     callback: async () => {
       try {

@@ -1,12 +1,12 @@
 # CopilotHydra
 
-![CopilotHydra logo](https://unpkg.com/copilothydra@0.1.0-beta.2/assets/branding/copilothydra-logo-512.png)
+![CopilotHydra logo](https://unpkg.com/copilothydra@0.2.0/assets/branding/copilothydra-logo-512.png)
 
 CopilotHydra is an OpenCode plugin for using multiple GitHub Copilot accounts side by side.
 
 ## Status
 
-- **Beta / hardening phase**
+- **Stable — v0.2.0**
 - Tested with **OpenCode 1.3.0 / 1.3.2 / 1.3.3**
 - Scope: **GitHub.com Copilot**, macOS/Linux first, Windows best-effort
 
@@ -19,15 +19,18 @@ CopilotHydra is an OpenCode plugin for using multiple GitHub Copilot accounts si
 
 ## Quick start
 
+Install globally or as a dev dependency:
+
 ```bash
-npm install
-npm run build
+npm install -g copilothydra
+# or
+npm install copilothydra
 ```
 
-Use the primary flow in OpenCode:
+Then use the primary flow in OpenCode:
 
 ```bash
-opencode auth login
+COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM=1 opencode auth login
 ```
 
 Useful CLI commands:
@@ -37,26 +40,30 @@ copilothydra list-accounts
 copilothydra sync-config
 copilothydra audit-storage
 copilothydra repair-storage
+copilothydra review-mismatch <account-id>
 copilothydra usage
 ```
 
-## Important limitations
+## Known limitations
 
-- OpenCode compatibility is **warn-first**, not guaranteed
-- GPT-5+/Responses/Codex parity is **best-effort**
-- secrets are still **plaintext** for beta work
-- capability truth is **not authoritative**
-- Enterprise-managed GitHub.com and GHES are **not supported v1 paths**
-- current runtime support is capped at **8 active accounts**
+- Secrets stored as **plaintext** with `0600` file permissions — no keychain. See `docs/plaintext-secret-storage-decision.md`.
+- Capped at **8 active accounts** (architecture limit, not temporary).
+- **User-declared plans** — no automatic plan verification; runtime mismatches are flagged.
+- GPT-5+/Responses/Codex parity is **best-effort** outside documented surfaces.
+- Enterprise-managed GitHub.com and GHES are **not supported**.
+- macOS/Linux primary, **Windows best-effort**.
 
 ## Docs
 
-- [OpenCode integration parity](docs/OPENCODE_INTEGRATION_PARITY.md)
-- [Release checklist](docs/release-checklist.md)
+- [Changelog](CHANGELOG.md)
 - [Compatibility matrix](docs/compatibility-matrix.md)
-- [Operator auth recovery runbook](docs/operator-auth-recovery-runbook.md)
 - [Support boundaries](docs/support-boundaries.md)
-- [Archived planning and spike notes](docs/archive/)
+- [Operator auth & recovery runbook](docs/operator-auth-recovery-runbook.md)
+- [Operator mismatch-review runbook](docs/operator-mismatch-review-runbook.md)
+- [Operator storage-repair runbook](docs/operator-storage-repair-runbook.md)
+- [Plaintext secret storage decision](docs/plaintext-secret-storage-decision.md)
+- [Release checklist](docs/release-checklist.md)
+- [OpenCode integration parity](docs/OPENCODE_INTEGRATION_PARITY.md)
 
 ## Development
 

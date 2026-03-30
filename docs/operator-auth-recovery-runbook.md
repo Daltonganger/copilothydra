@@ -1,5 +1,7 @@
 # CopilotHydra Operator Auth & Recovery Runbook
 
+> **Beta / hardening phase.** CopilotHydra is not yet stable software. This runbook reflects the current beta path. See `docs/release-checklist.md` for the current release gate.
+
 This runbook covers the primary operator path around `opencode auth login`, restart or reload behavior, and the first recovery steps when the expected CopilotHydra flow does not appear.
 
 Scope note: this runbook is written for the currently tested OpenCode/CopilotHydra path documented in [docs/compatibility-matrix.md](./compatibility-matrix.md). If you are on an untested host version, treat these steps as best-effort and validate them against the current compatibility matrix first.
@@ -135,3 +137,5 @@ Mutating / repair:
 ## Scope note
 
 This runbook covers the primary auth/recovery path only. More detailed operator procedures for mismatch review, storage repair, and lifecycle/remove-account recovery can be expanded separately.
+
+**Mismatch review and storage repair runbooks** are not yet fully expanded. They are formally deferred to a follow-up doc update before stable release. In the interim: use `copilothydra review-mismatch <id>` for mismatch and `copilothydra audit-storage` + `copilothydra repair-storage` for storage repair — see the related fallback/admin commands section above.

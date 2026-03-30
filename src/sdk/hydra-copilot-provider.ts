@@ -7,8 +7,8 @@
 
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { extractErrorText } from "../error-text.js";
 import { shouldUseCopilotResponsesApi } from "../config/models.js";
+import { extractErrorText } from "../error-text.js";
 
 const RESPONSES_SENTINEL_API_KEY = "copilothydra-managed";
 
@@ -67,7 +67,7 @@ export function withHydraCopilotErrorNormalization(model: unknown): unknown {
   const wrapped: ModelLike = { ...maybeModel };
 
   if (typeof maybeModel.doGenerate === "function") {
-    const doGenerate = maybeModel.doGenerate;
+    const doGenerate = maybeModel.doGenerate.bind(maybeModel);
     wrapped.doGenerate = async (...args: unknown[]) => {
       try {
         return await doGenerate(...args);
@@ -78,7 +78,7 @@ export function withHydraCopilotErrorNormalization(model: unknown): unknown {
   }
 
   if (typeof maybeModel.doStream === "function") {
-    const doStream = maybeModel.doStream;
+    const doStream = maybeModel.doStream.bind(maybeModel);
     wrapped.doStream = async (...args: unknown[]) => {
       try {
         return await doStream(...args);
@@ -101,7 +101,7 @@ export function withHydraCopilotResponsesParity(model: unknown): unknown {
     return model;
   }
 
-  const doStream = maybeStreamModel.doStream;
+  const doStream = maybeStreamModel.doStream.bind(maybeStreamModel);
 
   return {
     ...maybeStreamModel,

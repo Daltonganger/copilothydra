@@ -30,10 +30,10 @@ export type ProviderId = string;
 export type PlanTier = "free" | "student" | "pro" | "pro+";
 
 /**
- * Whether the account's plan/capability has been verified, is user-declared,
+ * Whether the account's plan/capability is user-declared,
  * or is in a mismatched state (declared plan doesn't match API responses).
  */
-export type CapabilityState = "user-declared" | "verified" | "mismatch";
+export type CapabilityState = "user-declared" | "mismatch";
 
 // ---------------------------------------------------------------------------
 // Account lifecycle

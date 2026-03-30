@@ -26,6 +26,8 @@ import { SKIP_VERSION_CHECK } from "../flags.js";
  * Keep this sorted ascending.
  */
 const KNOWN_GOOD_VERSIONS: string[] = [
+  "1.3.0",
+  "1.3.2",
   "1.3.3",
 ];
 

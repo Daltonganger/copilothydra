@@ -34,7 +34,7 @@ import {
 } from "./validation.js";
 
 const PLAN_TIERS = ["free", "student", "pro", "pro+"] as const;
-const CAPABILITY_STATES = ["user-declared", "verified", "mismatch"] as const;
+const CAPABILITY_STATES = ["user-declared", "mismatch"] as const;
 const LIFECYCLE_STATES = ["active", "pending-removal"] as const;
 
 // ---------------------------------------------------------------------------
