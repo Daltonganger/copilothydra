@@ -31,6 +31,15 @@ const KNOWN_GOOD_VERSIONS: string[] = [
   "1.3.3",
 ];
 
+/**
+ * Version prefixes that are known-good for every patch release.
+ * If the detected version starts with one of these prefixes, it is treated
+ * as tested without needing an exact entry in KNOWN_GOOD_VERSIONS.
+ */
+const KNOWN_GOOD_PREFIXES: string[] = [
+  "1.20.",
+];
+
 const VERSION_FIELD_CANDIDATES = [
   "version",
   "opencodeVersion",
@@ -91,7 +100,10 @@ export function checkCompatibility(pluginInput: unknown): CompatibilityResult {
           ? Object.keys(pluginInput)
           : "not-an-object",
     });
-  } else if (!KNOWN_GOOD_VERSIONS.includes(version)) {
+  } else if (
+    !KNOWN_GOOD_VERSIONS.includes(version) &&
+    !KNOWN_GOOD_PREFIXES.some((prefix) => version.startsWith(prefix))
+  ) {
     warnings.push(
       `OpenCode version "${version}" is not in the tested-version matrix for CopilotHydra. ` +
       "Proceed with caution. See docs/compatibility-matrix.md."

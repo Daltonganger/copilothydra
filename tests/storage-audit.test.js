@@ -10,7 +10,6 @@ test("auditStorage reports orphan secrets, missing providers, and stale provider
   const originalFetch = globalThis.fetch;
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
     const configPath = path.join(tempDir, "opencode.json");
     process.env.OPENCODE_CONFIG = configPath;
 
@@ -68,7 +67,6 @@ test("auditStorage reports orphan secrets, missing providers, and stale provider
   } finally {
     globalThis.fetch = originalFetch;
     delete process.env.OPENCODE_CONFIG;
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -77,7 +75,6 @@ test("cli audit-storage reports detected inconsistencies and repair hint", async
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
     const configPath = path.join(tempDir, "opencode.json");
     process.env.OPENCODE_CONFIG = configPath;
 
@@ -106,7 +103,6 @@ test("cli audit-storage reports detected inconsistencies and repair hint", async
         ...process.env,
         OPENCODE_CONFIG_DIR: tempDir,
         OPENCODE_CONFIG: configPath,
-        COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM: "1",
       },
       encoding: "utf8",
     });
@@ -118,7 +114,6 @@ test("cli audit-storage reports detected inconsistencies and repair hint", async
     assert.match(result.stdout, /repair-storage/);
   } finally {
     delete process.env.OPENCODE_CONFIG;
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -128,7 +123,6 @@ test("auditStorage reports unknown Copilot model ids and drifted Hydra provider 
   const originalFetch = globalThis.fetch;
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
     const configPath = path.join(tempDir, "opencode.json");
     process.env.OPENCODE_CONFIG = configPath;
 
@@ -190,7 +184,6 @@ test("auditStorage reports unknown Copilot model ids and drifted Hydra provider 
   } finally {
     globalThis.fetch = originalFetch;
     delete process.env.OPENCODE_CONFIG;
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -200,7 +193,6 @@ test("auditStorage reports new Copilot model ids seen via models.dev without mut
   const originalFetch = globalThis.fetch;
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
     const configPath = path.join(tempDir, "opencode.json");
     process.env.OPENCODE_CONFIG = configPath;
 
@@ -236,7 +228,6 @@ test("auditStorage reports new Copilot model ids seen via models.dev without mut
   } finally {
     globalThis.fetch = originalFetch;
     delete process.env.OPENCODE_CONFIG;
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -246,7 +237,6 @@ test("auditStorage fails open when models.dev is unavailable", async () => {
   const originalFetch = globalThis.fetch;
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
     const configPath = path.join(tempDir, "opencode.json");
     process.env.OPENCODE_CONFIG = configPath;
 
@@ -268,7 +258,6 @@ test("auditStorage fails open when models.dev is unavailable", async () => {
   } finally {
     globalThis.fetch = originalFetch;
     delete process.env.OPENCODE_CONFIG;
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -277,7 +266,6 @@ test("auditStorage marks provider entries with missing models as drifted", async
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
     const configPath = path.join(tempDir, "opencode.json");
     process.env.OPENCODE_CONFIG = configPath;
 
@@ -313,7 +301,6 @@ test("auditStorage marks provider entries with missing models as drifted", async
     assert.deepEqual(result.modelCatalogDrift.driftedProviderIds, [account.providerId]);
   } finally {
     delete process.env.OPENCODE_CONFIG;
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -352,7 +339,6 @@ test("cli audit-storage reports model catalog drift details and manual remediati
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
     const configPath = path.join(tempDir, "opencode.json");
     process.env.OPENCODE_CONFIG = configPath;
 
@@ -395,7 +381,6 @@ test("cli audit-storage reports model catalog drift details and manual remediati
         ...process.env,
         OPENCODE_CONFIG_DIR: tempDir,
         OPENCODE_CONFIG: configPath,
-        COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM: "1",
       },
       encoding: "utf8",
     });
@@ -408,7 +393,6 @@ test("cli audit-storage reports model catalog drift details and manual remediati
     assert.match(result.stdout, /copilothydra sync-config/);
   } finally {
     delete process.env.OPENCODE_CONFIG;
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });

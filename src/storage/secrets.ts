@@ -10,7 +10,6 @@
  * - created with mode 0o600 (owner read/write only)
  * - tokens are NEVER passed to log functions
  * - plaintext storage is v1-only; keychain migration is a Phase 2+ concern
- * - COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM flag must be set to write tokens
  *
  * NOTE: Phase 0 scaffold. Cross-process locking is in src/storage/locking.ts (Phase 2).
  */
@@ -19,7 +18,6 @@ import { chmod, readFile, stat, writeFile, mkdir, rename } from "node:fs/promise
 import { join, dirname } from "node:path";
 import type { AccountId, CopilotSecretRecord, SecretsFile, AccountsFile } from "../types.js";
 import { debugStorage, warn } from "../log.js";
-import { isUnsafePlaintextConfirmed } from "../flags.js";
 import { resolveConfigDir } from "./accounts.js";
 import { withLock } from "./locking.js";
 import { isRecord, requireIsoTimestamp, requireOptionalString, requireString } from "./validation.js";
@@ -74,13 +72,6 @@ export async function saveSecrets(data: SecretsFile, configDir?: string): Promis
 }
 
 async function saveSecretsToPath(data: SecretsFile, path: string): Promise<void> {
-  if (!isUnsafePlaintextConfirmed()) {
-    throw new Error(
-      "[copilothydra] Refusing to write secrets to plaintext storage. " +
-      "Set COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM=1 to acknowledge that " +
-      "plaintext secrets are not safe for production use."
-    );
-  }
   const tmpPath = path + ".tmp";
   debugStorage("saving secrets file (path not logged)");
 

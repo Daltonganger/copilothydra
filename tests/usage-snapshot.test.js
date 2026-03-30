@@ -67,10 +67,10 @@ test("fetchAccountUsageSnapshot uses the stored account token and GitHub endpoin
   const tempDir = await makeTempDir("copilothydra-usage-");
   const originalFetch = globalThis.fetch;
   const originalConfigDir = process.env.OPENCODE_CONFIG_DIR;
-  const originalPlaintextConfirm = process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
+
 
   process.env.OPENCODE_CONFIG_DIR = tempDir;
-  process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
+
 
   try {
     const { upsertSecret } = await import("../dist/storage/secrets.js");
@@ -108,7 +108,7 @@ test("fetchAccountUsageSnapshot uses the stored account token and GitHub endpoin
   } finally {
     globalThis.fetch = originalFetch;
     process.env.OPENCODE_CONFIG_DIR = originalConfigDir;
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = originalPlaintextConfirm;
+
     await cleanupDir(tempDir);
   }
 });

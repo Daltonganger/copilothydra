@@ -8,8 +8,6 @@ test("pruneOrphanSecrets removes secrets for missing accounts", async () => {
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
-
     const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
     const { updateAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
     const { updateSecrets, pruneOrphanSecrets } = await import(`../dist/storage/secrets.js?${Date.now()}`);
@@ -32,7 +30,6 @@ test("pruneOrphanSecrets removes secrets for missing accounts", async () => {
     assert.equal(secrets.secrets.length, 1);
     assert.equal(secrets.secrets[0].accountId, keep.id);
   } finally {
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -41,8 +38,6 @@ test("removeAccountCompletely removes account, secret, and OpenCode provider ent
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
-
     const configPath = path.join(tempDir, "opencode.json");
     process.env.OPENCODE_CONFIG = configPath;
 
@@ -83,7 +78,6 @@ test("removeAccountCompletely removes account, secret, and OpenCode provider ent
     assert.equal(afterConfig.provider?.[remove.providerId], undefined);
   } finally {
     delete process.env.OPENCODE_CONFIG;
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -92,8 +86,6 @@ test("beginAccountRemoval marks pending-removal and finalizeAccountRemoval waits
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
-
     const configPath = path.join(tempDir, "opencode.json");
     process.env.OPENCODE_CONFIG = configPath;
 
@@ -147,7 +139,6 @@ test("beginAccountRemoval marks pending-removal and finalizeAccountRemoval waits
     assert.equal(snapshot.find((entry) => entry.accountId === account.id), undefined);
   } finally {
     delete process.env.OPENCODE_CONFIG;
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -156,8 +147,6 @@ test("cli remove-account becomes two-step: pending-removal then final cleanup", 
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
-
     const configPath = path.join(tempDir, "opencode.json");
     process.env.OPENCODE_CONFIG = configPath;
 
@@ -183,7 +172,6 @@ test("cli remove-account becomes two-step: pending-removal then final cleanup", 
         ...process.env,
         OPENCODE_CONFIG_DIR: tempDir,
         OPENCODE_CONFIG: configPath,
-        COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM: "1",
       },
       encoding: "utf8",
     });
@@ -201,7 +189,6 @@ test("cli remove-account becomes two-step: pending-removal then final cleanup", 
         ...process.env,
         OPENCODE_CONFIG_DIR: tempDir,
         OPENCODE_CONFIG: configPath,
-        COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM: "1",
       },
       encoding: "utf8",
     });
@@ -216,7 +203,6 @@ test("cli remove-account becomes two-step: pending-removal then final cleanup", 
     assert.equal(secrets.secrets.length, 0);
   } finally {
     delete process.env.OPENCODE_CONFIG;
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });

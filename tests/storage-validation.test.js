@@ -62,8 +62,6 @@ test("duplicate secret account ids trigger quarantine and recovery on next write
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
-
     const secretsPath = path.join(tempDir, "copilot-secrets.json");
     await fs.writeFile(
       secretsPath,
@@ -89,7 +87,6 @@ test("duplicate secret account ids trigger quarantine and recovery on next write
     assert.equal(secrets.secrets.length, 1);
     assert.equal(secrets.secrets[0].accountId, "acct_ok");
   } finally {
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });

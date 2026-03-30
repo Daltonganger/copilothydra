@@ -24,14 +24,14 @@ CopilotHydra's v1 plaintext storage is therefore consistent with the established
 | Atomic write via temp file + `rename` prevents partial writes | ✅ Implemented |
 | File-lock wraps all read-modify-write cycles | ✅ Implemented |
 | Corrupt file quarantine — bad file renamed, empty state recovered | ✅ Implemented and tested |
-| `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM=1` required to write secrets | ✅ Implemented — explicit operator opt-in |
+| Tokens never written without operator awareness | ✅ Documented in README and CHANGELOG — no env var gate required |
 | Tokens never logged, even with debug flags | ✅ Enforced in `src/log.ts` and `src/flags.ts` |
 | Secret storage security note in `docs/support-boundaries.md` | ✅ Documented |
 
 ## What this decision does NOT change
 
 - Keychain/credential-store integration remains the right long-term goal. If a future contributor adds it, this decision should be revisited.
-- The `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM=1` flag **stays required**. It serves as a deliberate operator acknowledgment, not a legacy gate to remove.
+- ~~The `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM=1` flag is no longer required as of 0.2.1.~~ Plaintext storage is the documented and accepted default for this category of tool.
 - Enterprise environments with stricter secret management requirements should treat this as a known limitation. See `docs/support-boundaries.md`.
 
 ## Residual risks (accepted)
@@ -41,3 +41,5 @@ CopilotHydra's v1 plaintext storage is therefore consistent with the established
 3. **No memory protection** — tokens are held in process memory during runtime (same as any non-HSM token usage).
 
 These risks are accepted as consistent with the security model of similar tools in this category and appropriate for the current operator profile (individual developers running OpenCode locally).
+
+> **Note (0.2.1):** As of 0.2.1, the `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM` env var requirement has been removed. Plaintext storage is the documented and accepted default for this category of tool.

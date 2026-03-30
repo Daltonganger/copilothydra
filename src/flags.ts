@@ -51,21 +51,4 @@ export const DEBUG_STORAGE = DEBUG || process.env["COPILOTHYDRA_DEBUG_STORAGE"] 
 export const SKIP_VERSION_CHECK =
   process.env["COPILOTHYDRA_SKIP_VERSION_CHECK"] === "1";
 
-/**
- * COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM=1
- * Required to run in any mode that writes secrets to plaintext storage.
- * Serves as a deliberate acknowledgement that plaintext storage is not safe
- * for production use.
- *
- * This flag is required for v1 to be intentional, not accidental.
- */
-export const UNSAFE_PLAINTEXT_CONFIRMED =
-  process.env["COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM"] === "1";
 
-/**
- * Dynamic variant for cases where tests or child flows change the env var
- * after initial module evaluation.
- */
-export function isUnsafePlaintextConfirmed(): boolean {
-  return process.env["COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM"] === "1";
-}

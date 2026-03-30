@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 (2026-03-30)
+
+### Changes
+- OpenCode 1.20.x series added as tested and supported (full patch range).
+- Removed `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM` requirement — plaintext token storage is now the documented and accepted default, no env var gate needed.
+
+### Compatibility
+- Tested: OpenCode 1.3.0, 1.3.2, 1.3.3, 1.20.x
+
+---
+
 ## 0.2.0 (2026-03-30)
 
 First stable release. All hard blockers from the beta/hardening phase resolved.

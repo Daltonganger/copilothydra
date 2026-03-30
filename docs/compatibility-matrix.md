@@ -25,6 +25,7 @@ No network probing or undocumented host calls are performed.
 | 1.3.0 | Tested | Locally verified during real host validation of auth/login takeover behavior. |
 | 1.3.2 | Tested | Locally verified during host validation after startup-noise/auth-login hardening. |
 | 1.3.3 | Tested | Locally verified during Hydra auth/login + provider parity hardening. |
+| 1.20.x | Tested | Locally verified on OpenCode 1.20.x series. Full patch range supported. |
 
 For the current step-1 host-compatibility gate, the matrix above is the source of
 truth for tested OpenCode versions.

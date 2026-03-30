@@ -6,7 +6,7 @@ This checklist is the current gate for deciding when CopilotHydra can move from 
 
 - **Current posture:** beta / hardening phase
 - **Do not call stable yet** while plaintext secret storage remains beta-only and compatibility validation remains narrow
-- **Current beta target:** `0.1.0-beta` for GitHub.com Copilot on OpenCode `1.3.0`, `1.3.2`, and `1.3.3`.
+- **Current beta target:** `0.2.1` for GitHub.com Copilot on OpenCode `1.3.x` and `1.20.x`.
 
 ## Stable-release gate
 
@@ -69,7 +69,7 @@ Mark each section materially complete before calling CopilotHydra stable.
 - ✅ Corrupt storage quarantine and repair are covered across 6+ test files.
 - ⚠️ Atomic write: orphaned `.tmp` files (crash between write and rename) are not detected or cleaned up in load or repair paths.
 - ✅ Permission hardening tests added (`tests/storage-recovery.test.js`): new file created with `0o600`, `0o644` detected as insecure, `normalizeSecretsFilePermissions` fixes to `0o600`, missing file returns `"missing"`, already-ok returns no-op.
-- ✅ **Plaintext secret storage formally accepted.** See `docs/plaintext-secret-storage-decision.md`. Consistent with established norm (`opencode-antigravity-auth` ships stable with identical model). `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM` gate retained. Keychain deferred to future phase.
+- ✅ **Plaintext secret storage formally accepted.** See `docs/plaintext-secret-storage-decision.md`. Consistent with established norm (`opencode-antigravity-auth` ships stable with identical model). Keychain deferred to future phase.
 
 ### 5. Capability truth
 
@@ -148,7 +148,7 @@ Ordered by impact. Items marked 🔴 are hard blockers. Items marked ⚠️ are 
 - ~~Plaintext secrets absent from `support-boundaries.md`~~ — **fixed**: security note added to best-effort section.
 - ~~8-account framing inconsistent~~ — **fixed**: unified framing in `support-boundaries.md`.
 - ~~`SKIP_VERSION_CHECK` flag bypass path is untested~~ — **documented**: module-level const makes in-process testing unreliable; warn-first contract covered by untested-version warning test.
-- ~~No plaintext-secret storage decision~~ — **formally accepted**: see `docs/plaintext-secret-storage-decision.md`. Consistent with `opencode-antigravity-auth` (the established norm). `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM` gate retained. Keychain deferred to future phase.
+- ~~No plaintext-secret storage decision~~ — **formally accepted**: see `docs/plaintext-secret-storage-decision.md`. Consistent with `opencode-antigravity-auth` (the established norm). Keychain deferred to future phase.
 - ~~`device-flow.ts` has zero test coverage~~ — **fixed**: `tests/device-flow.test.js` with 10 tests: happy path, `slow_down`, `authorization_pending`, `expired_token`, `access_denied`, timeout, network failure.
 - ~~Downgrade suggestion language overclaims certainty~~ — **fixed**: message now says "A lower plan tier may match your actual entitlement" and explains enterprise-only/org-restricted cases. Full pattern coverage added to `tests/capabilities.test.js`.
 - ~~Restart instruction is stderr-only~~ — **fixed**: `instructions` field now includes "reload or restart OpenCode" for new-account flows. Re-auth omits it correctly. Tests updated.

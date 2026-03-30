@@ -35,8 +35,7 @@ test("secret updates run as a lock-wrapped read-modify-write transaction", async
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
-
+    
     const { updateSecrets } = await import(`../dist/storage/secrets.js?secrets-tx=${Date.now()}`);
 
     await updateSecrets((file) => {
@@ -51,7 +50,6 @@ test("secret updates run as a lock-wrapped read-modify-write transaction", async
       ["acct_a", "acct_b"]
     );
   } finally {
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -60,8 +58,7 @@ test("corrupt secrets file is quarantined and replaced with empty state on next 
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
-
+    
     const secretsPath = path.join(tempDir, "copilot-secrets.json");
     await fs.writeFile(secretsPath, '{"version":1,"secrets":"wrong-shape"}', "utf8");
 
@@ -78,7 +75,6 @@ test("corrupt secrets file is quarantined and replaced with empty state on next 
     assert.equal(secrets.secrets.length, 1);
     assert.equal(secrets.secrets[0].accountId, "acct_ok");
   } finally {
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -87,7 +83,6 @@ test("new secrets file is created with 0o600 permissions", async () => {
   if (process.platform === "win32") return; // permissions unsupported on Windows
 
   const tempDir = await makeTempDir("copilothydra-perms-");
-  process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
 
   try {
     const { updateSecrets, getSecretsFilePermissionStatus } = await import(
@@ -101,7 +96,6 @@ test("new secrets file is created with 0o600 permissions", async () => {
     const status = await getSecretsFilePermissionStatus(tempDir);
     assert.equal(status, "ok");
   } finally {
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -110,7 +104,6 @@ test("getSecretsFilePermissionStatus returns insecure for 0o644 secrets file", a
   if (process.platform === "win32") return;
 
   const tempDir = await makeTempDir("copilothydra-perms-");
-  process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
 
   try {
     const { updateSecrets, getSecretsFilePermissionStatus } = await import(
@@ -129,7 +122,6 @@ test("getSecretsFilePermissionStatus returns insecure for 0o644 secrets file", a
     const status = await getSecretsFilePermissionStatus(tempDir);
     assert.equal(status, "insecure");
   } finally {
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -138,7 +130,6 @@ test("normalizeSecretsFilePermissions fixes 0o644 secrets file back to 0o600", a
   if (process.platform === "win32") return;
 
   const tempDir = await makeTempDir("copilothydra-perms-");
-  process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
 
   try {
     const { updateSecrets, getSecretsFilePermissionStatus, normalizeSecretsFilePermissions } = await import(
@@ -158,7 +149,6 @@ test("normalizeSecretsFilePermissions fixes 0o644 secrets file back to 0o600", a
     assert.equal(fixed, true);
     assert.equal(await getSecretsFilePermissionStatus(tempDir), "ok");
   } finally {
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -182,7 +172,6 @@ test("normalizeSecretsFilePermissions returns false (no-op) when status is alrea
   if (process.platform === "win32") return;
 
   const tempDir = await makeTempDir("copilothydra-perms-");
-  process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
 
   try {
     const { updateSecrets, normalizeSecretsFilePermissions } = await import(
@@ -196,7 +185,6 @@ test("normalizeSecretsFilePermissions returns false (no-op) when status is alrea
     const fixed = await normalizeSecretsFilePermissions(tempDir);
     assert.equal(fixed, false); // already 0o600, nothing to fix
   } finally {
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });

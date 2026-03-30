@@ -7,8 +7,7 @@ test("repairStorage prunes orphan secrets and removes stale CopilotHydra provide
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
-
+    
     const configPath = path.join(tempDir, "opencode.json");
     process.env.OPENCODE_CONFIG = configPath;
 
@@ -55,7 +54,6 @@ test("repairStorage prunes orphan secrets and removes stale CopilotHydra provide
     assert.ok(config.provider.external);
   } finally {
     delete process.env.OPENCODE_CONFIG;
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
@@ -64,8 +62,7 @@ test("cli repair-storage reconciles storage and reports repair summary", async (
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
-
+    
     const configPath = path.join(tempDir, "opencode.json");
     process.env.OPENCODE_CONFIG = configPath;
 
@@ -100,7 +97,6 @@ test("cli repair-storage reconciles storage and reports repair summary", async (
         ...process.env,
         OPENCODE_CONFIG_DIR: tempDir,
         OPENCODE_CONFIG: configPath,
-        COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM: "1",
       },
       encoding: "utf8",
     });
@@ -113,7 +109,6 @@ test("cli repair-storage reconciles storage and reports repair summary", async (
     assert.equal(config.provider["github-copilot-acct-stale"], undefined);
   } finally {
     delete process.env.OPENCODE_CONFIG;
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });

@@ -7,7 +7,7 @@ CopilotHydra is an OpenCode plugin for using multiple GitHub Copilot accounts si
 ## Status
 
 - **Stable — v0.2.0**
-- Tested with **OpenCode 1.3.0 / 1.3.2 / 1.3.3**
+- Tested with **OpenCode 1.3.x and 1.20.x**
 - Scope: **GitHub.com Copilot**, macOS/Linux first, Windows best-effort
 
 ## What it does
@@ -30,7 +30,7 @@ npm install copilothydra
 Then use the primary flow in OpenCode:
 
 ```bash
-COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM=1 opencode auth login
+opencode auth login
 ```
 
 Useful CLI commands:

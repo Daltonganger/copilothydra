@@ -57,8 +57,6 @@ test("secrets with invalid optional token fields are quarantined and recovered",
   const tempDir = await makeTempDir();
 
   try {
-    process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM = "1";
-
     const { loadSecrets, updateSecrets } = await import(`../dist/storage/secrets.js?${Date.now()}`);
 
     const secretsPath = path.join(tempDir, "copilot-secrets.json");
@@ -88,7 +86,6 @@ test("secrets with invalid optional token fields are quarantined and recovered",
     const recovered = await readJson(secretsPath);
     assert.equal(recovered.secrets.length, 1);
   } finally {
-    delete process.env.COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM;
     await cleanupDir(tempDir);
   }
 });
