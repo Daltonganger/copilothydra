@@ -161,7 +161,7 @@ export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Pro
         const hiddenModels = deps.getOverrideRequiredModelsForPlan(planOption.key);
         const allowUnverifiedModels = hiddenModels.length > 0
           ? await deps.confirm(
-            `Expose uncertain models too (${hiddenModels.join(", ")})?`,
+            `Enable unsupported models (${hiddenModels.join(", ")})?`,
           )
           : false;
 
@@ -179,7 +179,7 @@ export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Pro
         deps.write(`Added account: ${account.label} (${account.githubUsername})\n`);
         deps.write(`Provider ID: ${account.providerId}\n`);
         if (!account.allowUnverifiedModels && hiddenModels.length > 0) {
-          deps.write(`Hidden uncertain models until explicit override: ${hiddenModels.join(", ")}\n`);
+          deps.write(`Hidden unsupported models until explicit override: ${hiddenModels.join(", ")}\n`);
         }
         deps.write(`OpenCode config updated: ${deps.resolveOpenCodeConfigPath()}\n`);
         deps.write("Reload/restart OpenCode to pick up the new provider and model entries.\n");

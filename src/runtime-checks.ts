@@ -39,7 +39,7 @@ export function checkAccountRuntimeReadiness(account: CopilotAccountMeta): Runti
 
   if (hiddenUnverifiedModels.length > 0) {
     warnings.push(
-      `Account "${account.label}" is hiding uncertain models until explicitly overridden: ` +
+      `Account "${account.label}" is hiding unsupported models until explicitly overridden: ` +
         hiddenUnverifiedModels.join(", ")
     );
   }

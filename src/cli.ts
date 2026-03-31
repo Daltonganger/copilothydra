@@ -185,7 +185,7 @@ async function addAccountInteractive(): Promise<void> {
     if (!account.allowUnverifiedModels) {
       const hiddenModels = getOverrideRequiredModelsForPlan(account.plan);
       if (hiddenModels.length > 0) {
-        output.write(`Hidden uncertain models until explicit override: ${hiddenModels.join(", ")}\n`);
+        output.write(`Hidden unsupported models until explicit override: ${hiddenModels.join(", ")}\n`);
       }
     }
     output.write(`OpenCode config updated: ${resolveOpenCodeConfigPath()}\n`);
@@ -315,7 +315,7 @@ async function setPlanCommand(identifier?: string, planValue?: string): Promise<
   if (!updated.allowUnverifiedModels) {
     const hiddenModels = getOverrideRequiredModelsForPlan(updated.plan);
     if (hiddenModels.length > 0) {
-      output.write(`Hidden uncertain models until explicit override: ${hiddenModels.join(", ")}\n`);
+      output.write(`Hidden unsupported models until explicit override: ${hiddenModels.join(", ")}\n`);
     }
   }
   output.write("Reload/restart OpenCode to apply provider model changes.\n");
@@ -573,7 +573,7 @@ async function promptAllowUnverifiedModels(
 
   while (true) {
     const value = (await rl.question(
-      `Expose uncertain models too (${uncertainModels.join(", ")})? [y/N]: `,
+      `Enable unsupported models (${uncertainModels.join(", ")})? [y/N]: `,
     )).trim().toLowerCase();
 
     if (value === "" || value === "n" || value === "no") return false;

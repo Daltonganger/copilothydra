@@ -6,12 +6,13 @@
 
 - **Hide built-in GitHub Copilot while Hydra is active** — config sync now disables the built-in `github-copilot` provider whenever active Hydra accounts exist, so the normal GitHub Copilot model catalog no longer appears alongside Hydra-managed account providers.
 - **Dedicated Hydra login provider** — the add-account / re-auth entrypoint now uses `github-copilot-hydra`, so Hydra setup stays discoverable in `opencode auth login` even while built-in `github-copilot` is disabled.
+- **Student override for unsupported Claude models** — Student accounts can now explicitly enable `claude-sonnet-4.5` and `claude-opus-4.5` during setup, while keeping them hidden by default because GitHub does not officially document them for that plan.
 - **Operator guidance updated** — recovery and re-auth docs now point to `opencode auth login -p github-copilot-hydra`.
 
 ### Tests
 
-- 150 tests total.
-- Sync, login-method, and black-box coverage updated for built-in provider hiding and the renamed Hydra setup provider.
+- 152 tests total.
+- Sync, login-method, black-box, capabilities, and TUI coverage updated for built-in provider hiding, the renamed Hydra setup provider, and the new student override flow.
 
 ---
 

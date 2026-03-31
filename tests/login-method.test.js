@@ -87,6 +87,10 @@ test("CopilotHydraSetup exposes a GitHub Copilot auth method for OpenCode auth l
       hooks.auth?.methods.map((method) => method.prompts?.map((prompt) => prompt.key) ?? []),
       [["githubUsername", "label", "plan", "allowUnverifiedModels"]],
     );
+    assert.equal(
+      hooks.auth?.methods[0]?.prompts?.[3]?.message,
+      "For Student plans only: enable unsupported Claude Sonnet 4.5 and Claude Opus 4.5? (yes/no)",
+    );
   } finally {
     delete process.env.OPENCODE_CONFIG_DIR;
     delete process.env.OPENCODE_CONFIG;

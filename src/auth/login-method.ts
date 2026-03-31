@@ -104,7 +104,7 @@ export function createCopilotLoginMethods(
         {
           type: "text",
           key: "allowUnverifiedModels",
-          message: "Expose uncertain models? yes/no",
+          message: "For Student plans only: enable unsupported Claude Sonnet 4.5 and Claude Opus 4.5? (yes/no)",
           placeholder: "no",
         },
       ],
