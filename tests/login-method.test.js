@@ -387,7 +387,12 @@ test("createCopilotLoginMethods omits add-account when 8 active accounts already
   );
 
   const labels = createCopilotLoginMethods(accounts).map((method) => method.label);
-  assert.deepEqual(labels, ["GitHub Copilot (CopilotHydra) — Re-auth existing account"]);
+  assert.deepEqual(labels, [
+    "GitHub Copilot (CopilotHydra) — Re-auth existing account",
+    "GitHub Copilot (CopilotHydra) — List accounts",
+    "GitHub Copilot (CopilotHydra) — Storage & health status",
+    "GitHub Copilot (CopilotHydra) — Remove account",
+  ]);
 });
 
 test("createCopilotLoginMethods still offers add-account when only 7 active accounts exist and one is pending-removal", async () => {
@@ -410,6 +415,9 @@ test("createCopilotLoginMethods still offers add-account when only 7 active acco
   assert.deepEqual(labels, [
     "GitHub Copilot (CopilotHydra) — Re-auth existing account",
     "GitHub Copilot (CopilotHydra) — Add new account",
+    "GitHub Copilot (CopilotHydra) — List accounts",
+    "GitHub Copilot (CopilotHydra) — Storage & health status",
+    "GitHub Copilot (CopilotHydra) — Remove account",
   ]);
 });
 

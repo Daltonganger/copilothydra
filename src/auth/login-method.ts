@@ -16,6 +16,9 @@ import { bestEffortKeychainWrite } from "../storage/copilot-cli-keychain.js";
 import { upsertSecret } from "../storage/secrets.js";
 import { bestEffortPublishPrimaryCompatibility } from "../storage/primary-compat-export.js";
 import { verifyDeclaredPlan, type PlanVerifyResult } from "./plan-verify.js";
+import { auditStorage } from "../storage-audit.js";
+import { removeAccountCompletely } from "../account-removal.js";
+import { loadAccounts } from "../storage/accounts.js";
 
 const VALID_PLANS: PlanTier[] = ["free", "student", "pro", "pro+"];
 
@@ -111,6 +114,123 @@ export function createCopilotLoginMethods(
         const deviceCode = await deps.requestDeviceCode();
 
         return buildAuthResult(account, deviceCode, false, deps);
+      },
+    });
+  }
+
+  if (existingAccounts.length > 0) {
+    methods.push({
+      type: "oauth",
+      label: "GitHub Copilot (CopilotHydra) — List accounts",
+      prompts: [],
+      authorize: async (_inputs) => {
+        const accountsFile = await loadAccounts();
+        const accounts = accountsFile.accounts;
+        let lines: string[];
+        if (accounts.length === 0) {
+          lines = ["No CopilotHydra accounts configured yet.", "", "Use \"Add new account\" to get started."];
+        } else {
+          lines = [
+            `CopilotHydra accounts (${accounts.length} total):`,
+            "",
+            ...accounts.map((a, i) => {
+              const state = a.lifecycleState === "active" ? "✓" : "⚠ " + a.lifecycleState;
+              const cap = a.capabilityState !== "user-declared" ? ` [${a.capabilityState}]` : "";
+              return `${i + 1}. ${a.label} (@${a.githubUsername}) — ${a.plan}${cap} — ${state}`;
+            }),
+            "",
+            `Active slots used: ${accounts.filter(a => a.lifecycleState === "active").length}/${8}`,
+          ];
+        }
+        const instructions = lines.join("\n");
+        return {
+          url: "",
+          instructions,
+          method: "auto" as const,
+          callback: async () => ({ type: "failed" as const }),
+        };
+      },
+    });
+
+    methods.push({
+      type: "oauth",
+      label: "GitHub Copilot (CopilotHydra) — Storage & health status",
+      prompts: [],
+      authorize: async (_inputs) => {
+        const audit = await auditStorage();
+        const lines: string[] = [
+          `CopilotHydra storage health:`,
+          "",
+          `  Accounts:       ${audit.accountCount}`,
+          `  Secrets:        ${audit.secretCount}`,
+          `  Missing secrets: ${audit.accountsWithoutSecrets.length === 0 ? "none" : audit.accountsWithoutSecrets.join(", ")}`,
+          `  Orphan secrets: ${audit.orphanSecretAccountIds.length === 0 ? "none" : audit.orphanSecretAccountIds.join(", ")}`,
+          `  Missing providers: ${audit.missingProviderIds.length === 0 ? "none" : audit.missingProviderIds.join(", ")}`,
+          `  Stale providers:   ${audit.staleProviderIds.length === 0 ? "none" : audit.staleProviderIds.join(", ")}`,
+          `  Secrets permissions: ${audit.secretsFilePermissionStatus}`,
+          `  Model catalog: ${audit.modelCatalogConsistent ? "consistent" : "drift detected"}`,
+          "",
+          audit.ok
+            ? "Overall: ✓ all ok"
+            : "Overall: ⚠ issues detected — run: copilothydra repair-storage",
+        ];
+        if (!audit.ok) {
+          if (audit.accountsWithoutSecrets.length > 0) lines.push("  → run: copilothydra backfill-keychain");
+          if (audit.missingProviderIds.length > 0) lines.push("  → run: copilothydra sync-config");
+        }
+        const instructions = lines.join("\n");
+        return {
+          url: "",
+          instructions,
+          method: "auto" as const,
+          callback: async () => ({ type: "failed" as const }),
+        };
+      },
+    });
+
+    methods.push({
+      type: "oauth",
+      label: "GitHub Copilot (CopilotHydra) — Remove account",
+      prompts: [
+        {
+          type: "text",
+          key: "githubUsername",
+          message: "GitHub username of the account to remove",
+          placeholder: existingAccounts[0]?.githubUsername ?? "alice",
+        },
+      ],
+      authorize: async (inputs) => {
+        const githubUsername = (inputs?.githubUsername ?? "").trim();
+        if (!githubUsername) {
+          return {
+            url: "",
+            instructions: "Error: GitHub username is required.",
+            method: "auto" as const,
+            callback: async () => ({ type: "failed" as const }),
+          };
+        }
+        const existing = await deps.findAccountByGitHubUsername(githubUsername);
+        if (!existing) {
+          return {
+            url: "",
+            instructions: `Error: no account found for GitHub username "${githubUsername}".`,
+            method: "auto" as const,
+            callback: async () => ({ type: "failed" as const }),
+          };
+        }
+        await removeAccountCompletely(existing.id);
+        await deps.syncAccountsToOpenCodeConfig();
+        return {
+          url: "",
+          instructions: [
+            `Account removed: ${existing.label} (@${existing.githubUsername})`,
+            "",
+            "The account has been deleted from storage and provider config.",
+            "Reload or restart OpenCode to apply the change.",
+          ].join("\n"),
+          method: "auto" as const,
+          callback: async () => ({ type: "failed" as const }),
+        };
       },
     });
   }
