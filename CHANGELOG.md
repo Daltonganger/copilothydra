@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.3.4 (2026-03-31)
+
+### What's new
+
+- **Hide built-in GitHub Copilot while Hydra is active** — config sync now disables the built-in `github-copilot` provider whenever active Hydra accounts exist, so the normal GitHub Copilot model catalog no longer appears alongside Hydra-managed account providers.
+- **Dedicated Hydra login provider** — the add-account / re-auth entrypoint now uses `github-copilot-hydra`, so Hydra setup stays discoverable in `opencode auth login` even while built-in `github-copilot` is disabled.
+- **Student override for unsupported Claude models** — Student accounts can now explicitly enable `claude-sonnet-4.5` and `claude-opus-4.5` during setup, while keeping them hidden by default because GitHub does not officially document them for that plan.
+- **Operator guidance updated** — recovery and re-auth docs now point to `opencode auth login -p github-copilot-hydra`.
+
+### Tests
+
+- 152 tests total.
+- Sync, login-method, black-box, capabilities, and TUI coverage updated for built-in provider hiding, the renamed Hydra setup provider, and the new student override flow.
+
+---
+
+## 0.3.3 (2026-03-31)
+
+### What's new
+
+- **Windows file permission hardening** — after writing `copilot-secrets.json` and `copilot-accounts.json` on Windows, CopilotHydra now calls `icacls ... /inheritance:r /grant:r "<username>:F"` to apply DACL restrictions equivalent to the Unix `chmod 0600` already in place on macOS/Linux.
+- **Plan pre-verification** — when adding an account, CopilotHydra now calls `api.github.com/copilot_internal/user` with the freshly-obtained OAuth token and warns if the declared plan tier does not match what the API reports. The warning is non-blocking and is skipped gracefully on any error, timeout, or missing field.
+- **`copilothydra status` command** — new dashboard showing all accounts with their capability state, storage health, config sync status, and native keychain coverage. Prints actionable hints (`sync-config`, `backfill-keychain`, `repair-storage`) only when relevant issues are detected.
+
+### Tests
+
+- 150 tests total (unchanged count — new features are runtime-only on Windows and post-auth callback paths covered by the existing blackbox suite).
+- Blackbox test mocks updated to return HTTP 401 for the plan-verify endpoint so the check skips gracefully in test environments.
+
+---
+
 ## 0.3.2 (2026-03-31)
 
 ### What's new

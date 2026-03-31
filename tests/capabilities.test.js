@@ -8,7 +8,7 @@ test("plan model table matches current documented plan baselines", async () => {
   } = await import(`../dist/config/models.js?${Date.now()}`);
 
   assert.deepEqual(getOverrideRequiredModelsForPlan("free"), []);
-  assert.deepEqual(getOverrideRequiredModelsForPlan("student"), []);
+  assert.deepEqual(getOverrideRequiredModelsForPlan("student"), ["claude-opus-4.5", "claude-sonnet-4.5"]);
   assert.deepEqual(getOverrideRequiredModelsForPlan("pro"), []);
   assert.deepEqual(getOverrideRequiredModelsForPlan("pro+"), []);
 
@@ -94,6 +94,15 @@ test("plan model table matches current documented plan baselines", async () => {
   ]);
 
   assert.deepEqual(modelsForPlan("pro+", { includeUnverified: true }), modelsForPlan("pro+", { includeUnverified: false }));
+
+  // Student plan: includeUnverified=true exposes the two override-required Claude models
+  const studentBase = modelsForPlan("student", { includeUnverified: false });
+  const studentWithOverrides = modelsForPlan("student", { includeUnverified: true });
+  assert.ok(!studentBase.includes("claude-opus-4.5"));
+  assert.ok(!studentBase.includes("claude-sonnet-4.5"));
+  assert.ok(studentWithOverrides.includes("claude-opus-4.5"));
+  assert.ok(studentWithOverrides.includes("claude-sonnet-4.5"));
+  assert.ok(studentWithOverrides.length === studentBase.length + 2);
 });
 
 test("capability mismatch helpers detect entitlement failures and suggest stricter plans", async () => {

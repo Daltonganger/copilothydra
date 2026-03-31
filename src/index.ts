@@ -35,7 +35,7 @@ import {
   resolveCopilotHydraOpenCodeStatePath,
   resolveOpenCodeConfigPath,
 } from "./config/opencode-config.js";
-import { isCopilotHydraProvider } from "./config/providers.js";
+import { COPILOT_HYDRA_SETUP_PROVIDER_ID, isCopilotHydraProvider } from "./config/providers.js";
 import { bestEffortKeychainWrite } from "./storage/copilot-cli-keychain.js";
 import { upsertSecret } from "./storage/secrets.js";
 import { bestEffortPublishPrimaryCompatibility } from "./storage/primary-compat-export.js";
@@ -162,8 +162,9 @@ function makeAccountPlugin(account: CopilotAccountMeta): (input: PluginInput) =>
 // Setup/login plugin
 //
 // This export is always present so OpenCode can surface CopilotHydra-specific
-// login methods under the shared `github-copilot` login entrypoint. Runtime
-// request routing still happens through the account-specific slot exports.
+// login methods under the dedicated `github-copilot-hydra` setup entrypoint while the
+// built-in `github-copilot` provider stays hidden during active Hydra takeover.
+// Runtime request routing still happens through the account-specific slot exports.
 // ---------------------------------------------------------------------------
 
 export async function CopilotHydraSetup(input: PluginInput): Promise<Hooks> {
@@ -189,7 +190,7 @@ export async function CopilotHydraSetup(input: PluginInput): Promise<Hooks> {
 
   return {
     auth: {
-      provider: "github-copilot",
+      provider: COPILOT_HYDRA_SETUP_PROVIDER_ID,
       methods: createCopilotLoginMethods(_accounts),
     },
   };

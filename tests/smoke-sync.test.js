@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { makeTempDir, readJson, cleanupDir } from "./helpers.js";
 
-test("single-account sync writes provider config while keeping github-copilot available for Hydra login", async () => {
+test("single-account sync writes provider config and disables built-in github-copilot while Hydra accounts exist", async () => {
   const tempDir = await makeTempDir();
   process.env.OPENCODE_CONFIG_DIR = tempDir;
 
@@ -29,8 +29,8 @@ test("single-account sync writes provider config while keeping github-copilot av
     assert.equal(accounts.accounts[0].providerId, account.providerId);
     assert.ok(config.provider);
     assert.ok(config.provider[account.providerId]);
-    assert.equal(config.disabled_providers, undefined);
-    assert.deepEqual(managedState, {});
+    assert.deepEqual(config.disabled_providers, ["github-copilot"]);
+    assert.deepEqual(managedState, { managedDisabledProviders: ["github-copilot"] });
     assert.equal(config.provider[account.providerId].options, undefined);
     assert.equal(config.provider[account.providerId].models["gpt-5.4"].name, "GPT-5.4");
     assert.equal(config.provider[account.providerId].models["gpt-5-mini"].name, "GPT-5-mini");
@@ -69,13 +69,18 @@ test("single-account sync keeps documented baseline stable even when override fl
       undefined
     );
     assert.equal(config.provider[account.providerId].models["gemini-3.1-pro-preview"].name, "Gemini 3.1 Pro Preview");
+    assert.deepEqual(config.disabled_providers, ["github-copilot"]);
+    assert.deepEqual(
+      (await readJson(path.join(tempDir, "copilothydra-opencode-state.json"))),
+      { managedDisabledProviders: ["github-copilot"] },
+    );
   } finally {
     delete process.env.OPENCODE_CONFIG_DIR;
     await cleanupDir(tempDir);
   }
 });
 
-test("single-account sync removes legacy Hydra-managed github-copilot disable state", async () => {
+test("single-account sync replaces legacy Hydra-managed github-copilot disable state with new managed state", async () => {
   const tempDir = await makeTempDir();
   process.env.OPENCODE_CONFIG_DIR = tempDir;
 
@@ -112,9 +117,10 @@ test("single-account sync removes legacy Hydra-managed github-copilot disable st
     const config = await readJson(path.join(tempDir, "opencode.json"));
     const managedState = await readJson(path.join(tempDir, "copilothydra-opencode-state.json"));
 
-    assert.deepEqual(config.disabled_providers, ["opencode"]);
+    // Legacy state is cleaned and replaced with fresh managed disable
+    assert.deepEqual(config.disabled_providers, ["opencode", "github-copilot"]);
     assert.ok(config.provider[account.providerId]);
-    assert.deepEqual(managedState, {});
+    assert.deepEqual(managedState, { managedDisabledProviders: ["github-copilot"] });
   } finally {
     delete process.env.OPENCODE_CONFIG_DIR;
     await cleanupDir(tempDir);

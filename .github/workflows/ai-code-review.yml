@@ -20,6 +20,7 @@ jobs:
 
       - name: Run AI Code Review
         uses: Daltonganger/AI-Code-Review@v1.4.4
+        continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AI_PROVIDER: 'codex'

@@ -96,6 +96,8 @@ export const MODEL_TIER_TABLE: Record<PlanTier, PlanModelEntry[]> = {
   ],
   student: [
     { id: "claude-haiku-4.5" },
+    { id: "claude-opus-4.5", requiresExplicitOverride: true },
+    { id: "claude-sonnet-4.5", requiresExplicitOverride: true },
     { id: "gemini-2.5-pro" },
     { id: "gemini-3-flash-preview" },
     { id: "gemini-3-pro-preview" },
