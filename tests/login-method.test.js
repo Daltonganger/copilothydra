@@ -181,8 +181,15 @@ test("login method can create a new account from OpenCode auth login inputs", as
     assert.match(output, /reload\/restart OpenCode/i);
 
     const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
+    const secrets = await readJson(path.join(tempDir, "copilot-secrets.json"));
     const config = await readJson(path.join(tempDir, "opencode.json"));
     assert.equal(accounts.accounts.length, 1);
+    assert.deepEqual(secrets.secrets, [
+      {
+        accountId: accounts.accounts[0].id,
+        githubOAuthToken: "gho_test_token",
+      },
+    ]);
     assert.equal(accounts.accounts[0].githubUsername, "alice");
     assert.ok(config.provider[accounts.accounts[0].providerId]);
     assert.equal(config.disabled_providers, undefined);
@@ -242,13 +249,85 @@ test("login method can re-auth an existing account without requiring new-account
     assert.doesNotMatch(output, /reload\/restart OpenCode/i);
 
     const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
+    const secrets = await readJson(path.join(tempDir, "copilot-secrets.json"));
     assert.equal(accounts.accounts.length, 1);
     assert.equal(accounts.accounts[0].label, "Work");
+    assert.deepEqual(secrets.secrets, [
+      {
+        accountId: account.id,
+        githubOAuthToken: "gho_existing_token",
+      },
+    ]);
   } finally {
     delete process.env.OPENCODE_CONFIG_DIR;
     delete process.env.OPENCODE_CONFIG;
     await cleanupDir(tempDir);
+}
+
+test("fetchAccountUsageSnapshot recovers missing local secret from OpenCode auth.json and persists it", async () => {
+  const tempDir = await makeTempDir("copilothydra-usage-recover-");
+  const originalFetch = globalThis.fetch;
+  const originalXdgDataHome = process.env.XDG_DATA_HOME;
+
+  process.env.XDG_DATA_HOME = tempDir;
+
+  try {
+    const { fetchAccountUsageSnapshot } = await import(`../dist/auth/usage-snapshot.js?${Date.now()}`);
+    const { findSecret } = await import(`../dist/storage/secrets.js?${Date.now()}`);
+
+    await fs.mkdir(path.join(tempDir, "opencode"), { recursive: true });
+    await fs.writeFile(
+      path.join(tempDir, "opencode", "auth.json"),
+      JSON.stringify({
+        "github-copilot-acct-acct_usage_recover": {
+          type: "oauth",
+          access: "gho_access_recovered",
+          refresh: "gho_refresh_recovered",
+          expires: 0,
+          accountId: "acct_usage_recover",
+        },
+      }, null, 2),
+      "utf8",
+    );
+
+    let capturedRequest = null;
+    globalThis.fetch = async (url, init) => {
+      capturedRequest = { url: String(url), headers: new Headers(init?.headers) };
+      return new Response(JSON.stringify({ copilot_plan: "individual_pro", quota_snapshots: {} }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+
+    const snapshot = await fetchAccountUsageSnapshot({
+      id: "acct_usage_recover",
+      providerId: "github-copilot-acct-acct_usage_recover",
+      label: "Recovered",
+      githubUsername: "recover-user",
+      plan: "pro",
+      capabilityState: "user-declared",
+      lifecycleState: "active",
+      addedAt: new Date().toISOString(),
+    }, tempDir);
+
+    assert.equal(snapshot.plan, "individual_pro");
+    assert.equal(capturedRequest.headers.get("authorization"), "token gho_refresh_recovered");
+
+    const secret = await findSecret("acct_usage_recover", tempDir);
+    assert.deepEqual(secret, {
+      accountId: "acct_usage_recover",
+      githubOAuthToken: "gho_refresh_recovered",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalXdgDataHome === undefined) {
+      delete process.env.XDG_DATA_HOME;
+    } else {
+      process.env.XDG_DATA_HOME = originalXdgDataHome;
+    }
+    await cleanupDir(tempDir);
   }
+});
 });
 
 test("new-account method rejects duplicate usernames so re-auth stays separate", async () => {

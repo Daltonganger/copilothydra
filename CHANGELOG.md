@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.3.2 (2026-03-31)
+
+### What's new
+
+- Added **single-primary compatibility exports** for tools that currently only support one Copilot/GitHub auth source.
+- New command: `copilothydra export-primary-compat <account-id|provider-id>`
+
+### Integrations
+
+- **OpenCode Bar** — native keychain integration remains the preferred path.
+- **AIUsageTracker** — compatibility export writes a GitHub CLI `hosts.yml` entry if no existing `github.com` token entry exists.
+- **opencode-quota** — compatibility export writes an OpenCode `auth.json` `github-copilot` alias if no primary Copilot auth entry exists.
+
+### Safety rules
+
+- CopilotHydra does **not** overwrite existing GitHub CLI `hosts.yml` auth.
+- CopilotHydra does **not** overwrite existing OpenCode primary Copilot auth aliases.
+- These integrations are therefore **single-primary** only; full multi-account support still requires upstream changes in those tools.
+
+### Tests
+
+- 150 tests total.
+- Added dedicated primary-compat export tests for write / skip / cleanup / CLI behavior.
+
+---
+
 ## 0.3.1 (2026-03-31)
 
 ### Fixes

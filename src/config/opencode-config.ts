@@ -28,6 +28,11 @@ export interface OpenCodeConfigFile {
 
 export interface CopilotHydraOpenCodeState {
   managedDisabledProviders?: string[];
+  managedPrimaryCompatibility?: {
+    accountId: string;
+    opencodeAuthAlias?: boolean;
+    ghHostsEntry?: boolean;
+  };
 }
 
 export function resolveOpenCodeConfigPath(configDir?: string): string {

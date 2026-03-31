@@ -13,6 +13,7 @@ import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 import { canAccountDrainComplete, markAccountPendingRemoval, unregisterAccount } from "./routing/provider-account-map.js";
 import { resetTokenRuntimeState } from "./auth/token-state.js";
 import { bestEffortKeychainDelete } from "./storage/copilot-cli-keychain.js";
+import { bestEffortCleanupPrimaryCompatibility } from "./storage/primary-compat-export.js";
 
 interface RemovalOptions {
   configDir?: string;
@@ -81,6 +82,7 @@ export async function finalizeAccountRemoval(
     githubUsername: removed.githubUsername,
     accountLabel: removed.label,
   });
+  await bestEffortCleanupPrimaryCompatibility({ account: removed });
   await removeAccount(accountId, options?.configDir);
 
   const after = await loadAccounts(options?.configDir);

@@ -1,5 +1,7 @@
 import type { AccountId, CopilotAccountMeta } from "../types.js";
-import { findSecret } from "../storage/secrets.js";
+import { findSecret, upsertSecret } from "../storage/secrets.js";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 export const COPILOT_USAGE_SNAPSHOT_URL = "https://api.github.com/copilot_internal/user";
 export const COPILOT_USAGE_API_VERSION = "2025-04-01";
@@ -30,7 +32,18 @@ export async function fetchAccountUsageSnapshot(
   account: CopilotAccountMeta,
   configDir?: string,
 ): Promise<CopilotUsageSnapshot> {
-  const secret = await findSecret(account.id, configDir);
+  let secret = await findSecret(account.id, configDir);
+  if (!secret) {
+    const recoveredToken = await recoverOAuthTokenFromOpenCodeAuth(account);
+    if (recoveredToken) {
+      await upsertSecret({
+        accountId: account.id,
+        githubOAuthToken: recoveredToken,
+      }, configDir);
+      secret = { accountId: account.id, githubOAuthToken: recoveredToken };
+    }
+  }
+
   if (!secret) {
     throw new Error(`[copilothydra] no stored oauth token found for account "${account.label}" (${account.githubUsername})`);
   }
@@ -52,6 +65,49 @@ export async function fetchAccountUsageSnapshot(
 
   const payload = await response.json() as Record<string, unknown>;
   return parseCopilotUsageSnapshot(account, payload);
+}
+
+async function recoverOAuthTokenFromOpenCodeAuth(
+  account: Pick<CopilotAccountMeta, "providerId">,
+): Promise<string | null> {
+  for (const path of candidateOpenCodeAuthPaths()) {
+    try {
+      const raw = await readFile(path, "utf-8");
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const entry = parsed[account.providerId];
+      if (!isRecord(entry) || entry["type"] !== "oauth") {
+        continue;
+      }
+      const refresh = typeof entry["refresh"] === "string" ? entry["refresh"] : undefined;
+      const access = typeof entry["access"] === "string" ? entry["access"] : undefined;
+      return refresh ?? access ?? null;
+    } catch (err) {
+      if (isNodeError(err) && err.code === "ENOENT") {
+        continue;
+      }
+    }
+  }
+
+  return null;
+}
+
+function candidateOpenCodeAuthPaths(): string[] {
+  const home = process.env["OPENCODE_TEST_HOME"] ?? process.env["HOME"] ?? process.env["USERPROFILE"] ?? "~";
+  const paths = [
+    process.env["XDG_DATA_HOME"] ? join(process.env["XDG_DATA_HOME"], "opencode", "auth.json") : null,
+    join(home, ".local", "share", "opencode", "auth.json"),
+    join(home, "Library", "Application Support", "opencode", "auth.json"),
+  ].filter((value): value is string => Boolean(value));
+
+  return [...new Set(paths)];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return typeof err === "object" && err !== null && "code" in err;
 }
 
 export function parseCopilotUsageSnapshot(

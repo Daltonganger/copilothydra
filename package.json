@@ -1,12 +1,12 @@
 {
   "name": "copilothydra",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "OpenCode plugin: multiple GitHub Copilot accounts",
   "type": "module",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Daltonganger/copilothydra.git"
+    "url": "git+https://github.com/Daltonganger/copilothydra.git"
   },
   "homepage": "https://github.com/Daltonganger/copilothydra#readme",
   "files": [

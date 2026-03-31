@@ -27,6 +27,7 @@ import { checkAccountRuntimeReadiness, validateAccountCount, validateCanAddAccou
 import { fetchAccountUsageSnapshot, formatUsageSnapshotLines } from "./auth/usage-snapshot.js";
 import { loadSecrets } from "./storage/secrets.js";
 import { setCopilotCLIKeychainToken } from "./storage/copilot-cli-keychain.js";
+import { bestEffortPublishPrimaryCompatibility } from "./storage/primary-compat-export.js";
 
 const VALID_PLANS: PlanTier[] = ["free", "student", "pro", "pro+"];
 
@@ -69,6 +70,9 @@ async function main(): Promise<void> {
       return;
     case "backfill-keychain":
       await backfillKeychainCommand();
+      return;
+    case "export-primary-compat":
+      await exportPrimaryCompatCommand(process.argv[3]);
       return;
     case "usage":
     case "usage-snapshot":
@@ -116,6 +120,28 @@ async function backfillKeychainCommand(): Promise<void> {
   if (skipped > 0) {
     output.write(`Run \`opencode auth login\` or re-auth to refresh missing tokens.\n`);
   }
+}
+
+async function exportPrimaryCompatCommand(identifier?: string): Promise<void> {
+  if (!identifier) {
+    throw new Error("[copilothydra] export-primary-compat requires an account id or provider id");
+  }
+
+  const account = await resolveAccountByIdentifier(identifier);
+  const secret = await loadSecrets().then((file) => file.secrets.find((entry) => entry.accountId === account.id));
+  if (!secret) {
+    throw new Error(`[copilothydra] no stored oauth token found for account "${account.label}" (${account.githubUsername})`);
+  }
+
+  const result = await bestEffortPublishPrimaryCompatibility({
+    account,
+    githubOAuthToken: secret.githubOAuthToken,
+    explicit: true,
+  });
+
+  output.write(`OpenCode auth alias: ${result.opencodeAuth}\n`);
+  output.write(`GitHub CLI hosts.yml: ${result.ghHosts}\n`);
+  output.write("Primary compatibility export never overwrites existing auth sources.\n");
 }
 
 async function addAccountInteractive(): Promise<void> {

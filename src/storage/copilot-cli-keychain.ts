@@ -2,8 +2,8 @@
  * CopilotHydra — copilot-cli-compatible Keychain integration
  *
  * Writes GitHub OAuth tokens into the OS credential store using the same
- * format that `copilot-cli` uses, so that OpenCode Bar, AIUsageTracker,
- * opencode-quota, and native GitHub Copilot can discover them.
+ * format that `copilot-cli` uses, so that native consumers of that format
+ * (confirmed: OpenCode Bar on macOS) can discover them.
  *
  * Format:
  *   service  = "copilot-cli"
