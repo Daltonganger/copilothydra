@@ -74,6 +74,9 @@ async function main(): Promise<void> {
     case "export-primary-compat":
       await exportPrimaryCompatCommand(process.argv[3]);
       return;
+    case "status":
+      await statusCommand();
+      return;
     case "usage":
     case "usage-snapshot":
       await usageSnapshotCommand(process.argv[3]);
@@ -172,6 +175,10 @@ async function addAccountInteractive(): Promise<void> {
 
     await upsertAccount(account);
     await syncAccountsToOpenCodeConfig();
+
+    // Note: Plan pre-verification happens post-auth in the plugin callback flow
+    // (src/auth/login-method.ts buildAuthResult). CLI add-account does not run
+    // OAuth, so no additional plan verification is needed here.
 
     output.write(`\nAdded account: ${account.label} (${account.githubUsername})\n`);
     output.write(`Provider ID: ${account.providerId}\n`);
@@ -397,6 +404,80 @@ async function repairStorageCommand(): Promise<void> {
   output.write("Reload/restart OpenCode to apply provider changes if any stale providers were removed.\n");
 }
 
+async function statusCommand(): Promise<void> {
+  const [auditResult, accountsFile] = await Promise.all([
+    auditStorage(),
+    loadAccounts(),
+  ]);
+
+  const activeAccounts = accountsFile.accounts.filter((a) => a.lifecycleState === "active");
+  const configPath = resolveOpenCodeConfigPath();
+
+  // ── Header ──
+  output.write("CopilotHydra v0.3.3\n");
+  output.write("─────────────────────────────────────────────────────────────\n");
+  output.write("\n");
+
+  // ── Accounts ──
+  output.write(`Accounts (${activeAccounts.length} active)\n`);
+  for (const account of activeAccounts) {
+    const icon = account.capabilityState === "mismatch" ? "⚠" : "✓";
+    const label = padRight(account.label, 16);
+    const username = padRight(account.githubUsername, 14);
+    const plan = padRight(planLabel(account.plan), 10);
+    const state = capabilityStateLabel(account.capabilityState);
+    output.write(`  ${icon}  ${label}${username}${plan}${state}\n`);
+  }
+  output.write("\n");
+
+  // ── Storage ──
+  const accountsFileStatus = "ok";
+  const secretsFileStatus = auditResult.insecureSecretsFilePermissions ? "insecure" : "ok";
+  const secretsFileIcon = secretsFileStatus === "ok" ? "✓" : "⚠";
+  const orphanIcon = auditResult.orphanSecretAccountIds.length > 0 ? "⚠" : "✓";
+  const missingIcon = auditResult.missingProviderIds.length > 0 ? "⚠" : "✓";
+  const staleIcon = auditResult.staleProviderIds.length > 0 ? "⚠" : "✓";
+
+  output.write("Storage\n");
+  output.write(`  ✓  Accounts file      ${accountsFileStatus}\n`);
+  output.write(`  ${secretsFileIcon}  Secrets file       ${secretsFileStatus}  (permissions: ${auditResult.secretsFilePermissionStatus})\n`);
+  output.write(`  ${orphanIcon}  Orphan secrets     ${auditResult.orphanSecretAccountIds.length}\n`);
+  output.write(`  ${missingIcon}  Missing providers  ${auditResult.missingProviderIds.length}\n`);
+  output.write(`  ${staleIcon}  Stale providers    ${auditResult.staleProviderIds.length}\n`);
+  output.write("\n");
+
+  // ── Config ──
+  const configSyncOk = auditResult.missingProviderIds.length === 0 && auditResult.staleProviderIds.length === 0;
+  const configSyncIcon = configSyncOk ? "✓" : "⚠";
+  output.write("Config\n");
+  output.write(`  OpenCode config    ${configPath}\n`);
+  output.write(
+    `  Config sync        ${configSyncOk ? "ok" : "issues"}  (${auditResult.missingProviderIds.length} missing, ${auditResult.staleProviderIds.length} stale providers)\n`,
+  );
+  if (!configSyncOk) {
+    output.write("\n");
+    output.write("  Run `copilothydra sync-config` if providers are out of sync.\n");
+  }
+  output.write("\n");
+
+  // ── Keychain ──
+  const totalActive = activeAccounts.length;
+  const accountsWithSecrets = totalActive - auditResult.accountsWithoutSecrets.length;
+  const keychainIcon = auditResult.accountsWithoutSecrets.length === 0 ? "✓" : "⚠";
+  output.write("Keychain\n");
+  output.write(`  ${keychainIcon}  Native coverage    ${accountsWithSecrets}/${totalActive} accounts have secrets\n`);
+  if (auditResult.accountsWithoutSecrets.length > 0) {
+    output.write("\n");
+    output.write("  Run `copilothydra backfill-keychain` to publish missing tokens to native keychain.\n");
+  }
+  output.write("\n");
+
+  // ── Overall ──
+  const overallIcon = auditResult.ok ? "✓" : "⚠";
+  const overallLabel = auditResult.ok ? "ok" : "action needed";
+  output.write(`Overall  ${overallIcon}  ${overallLabel}\n`);
+}
+
 async function auditStorageCommand(): Promise<void> {
   const result = await auditStorage();
   output.write(`Accounts found: ${result.accountCount}\n`);
@@ -502,6 +583,10 @@ async function promptAllowUnverifiedModels(
 
 function hasFlag(flag: string): boolean {
   return process.argv.includes(flag);
+}
+
+function padRight(value: string, length: number): string {
+  return value.length >= length ? value : value + " ".repeat(length - value.length);
 }
 
 main().catch((error) => {

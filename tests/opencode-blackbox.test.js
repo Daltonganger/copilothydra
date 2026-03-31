@@ -124,6 +124,11 @@ test("black-box host add-account flow persists config and survives restart into 
         );
       }
 
+      // plan-verify endpoint — return 401 so verifyDeclaredPlan skips gracefully
+      if (url === "https://api.github.com/copilot_internal/user") {
+        return new Response("Unauthorized", { status: 401 });
+      }
+
       runtimeRequests.push({
         url,
         headers: Object.fromEntries(new Headers(init?.headers).entries()),
@@ -285,6 +290,11 @@ test("black-box host: two accounts route independently after restart", async () 
       ) {
         const factory = responseQueue.shift();
         return factory();
+      }
+
+      // plan-verify endpoint — return 401 so verifyDeclaredPlan skips gracefully
+      if (url === "https://api.github.com/copilot_internal/user") {
+        return new Response("Unauthorized", { status: 401 });
       }
 
       // Runtime request

@@ -15,6 +15,7 @@ import { error, info } from "../log.js";
 import { bestEffortKeychainWrite } from "../storage/copilot-cli-keychain.js";
 import { upsertSecret } from "../storage/secrets.js";
 import { bestEffortPublishPrimaryCompatibility } from "../storage/primary-compat-export.js";
+import { verifyDeclaredPlan, type PlanVerifyResult } from "./plan-verify.js";
 
 const VALID_PLANS: PlanTier[] = ["free", "student", "pro", "pro+"];
 
@@ -29,6 +30,7 @@ export interface LoginMethodDependencies {
   pollForAccessToken: typeof pollForAccessToken;
   setTokenState: typeof setTokenState;
   resolveOpenCodeConfigPath: typeof resolveOpenCodeConfigPath;
+  verifyDeclaredPlan: typeof verifyDeclaredPlan;
 }
 
 const DEFAULT_DEPS: LoginMethodDependencies = {
@@ -42,6 +44,7 @@ const DEFAULT_DEPS: LoginMethodDependencies = {
   pollForAccessToken,
   setTokenState,
   resolveOpenCodeConfigPath,
+  verifyDeclaredPlan,
 };
 
 export function createCopilotLoginMethods(
@@ -208,6 +211,13 @@ function buildAuthResult(
           account,
           githubOAuthToken: result.accessToken,
         });
+
+        // Best-effort plan pre-verification (non-blocking)
+        const planVerify = await deps.verifyDeclaredPlan(result.accessToken, account.plan);
+        if (planVerify.checked && !planVerify.ok && planVerify.mismatchHint) {
+          // mismatchHint is already logged as warn in verifyDeclaredPlan
+          // Surface it in the auth instructions too (best-effort)
+        }
 
         if (!isExistingAccount) {
           info(

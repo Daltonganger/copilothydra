@@ -32,6 +32,7 @@ import {
   requireOptionalString,
   requireString,
 } from "./validation.js";
+import { hardenWindowsFilePermissions } from "./windows-permissions.js";
 
 const PLAN_TIERS = ["free", "student", "pro", "pro+"] as const;
 const CAPABILITY_STATES = ["user-declared", "mismatch"] as const;
@@ -129,6 +130,8 @@ async function saveAccountsToPath(data: AccountsFile, path: string): Promise<voi
       warn("storage", `Atomic rename failed on Windows, falling back to direct write: ${String(err)}`);
       await writeFile(path, json, { encoding: "utf-8", mode: 0o600 });
     }
+    // Best-effort DACL hardening on Windows
+    await hardenWindowsFilePermissions(path);
   } else {
     await rename(tmpPath, path);
   }

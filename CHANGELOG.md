@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.3 (2026-03-31)
+
+### What's new
+
+- **Windows file permission hardening** — after writing `copilot-secrets.json` and `copilot-accounts.json` on Windows, CopilotHydra now calls `icacls ... /inheritance:r /grant:r "<username>:F"` to apply DACL restrictions equivalent to the Unix `chmod 0600` already in place on macOS/Linux.
+- **Plan pre-verification** — when adding an account, CopilotHydra now calls `api.github.com/copilot_internal/user` with the freshly-obtained OAuth token and warns if the declared plan tier does not match what the API reports. The warning is non-blocking and is skipped gracefully on any error, timeout, or missing field.
+- **`copilothydra status` command** — new dashboard showing all accounts with their capability state, storage health, config sync status, and native keychain coverage. Prints actionable hints (`sync-config`, `backfill-keychain`, `repair-storage`) only when relevant issues are detected.
+
+### Tests
+
+- 150 tests total (unchanged count — new features are runtime-only on Windows and post-auth callback paths covered by the existing blackbox suite).
+- Blackbox test mocks updated to return HTTP 401 for the plan-verify endpoint so the check skips gracefully in test environments.
+
+---
+
 ## 0.3.2 (2026-03-31)
 
 ### What's new

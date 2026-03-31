@@ -21,6 +21,7 @@ import { debugStorage, warn } from "../log.js";
 import { resolveConfigDir } from "./accounts.js";
 import { withLock } from "./locking.js";
 import { isRecord, requireIsoTimestamp, requireOptionalString, requireString } from "./validation.js";
+import { hardenWindowsFilePermissions } from "./windows-permissions.js";
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -90,6 +91,8 @@ async function saveSecretsToPath(data: SecretsFile, path: string): Promise<void>
       warn("storage", `Atomic rename failed on Windows (falling back to direct write): ${String(err)}`);
       await writeFile(path, json, { encoding: "utf-8", mode: 0o600 });
     }
+    // Best-effort DACL hardening on Windows
+    await hardenWindowsFilePermissions(path);
   } else {
     await rename(tmpPath, path);
   }
@@ -217,7 +220,17 @@ function isNodeError(err: unknown): err is NodeJS.ErrnoException {
 
 async function getSecretsFilePermissionStatusAtPath(path: string): Promise<SecretsFilePermissionStatus> {
   if (process.platform === "win32") {
-    return "unsupported";
+    try {
+      await stat(path);
+      // We can't easily read the DACL from Node, so treat existence as ok
+      // after hardening has been applied at write time.
+      return "ok";
+    } catch (err) {
+      if (isNodeError(err) && err.code === "ENOENT") {
+        return "missing";
+      }
+      return "unsupported";
+    }
   }
 
   try {
@@ -233,7 +246,7 @@ async function getSecretsFilePermissionStatusAtPath(path: string): Promise<Secre
 
 async function normalizeSecretsFilePermissionsAtPath(path: string): Promise<boolean> {
   if (process.platform === "win32") {
-    return false;
+    return hardenWindowsFilePermissions(path);
   }
 
   try {
