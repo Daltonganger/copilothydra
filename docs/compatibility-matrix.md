@@ -1,6 +1,6 @@
 # OpenCode Compatibility Matrix
 
-> **Beta / hardening phase.** CopilotHydra is not yet stable software. See `docs/release-checklist.md` for the current release gate.
+> **Stable — v0.3.0.** CopilotHydra is stable for the documented GitHub.com Copilot / OpenCode support boundary.
 
 CopilotHydra uses a warn-first compatibility policy for OpenCode host internals.
 Unknown versions do **not** hard-fail on their own, but the plugin logs warnings

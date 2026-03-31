@@ -12,6 +12,7 @@ import { pruneOrphanSecrets, removeSecret } from "./storage/secrets.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 import { canAccountDrainComplete, markAccountPendingRemoval, unregisterAccount } from "./routing/provider-account-map.js";
 import { resetTokenRuntimeState } from "./auth/token-state.js";
+import { bestEffortKeychainDelete } from "./storage/copilot-cli-keychain.js";
 
 interface RemovalOptions {
   configDir?: string;
@@ -75,6 +76,11 @@ export async function finalizeAccountRemoval(
   }
 
   await removeSecret(accountId, options?.configDir);
+  // Best-effort: remove from OS credential store
+  await bestEffortKeychainDelete({
+    githubUsername: removed.githubUsername,
+    accountLabel: removed.label,
+  });
   await removeAccount(accountId, options?.configDir);
 
   const after = await loadAccounts(options?.configDir);

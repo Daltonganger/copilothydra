@@ -46,6 +46,9 @@ test("removeAccountCompletely removes account, secret, and OpenCode provider ent
     const { updateSecrets } = await import(`../dist/storage/secrets.js?${Date.now()}`);
     const { syncAccountsToOpenCodeConfig } = await import(`../dist/config/sync.js?${Date.now()}`);
     const { removeAccountCompletely } = await import(`../dist/account-removal.js?${Date.now()}`);
+    const { setCopilotCLIKeychainToken, getCopilotCLIKeychainToken } = await import(
+      `../dist/storage/copilot-cli-keychain.js?${Date.now()}`
+    );
 
     const keep = createAccountMeta({ label: "Keep", githubUsername: "keep", plan: "free" });
     const remove = createAccountMeta({ label: "Remove", githubUsername: "remove", plan: "pro" });
@@ -58,6 +61,14 @@ test("removeAccountCompletely removes account, secret, and OpenCode provider ent
       file.secrets.push({ accountId: keep.id, githubOAuthToken: "token-keep" });
       file.secrets.push({ accountId: remove.id, githubOAuthToken: "token-remove" });
     }, tempDir);
+
+    if (process.platform === "darwin") {
+      await setCopilotCLIKeychainToken({
+        githubUsername: remove.githubUsername,
+        githubOAuthToken: "token-remove",
+      });
+      assert.equal(await getCopilotCLIKeychainToken(remove.githubUsername), "token-remove");
+    }
 
     await syncAccountsToOpenCodeConfig(configPath, tempDir);
     const beforeConfig = await readJson(configPath);
@@ -76,6 +87,14 @@ test("removeAccountCompletely removes account, secret, and OpenCode provider ent
     const afterConfig = await readJson(configPath);
     assert.ok(afterConfig.provider[keep.providerId]);
     assert.equal(afterConfig.provider?.[remove.providerId], undefined);
+
+    if (process.platform === "darwin") {
+      assert.equal(
+        await getCopilotCLIKeychainToken(remove.githubUsername),
+        null,
+        "account removal should clean up the matching copilot-cli keychain entry on macOS",
+      );
+    }
   } finally {
     delete process.env.OPENCODE_CONFIG;
     await cleanupDir(tempDir);

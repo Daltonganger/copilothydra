@@ -4,9 +4,9 @@ This checklist is the current gate for deciding when CopilotHydra can move from 
 
 ## Current release posture
 
-- **Current posture:** beta / hardening phase
-- **Do not call stable yet** while plaintext secret storage remains beta-only and compatibility validation remains narrow
-- **Current beta target:** `0.2.1` for GitHub.com Copilot on OpenCode `1.3.x` and `1.20.x`.
+- **Current posture:** stable
+- **Current stable target:** `0.3.0` for GitHub.com Copilot on OpenCode `1.3.x` and `1.20.x`.
+- **Current storage posture:** hybrid — native credential-store publishing best-effort, plus `copilot-secrets.json` for Hydra-local bookkeeping/fallback.
 
 ## Stable-release gate
 
@@ -51,7 +51,7 @@ Mark each section materially complete before calling CopilotHydra stable.
 
 **Audit findings (2026-03-30):**
 
-- ✅ `npm run build`, `npm run typecheck`, and `npm test` (119/119) all pass.
+- ✅ `npm run build`, `npm run typecheck`, and `npm test` (143/143) all pass.
 - ⚠️ `tests/opencode-blackbox.test.js` tests plugin-boundary behavior with a **stubbed** host (`PLUGIN_INPUT` is synthetic). This is genuine black-box testing of the plugin surface but does not exercise a real OpenCode process. If OpenCode changes how it calls plugins, these tests will not catch it.
 - ⚠️ No multi-account post-restart blackbox test.
 - ⚠️ No error-path blackbox tests (device-flow failure, missing secret on restart, zero-account recovery at plugin boundary).
@@ -69,7 +69,7 @@ Mark each section materially complete before calling CopilotHydra stable.
 - ✅ Corrupt storage quarantine and repair are covered across 6+ test files.
 - ⚠️ Atomic write: orphaned `.tmp` files (crash between write and rename) are not detected or cleaned up in load or repair paths.
 - ✅ Permission hardening tests added (`tests/storage-recovery.test.js`): new file created with `0o600`, `0o644` detected as insecure, `normalizeSecretsFilePermissions` fixes to `0o600`, missing file returns `"missing"`, already-ok returns no-op.
-- ✅ **Plaintext secret storage formally accepted.** See `docs/plaintext-secret-storage-decision.md`. Consistent with established norm (`opencode-antigravity-auth` ships stable with identical model). Keychain deferred to future phase.
+- ✅ **Plaintext secret storage formally accepted.** See `docs/plaintext-secret-storage-decision.md`. As of 0.3.0, CopilotHydra also publishes `copilot-cli`-compatible native credential-store entries best-effort via `@napi-rs/keyring`, while retaining local JSON bookkeeping.
 
 ### 5. Capability truth
 
@@ -80,7 +80,7 @@ Mark each section materially complete before calling CopilotHydra stable.
 **Audit findings (2026-03-30):**
 
 - ⚠️ No integration test exercises the loader→mismatch detection chain. The `loader.ts` 400/403 interception path is only tested indirectly through unit tests on helper functions, never through an actual HTTP response body.
-- ⚠️ `capabilityState: "verified"` is a dead enum value — no code path ever sets it to `"verified"`. Logic branches that depend on it can never fire in production.
+- ✅ `capabilityState: "verified"` dead code removed from types, validation, and dependent branches.
 - ✅ Mismatch-review operator runbook available at `docs/operator-mismatch-review-runbook.md`.
 - ✅ Mismatch message wording improved: "A lower plan tier may match your actual entitlement" replaces "Suggested stricter stored plan". No-suggestion message now mentions enterprise-only/org-restricted possibility. All `isCapabilityMismatchError` patterns covered by tests.
 - ⚠️ Non-TTY `review-mismatch` (e.g., CI) gives zero actionable guidance.
@@ -95,10 +95,9 @@ Mark each section materially complete before calling CopilotHydra stable.
 
 - ✅ Boundary documentation in `docs/compatibility-matrix.md` and `docs/support-boundaries.md` is clear and well-structured with explicit supported/best-effort tiers.
 - ✅ Unsupported surfaces are explicitly documented as best-effort or out of scope.
-- ⚠️ All regression tests are unit-level. No integration test exercises `createHydraCopilotProvider().languageModel("gpt-5")` end-to-end through the real SDK factory. The `createHydraCopilotProvider` test only calls `provider.languageModel(...)` and asserts `doesNotThrow` — it never calls `doGenerate` or `doStream` on a GPT-5+ model.
-- ⚠️ No regression test for the `doGenerate` path (non-streaming) on GPT-5+ models.
-- ⚠️ `RESPONSES_SENTINEL_API_KEY = "copilothydra-managed"` is passed to `createOpenAI` when no real key is provided. No test validates that the auth loader's bearer-token injection actually overrides this sentinel before requests hit the API.
-- ⚠️ Forward-matching behavior (`shouldUseCopilotResponsesApi` returns `true` for any unknown future `gpt-5.x`) is undocumented. New model variants will silently route to Responses API.
+- ⚠️ All regression tests are still mostly unit-level. No true end-to-end live-host GPT-5+ validation exists.
+- ✅ `RESPONSES_SENTINEL_API_KEY` override is covered by a custom-fetch test in `tests/hydra-copilot-provider.test.js`.
+- ✅ Forward-matching behavior for unknown future `gpt-5.x` variants is now documented and covered by tests.
 
 ### 7. Operator readiness
 
@@ -109,9 +108,9 @@ Mark each section materially complete before calling CopilotHydra stable.
 
 **Audit findings (2026-03-30):**
 
-- ✅ Beta status header added to `docs/support-boundaries.md`, `docs/compatibility-matrix.md`, and `docs/operator-auth-recovery-runbook.md`.
+- ✅ Stable status is now reflected in operator-facing docs.
 - ✅ Mismatch-review runbook available at `docs/operator-mismatch-review-runbook.md`. Storage-repair runbook available at `docs/operator-storage-repair-runbook.md`. Deferred-runbook notice added to auth runbook scope section.
-- ⚠️ Known limitations are scattered across README, `support-boundaries.md`, and `OPENCODE_INTEGRATION_PARITY.md` with no canonical list and inconsistent framing.
+- ✅ Canonical known-limitations list exists in `docs/support-boundaries.md`, with README pointing to native-keychain docs.
 - ✅ `support-boundaries.md` now includes a plaintext secret storage security note in the best-effort section.
 - ✅ 8-account limit framing unified in `support-boundaries.md` as a deliberate architecture boundary.
 - ✅ Support boundaries including enterprise-managed GitHub.com and GHES are clearly documented in `docs/support-boundaries.md`.
@@ -132,12 +131,9 @@ Ordered by impact. Items marked 🔴 are hard blockers. Items marked ⚠️ are 
 
 ### Significant gaps ⚠️
 
-1. **No GPT-5+ integration test** via the real `createHydraCopilotProvider()` factory — all coverage is unit-level.
+1. **No GPT-5+ integration test** via the real `createHydraCopilotProvider()` factory — most coverage is still unit-level.
 2. **Black-box tests use a stubbed host** — no real OpenCode process is ever exercised.
-3. **Known limitations scattered across 3+ docs** — no canonical list, inconsistent framing.
-4. **`capabilityState: "verified"` is dead code** — no path ever sets it; related branches can never fire.
-5. **`RESPONSES_SENTINEL_API_KEY` override by auth loader is untested.**
-6. **Forward-matching for unknown future `gpt-5.x` variants is undocumented.**
+3. **Non-TTY mismatch guidance** remains limited.
 
 ### Resolved since initial audit ✅
 
@@ -153,6 +149,10 @@ Ordered by impact. Items marked 🔴 are hard blockers. Items marked ⚠️ are 
 - ~~Downgrade suggestion language overclaims certainty~~ — **fixed**: message now says "A lower plan tier may match your actual entitlement" and explains enterprise-only/org-restricted cases. Full pattern coverage added to `tests/capabilities.test.js`.
 - ~~Restart instruction is stderr-only~~ — **fixed**: `instructions` field now includes "reload or restart OpenCode" for new-account flows. Re-auth omits it correctly. Tests updated.
 - ~~Black-box tests cover only single-account happy path~~ — **fixed**: multi-account routing test (2 accounts, isolated tokens post-restart) and callback-failure test (`access_denied` → `{ type: "failed" }`) added to `tests/opencode-blackbox.test.js`.
+- ~~`capabilityState: "verified"` is dead code~~ — **fixed**: removed from types, validation, and dependent branches.
+- ~~`RESPONSES_SENTINEL_API_KEY` override by auth loader is untested~~ — **fixed**: custom-fetch override test added to `tests/hydra-copilot-provider.test.js`.
+- ~~Forward-matching for unknown future `gpt-5.x` variants is undocumented~~ — **fixed**: documented in `docs/compatibility-matrix.md` and covered by tests.
+- ~~No native keychain integration~~ — **fixed**: `src/storage/copilot-cli-keychain.ts`, auth success-path publishing, removal cleanup, 9 dedicated tests, and black-box assertions for publish-on-auth.
 
 ## Cross-document inconsistencies
 

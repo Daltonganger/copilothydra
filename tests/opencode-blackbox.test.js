@@ -154,6 +154,15 @@ test("black-box host add-account flow persists config and survives restart into 
       assert.equal(finished.type, "success");
       assert.match(finished.provider ?? "", /^github-copilot-acct-/);
 
+      if (process.platform === "darwin") {
+        const { getCopilotCLIKeychainToken } = await importFresh("dist/storage/copilot-cli-keychain.js");
+        assert.equal(
+          await getCopilotCLIKeychainToken("blackbox-user"),
+          "gho_blackbox_token",
+          "successful add-account flow should publish a copilot-cli-compatible keychain entry on macOS",
+        );
+      }
+
       const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
       const config = await readJson(path.join(tempDir, "opencode.json"));
       assert.equal(accounts.accounts.length, 1);
@@ -304,6 +313,11 @@ test("black-box host: two accounts route independently after restart", async () 
       const finishedAlice = await startedAlice.callback();
       assert.equal(finishedAlice.type, "success");
 
+      if (process.platform === "darwin") {
+        const { getCopilotCLIKeychainToken } = await importFresh("dist/storage/copilot-cli-keychain.js");
+        assert.equal(await getCopilotCLIKeychainToken("alice"), "gho_alice_token");
+      }
+
       const accountsAfterAlice = await readJson(path.join(tempDir, "copilot-accounts.json"));
       assert.equal(accountsAfterAlice.accounts.length, 1);
       assert.equal(accountsAfterAlice.accounts[0].githubUsername, "alice");
@@ -338,6 +352,11 @@ test("black-box host: two accounts route independently after restart", async () 
 
       const finishedBob = await startedBob.callback();
       assert.equal(finishedBob.type, "success");
+
+      if (process.platform === "darwin") {
+        const { getCopilotCLIKeychainToken } = await importFresh("dist/storage/copilot-cli-keychain.js");
+        assert.equal(await getCopilotCLIKeychainToken("bob"), "gho_bob_token");
+      }
 
       const accountsAfterBob = await readJson(path.join(tempDir, "copilot-accounts.json"));
       assert.equal(accountsAfterBob.accounts.length, 2);

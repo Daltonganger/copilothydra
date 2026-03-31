@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.3.0 (2026-03-31)
+
+### What's new
+
+- **Native keychain integration** via `@napi-rs/keyring`.
+- After successful auth, CopilotHydra now publishes `copilot-cli`-compatible OS credential-store entries:
+  - service: `copilot-cli`
+  - account: `https://github.com:<githubUsername>`
+  - password: raw GitHub OAuth token
+- Account removal now deletes the matching native keychain entry best-effort.
+
+### Confirmed compatibility
+
+- **OpenCode Bar**: confirmed native discovery on macOS via `copilot-cli` Keychain format.
+
+### Not automatic / requires upstream changes
+
+- **AIUsageTracker** does not read `copilot-cli` keychain entries; it uses GitHub CLI credentials (`gh auth token` / `hosts.yml`).
+- **opencode-quota** does not read `copilot-cli` keychain entries; it reads OpenCode `auth.json`.
+
+### Tests
+
+- 143 tests total.
+- New dedicated keychain module tests.
+- New black-box assertions for keychain publish on auth success.
+- New removal assertion for keychain cleanup on account deletion.
+
+---
+
 ## 0.2.1 (2026-03-30)
 
 ### Changes

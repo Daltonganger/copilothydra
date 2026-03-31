@@ -12,6 +12,7 @@ import {
 import { setTokenState } from "./token-state.js";
 import { resolveOpenCodeConfigPath } from "../config/opencode-config.js";
 import { error, info } from "../log.js";
+import { bestEffortKeychainWrite } from "../storage/copilot-cli-keychain.js";
 
 const VALID_PLANS: PlanTier[] = ["free", "student", "pro", "pro+"];
 
@@ -187,6 +188,13 @@ function buildAuthResult(
           githubOAuthToken: result.accessToken,
           expiresAt: 0,
           setAt: Date.now(),
+        });
+
+        // Best-effort: publish token to OS credential store for OpenCode Bar / native discovery
+        await bestEffortKeychainWrite({
+          githubUsername: account.githubUsername,
+          githubOAuthToken: result.accessToken,
+          accountLabel: account.label,
         });
 
         if (!isExistingAccount) {

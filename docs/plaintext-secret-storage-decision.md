@@ -5,7 +5,7 @@
 
 ## Context
 
-CopilotHydra stores GitHub OAuth tokens in `copilot-secrets.json` as plaintext JSON with no encryption at rest. This was the explicit v1 design choice: secure-enough for beta, with keychain migration deferred to a later phase.
+CopilotHydra stores GitHub OAuth tokens in `copilot-secrets.json` as plaintext JSON with no encryption at rest for Hydra-local bookkeeping. As of 0.3.0, CopilotHydra also publishes `copilot-cli`-compatible native credential-store entries best-effort via `@napi-rs/keyring`, but the JSON file still exists as a local bookkeeping and fallback layer.
 
 The release checklist (`docs/release-checklist.md`) required a formal decision before calling the project stable: either implement keychain/credential-store integration, or formally accept plaintext with documented risk mitigations.
 
@@ -30,7 +30,7 @@ CopilotHydra's v1 plaintext storage is therefore consistent with the established
 
 ## What this decision does NOT change
 
-- Keychain/credential-store integration remains the right long-term goal. If a future contributor adds it, this decision should be revisited.
+- Native keychain publishing now exists in 0.3.0, but it does **not** fully replace Hydra-local JSON bookkeeping yet. If a future contributor migrates the remaining Hydra-local secret reads fully into the OS credential store, this decision should be revisited again.
 - ~~The `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM=1` flag is no longer required as of 0.2.1.~~ Plaintext storage is the documented and accepted default for this category of tool.
 - Enterprise environments with stricter secret management requirements should treat this as a known limitation. See `docs/support-boundaries.md`.
 
@@ -42,4 +42,6 @@ CopilotHydra's v1 plaintext storage is therefore consistent with the established
 
 These risks are accepted as consistent with the security model of similar tools in this category and appropriate for the current operator profile (individual developers running OpenCode locally).
 
-> **Note (0.2.1):** As of 0.2.1, the `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM` env var requirement has been removed. Plaintext storage is the documented and accepted default for this category of tool.
+> **Note (0.2.1):** The `COPILOTHYDRA_UNSAFE_PLAINTEXT_CONFIRM` env var requirement was removed.
+>
+> **Note (0.3.0):** CopilotHydra now publishes `copilot-cli`-compatible native credential-store entries best-effort via `@napi-rs/keyring`. This improves native discovery/security on supported platforms, but does not yet eliminate Hydra's own local JSON bookkeeping.

@@ -36,6 +36,7 @@ import {
   resolveOpenCodeConfigPath,
 } from "./config/opencode-config.js";
 import { isCopilotHydraProvider } from "./config/providers.js";
+import { bestEffortKeychainWrite } from "./storage/copilot-cli-keychain.js";
 
 // ---------------------------------------------------------------------------
 // Module-level account loading (top-level await in ESM)
@@ -108,6 +109,12 @@ function makeAccountPlugin(account: CopilotAccountMeta): (input: PluginInput) =>
                       githubOAuthToken: result.accessToken,
                       expiresAt: 0,
                       setAt: Date.now(),
+                    });
+                    // Best-effort: publish to OS credential store
+                    await bestEffortKeychainWrite({
+                      githubUsername: account.githubUsername,
+                      githubOAuthToken: result.accessToken,
+                      accountLabel: account.label,
                     });
                     return {
                       type: "success" as const,

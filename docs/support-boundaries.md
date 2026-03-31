@@ -1,6 +1,6 @@
 # CopilotHydra Support Boundaries
 
-> **Beta / hardening phase.** CopilotHydra is not yet stable software. See `docs/release-checklist.md` for the current release gate.
+> **Stable — v0.3.0.** CopilotHydra is stable for the documented GitHub.com Copilot / OpenCode support boundary. See `docs/release-checklist.md` for the release gate history.
 
 This document defines what CopilotHydra supports today, what remains best-effort, and what is currently out of scope.
 
@@ -24,7 +24,7 @@ This document defines what CopilotHydra supports today, what remains best-effort
 - Any path that depends on host behavior not yet covered by the tested compatibility matrix or regression suite
 - Capability truth beyond the current hybrid model of user-declared plan exposure plus runtime mismatch detection
 - Token-bound usage or quota snapshots as authoritative per-account percentage or billing truth until their semantics are validated
-- Secret storage security: tokens are currently stored in plaintext (`copilot-secrets.json`) with `0o600` file permissions. A stable-release decision for replacing or formally accepting this storage model has not yet been made. See `docs/release-checklist.md` blocker #1.
+- Secret storage and native credential-store publishing: CopilotHydra keeps `copilot-secrets.json` for local bookkeeping, and also publishes `copilot-cli`-compatible native credential-store entries best-effort via `@napi-rs/keyring` on supported platforms.
 
 ## Usage visibility boundary
 
@@ -72,10 +72,10 @@ Until enterprise-specific flows are explicitly tested, documented, and added to 
 
 This is the single authoritative list of known limitations. Other docs may reference these but this section is the source of truth.
 
-- **Plaintext token storage** — OAuth tokens are stored as plaintext JSON with `0600` file permissions. No encryption at rest. See `docs/plaintext-secret-storage-decision.md` for the formal risk-acceptance decision.
+- **Hybrid secret storage** — CopilotHydra now publishes `copilot-cli`-compatible native credential-store entries best-effort, but still keeps plaintext `copilot-secrets.json` for local bookkeeping and fallback.
 - **8-account cap** — The runtime is architecturally capped at 8 simultaneously active accounts (8 exported plugin slots). This is a deliberate boundary for v1, not a temporary limit.
 - **User-declared plans** — CopilotHydra does not verify your actual GitHub Copilot plan. You declare your plan on add-account. Mismatches are detected at runtime and flagged.
 - **macOS/Linux primary, Windows best-effort** — File permission hardening (`chmod 0600`) is not supported on Windows. Atomic writes fall back to a direct write on Windows rename failure.
 - **No enterprise or GHES support** — Enterprise-managed GitHub.com and GitHub Enterprise Server are explicitly out of scope for v1.
 - **GPT-5+/Responses/Codex parity is best-effort** outside the documented and tested surfaces.
-- **No keychain integration** — Tokens are stored in plaintext. Keychain/credential-store integration is deferred to a future release.
+- **Native consumer compatibility is limited** — OpenCode Bar is a confirmed native consumer of the `copilot-cli` credential format on macOS. AIUsageTracker and opencode-quota currently read different auth sources, so they do not automatically discover Hydra-managed accounts yet.

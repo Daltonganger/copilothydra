@@ -1,6 +1,6 @@
 {
   "name": "copilothydra",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "OpenCode plugin: multiple GitHub Copilot accounts",
   "type": "module",
   "main": "dist/index.js",
@@ -36,6 +36,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^2.0.51",
     "@ai-sdk/openai-compatible": "^2.0.37",
+    "@napi-rs/keyring": "^1.2.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
