@@ -1,12 +1,12 @@
 # CopilotHydra
 
-![CopilotHydra logo](https://unpkg.com/copilothydra@0.3.0/assets/branding/copilothydra-logo-512.png)
+![CopilotHydra logo](https://unpkg.com/copilothydra@0.3.1/assets/branding/copilothydra-logo-512.png)
 
 CopilotHydra is an OpenCode plugin for using multiple GitHub Copilot accounts side by side.
 
 ## Status
 
-- **Stable — v0.3.0**
+- **Stable — v0.3.1**
 - Tested with **OpenCode 1.3.x and 1.20.x**
 - Scope: **GitHub.com Copilot**, macOS/Linux first, Windows best-effort
 
@@ -38,6 +38,7 @@ Useful CLI commands:
 ```bash
 copilothydra list-accounts
 copilothydra sync-config
+copilothydra backfill-keychain
 copilothydra audit-storage
 copilothydra repair-storage
 copilothydra review-mismatch <account-id>
@@ -53,7 +54,7 @@ copilothydra usage
 - Enterprise-managed GitHub.com and GHES are **not supported**.
 - macOS/Linux primary, **Windows best-effort**.
 
-## Native keychain integration (0.3.0)
+## Native keychain integration (0.3.x)
 
 CopilotHydra now publishes `copilot-cli`-compatible native credential-store entries
 after successful auth:
@@ -71,7 +72,19 @@ Important limits:
 
 - **AIUsageTracker** does **not** read `copilot-cli` keychain entries; it reads GitHub CLI credentials (`gh auth token` / `hosts.yml`).
 - **opencode-quota** does **not** read `copilot-cli` keychain entries; it reads OpenCode `auth.json`.
-- So CopilotHydra 0.3.0 gives immediate native compatibility with **OpenCode Bar**, but not automatic multi-account compatibility with those two tools without upstream changes in those repos.
+- So CopilotHydra 0.3.x gives immediate native compatibility with **OpenCode Bar**, but not automatic multi-account compatibility with those two tools without upstream changes in those repos.
+
+### Existing accounts: one-time backfill
+
+If you already had CopilotHydra accounts before 0.3.0, re-auth is **not** required anymore.
+Run:
+
+```bash
+copilothydra backfill-keychain
+```
+
+That publishes existing active account tokens from Hydra's local secrets file into the
+native `copilot-cli` credential-store format so OpenCode Bar can discover them.
 
 ## Docs
 

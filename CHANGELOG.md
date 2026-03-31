@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.1 (2026-03-31)
+
+### Fixes
+
+- Added `copilothydra backfill-keychain` for existing accounts created before 0.3.0.
+- Existing active accounts can now be published into the native `copilot-cli` credential-store format without re-auth.
+
+### Usage
+
+```bash
+copilothydra backfill-keychain
+```
+
+This is mainly for users who upgraded to 0.3.x and want OpenCode Bar to immediately discover already-configured Hydra accounts.
+
+---
+
 ## 0.3.0 (2026-03-31)
 
 ### What's new

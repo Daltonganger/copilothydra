@@ -25,6 +25,8 @@ import { buildMismatchMessage, capabilityStateLabel, planLabel } from "./config/
 import { resolveOpenCodeConfigPath } from "./config/opencode-config.js";
 import { checkAccountRuntimeReadiness, validateAccountCount, validateCanAddAccount } from "./runtime-checks.js";
 import { fetchAccountUsageSnapshot, formatUsageSnapshotLines } from "./auth/usage-snapshot.js";
+import { loadSecrets } from "./storage/secrets.js";
+import { setCopilotCLIKeychainToken } from "./storage/copilot-cli-keychain.js";
 
 const VALID_PLANS: PlanTier[] = ["free", "student", "pro", "pro+"];
 
@@ -65,12 +67,54 @@ async function main(): Promise<void> {
     case "audit-storage":
       await auditStorageCommand();
       return;
+    case "backfill-keychain":
+      await backfillKeychainCommand();
+      return;
     case "usage":
     case "usage-snapshot":
       await usageSnapshotCommand(process.argv[3]);
       return;
     default:
       throw new Error(`Unknown command: ${command}`);
+  }
+}
+
+async function backfillKeychainCommand(): Promise<void> {
+  const { accounts } = await loadAccounts();
+  const { secrets } = await loadSecrets();
+
+  const activeAccounts = accounts.filter((a) => a.lifecycleState === "active");
+
+  let backfilled = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const account of activeAccounts) {
+    const secret = secrets.find((s) => s.accountId === account.id);
+    if (!secret) {
+      skipped++;
+      continue;
+    }
+
+    const result = await setCopilotCLIKeychainToken({
+      githubUsername: account.githubUsername,
+      githubOAuthToken: secret.githubOAuthToken,
+    });
+
+    if (result.ok) {
+      backfilled++;
+    } else {
+      failed++;
+    }
+  }
+
+  output.write(`Backfilled native keychain entries: ${backfilled}\n`);
+  output.write(`Skipped accounts without secrets: ${skipped}\n`);
+  if (failed > 0) {
+    output.write(`Failed keychain writes: ${failed}\n`);
+  }
+  if (skipped > 0) {
+    output.write(`Run \`opencode auth login\` or re-auth to refresh missing tokens.\n`);
   }
 }
 
