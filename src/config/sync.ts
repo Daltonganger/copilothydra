@@ -9,9 +9,9 @@
  * - later phases can reuse the same sync logic for multiple accounts
  */
 
-import { loadAccounts } from "../storage/accounts.js";
 import { debugStorage } from "../log.js";
-import { isCopilotHydraProvider, buildProviderConfig } from "./providers.js";
+import { loadAccounts } from "../storage/accounts.js";
+import { buildProviderConfig, isCopilotHydraProvider } from "./providers.js";
 import {
   loadCopilotHydraOpenCodeState,
   loadOpenCodeConfig,
@@ -53,6 +53,7 @@ export async function syncAccountsToOpenCodeConfig(configPath?: string, configDi
     reconcileBuiltInCopilotAvailability(
       hostCompatibleConfig,
       mergeManagedDisableState(managedState, legacyManagedState),
+      activeAccounts.length,
     );
 
   const nextConfig: OpenCodeConfigFile =
@@ -77,16 +78,30 @@ function omitProvider(config: OpenCodeConfigFile): OpenCodeConfigFile {
 function reconcileBuiltInCopilotAvailability(
   config: OpenCodeConfigFile,
   managedState: { managedDisabledProviders?: string[] },
+  activeAccountsCount: number,
 ): { config: OpenCodeConfigFile; state: { managedDisabledProviders?: string[] } } {
   const disabledProviders = [...(config.disabled_providers ?? [])];
   const managedDisabledProviders = new Set(managedState.managedDisabledProviders ?? []);
   const builtInIndex = disabledProviders.indexOf(BUILTIN_COPILOT_PROVIDER_ID);
 
+  // Step 1: Remove any Hydra-managed disable state first (clean slate).
+  // This handles legacy state cleanup and ensures we don't double-add.
   if (managedDisabledProviders.has(BUILTIN_COPILOT_PROVIDER_ID)) {
     managedDisabledProviders.delete(BUILTIN_COPILOT_PROVIDER_ID);
     if (builtInIndex !== -1) {
       disabledProviders.splice(builtInIndex, 1);
     }
+  }
+
+  // Step 2: If active Hydra accounts exist, disable the built-in github-copilot
+  // provider so its models don't duplicate/overlap with Hydra's account-scoped ones.
+  // The Hydra login/add-account entrypoint lives under a distinct provider ID
+  // (github-copilot-hydra) so it stays visible even while github-copilot is disabled.
+  if (activeAccountsCount > 0) {
+    if (!disabledProviders.includes(BUILTIN_COPILOT_PROVIDER_ID)) {
+      disabledProviders.push(BUILTIN_COPILOT_PROVIDER_ID);
+    }
+    managedDisabledProviders.add(BUILTIN_COPILOT_PROVIDER_ID);
   }
 
   const nextConfig: OpenCodeConfigFile = { ...config };

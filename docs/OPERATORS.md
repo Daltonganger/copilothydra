@@ -1,10 +1,10 @@
 # CopilotHydra — Operator Guide
 
-**Stable — v0.3.2.** This document covers auth/recovery, mismatch review, storage repair, and support boundaries for CopilotHydra.
+**Stable — v0.3.4.** This document covers auth/recovery, mismatch review, storage repair, and support boundaries for CopilotHydra.
 
 ---
 
-## Native integrations (0.3.2)
+## Native integrations (0.3.4)
 
 CopilotHydra publishes `copilot-cli`-compatible native credential-store entries after successful auth:
 
@@ -105,7 +105,7 @@ Not required as first step after re-auth (re-auth only refreshes token state; no
 
 ### Add first account
 
-1. `opencode auth login -p github-copilot`
+1. `opencode auth login -p github-copilot-hydra`
 2. Choose **Add new account**
 3. Fill in: GitHub username, label, declared plan, whether uncertain models should be exposed
 4. Complete GitHub device flow
@@ -114,7 +114,7 @@ Not required as first step after re-auth (re-auth only refreshes token state; no
 
 ### Re-auth existing account
 
-1. `opencode auth login -p github-copilot`
+1. `opencode auth login -p github-copilot-hydra`
 2. Choose **Re-auth existing account**
 3. Enter GitHub username
 4. Complete device flow
@@ -268,7 +268,7 @@ Re-auth does **not** automatically clear mismatch state. After successful re-aut
 ### Step-by-step: audit → repair → reload
 
 1. `copilothydra audit-storage` — review output
-2. If **missing secrets**: re-auth first via `opencode auth login -p github-copilot` → *Re-auth existing account*, then re-audit
+2. If **missing secrets**: re-auth first via `opencode auth login -p github-copilot-hydra` → *Re-auth existing account*, then re-audit
 3. If **corrupt files**: see corrupt file recovery below
 4. `copilothydra repair-storage`
 5. `copilothydra sync-config`
@@ -296,7 +296,7 @@ When CopilotHydra can't parse a JSON file on load:
 
 | Problem | Action |
 |---|---|
-| Missing OAuth token | Re-auth: `opencode auth login -p github-copilot` → *Re-auth* |
+| Missing OAuth token | Re-auth: `opencode auth login -p github-copilot-hydra` → *Re-auth* |
 | Wrong plan tier | `copilothydra review-mismatch <account-id>` |
 | Model catalog drift | Update CopilotHydra to latest version |
 | Corrupt file contents | Manual recovery or re-add accounts |

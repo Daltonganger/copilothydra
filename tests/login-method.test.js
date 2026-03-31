@@ -77,7 +77,7 @@ test("CopilotHydraSetup exposes a GitHub Copilot auth method for OpenCode auth l
     const { CopilotHydraSetup } = await import(`../dist/index.js?${Date.now()}`);
     const hooks = await CopilotHydraSetup(PLUGIN_INPUT);
 
-    assert.equal(hooks.auth?.provider, "github-copilot");
+    assert.equal(hooks.auth?.provider, "github-copilot-hydra");
     assert.equal(hooks.auth?.methods.length, 1);
     assert.deepEqual(
       hooks.auth?.methods.map((method) => method.label),
@@ -123,7 +123,7 @@ test("CopilotHydraSetup restores host-native Copilot state when no Hydra account
     const { CopilotHydraSetup } = await import(`../dist/index.js?${Date.now()}`);
     const hooks = await CopilotHydraSetup(PLUGIN_INPUT);
 
-    assert.equal(hooks.auth?.provider, "github-copilot");
+    assert.equal(hooks.auth?.provider, "github-copilot-hydra");
 
     const config = await readJson(path.join(tempDir, "opencode.json"));
     const managedState = await readJson(path.join(tempDir, "copilothydra-opencode-state.json"));
@@ -192,7 +192,7 @@ test("login method can create a new account from OpenCode auth login inputs", as
     ]);
     assert.equal(accounts.accounts[0].githubUsername, "alice");
     assert.ok(config.provider[accounts.accounts[0].providerId]);
-    assert.equal(config.disabled_providers, undefined);
+    assert.deepEqual(config.disabled_providers, ["github-copilot"]);
     assert.equal(config.provider[accounts.accounts[0].providerId].models["gpt-5.4"].name, "GPT-5.4");
     assert.equal(config.provider[accounts.accounts[0].providerId].models["gpt-5-mini"].name, "GPT-5-mini");
   } finally {
@@ -490,7 +490,7 @@ test("CopilotHydraSetup does not rewrite clean host config when no Hydra takeove
     const { CopilotHydraSetup } = await import(`../dist/index.js?${Date.now()}`);
     const hooks = await CopilotHydraSetup(PLUGIN_INPUT);
 
-    assert.equal(hooks.auth?.provider, "github-copilot");
+    assert.equal(hooks.auth?.provider, "github-copilot-hydra");
     assert.equal(await fs.readFile(configPath, "utf8"), originalConfig);
     await assert.rejects(fs.stat(statePath), /ENOENT/);
   } finally {

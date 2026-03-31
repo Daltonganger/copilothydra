@@ -40,6 +40,17 @@ import type { AccountId, ProviderId, CopilotAccountMeta } from "../types.js";
 import { getCopilotCatalogModel, modelsForPlan } from "./models.js";
 
 // ---------------------------------------------------------------------------
+// Shared constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Provider ID used by CopilotHydraSetup for login / add-account / re-auth.
+ * Distinct from built-in "github-copilot" so that disabling the built-in
+ * provider (to hide its models) does NOT also hide the Hydra auth entrypoint.
+ */
+export const COPILOT_HYDRA_SETUP_PROVIDER_ID = "github-copilot-hydra" as const;
+
+// ---------------------------------------------------------------------------
 // ID helpers
 // ---------------------------------------------------------------------------
 
@@ -178,7 +189,7 @@ function buildModelEntries(_account: CopilotAccountMeta): Record<string, ModelCo
   );
 }
 
-export function buildModelDisplayName(account: CopilotAccountMeta, modelId: string): string {
+export function buildModelDisplayName(_account: CopilotAccountMeta, modelId: string): string {
   const catalogName = getCopilotCatalogModel(modelId)?.name;
   return catalogName ?? modelId;
 }

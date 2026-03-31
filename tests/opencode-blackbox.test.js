@@ -75,7 +75,7 @@ test("black-box host discovery exposes setup hook and empty runtime slots when n
     assert.deepEqual(discoveredNames, expectedNames);
 
     const setupHooks = await pluginModule.CopilotHydraSetup(PLUGIN_INPUT);
-    assert.equal(setupHooks.auth?.provider, "github-copilot");
+    assert.equal(setupHooks.auth?.provider, "github-copilot-hydra");
     assert.deepEqual(
       setupHooks.auth?.methods.map((method) => method.label),
       ["GitHub Copilot (CopilotHydra) — Add new account"],
@@ -174,7 +174,7 @@ test("black-box host add-account flow persists config and survives restart into 
       assert.equal(accounts.accounts[0].githubUsername, "blackbox-user");
       assert.equal(finished.provider, accounts.accounts[0].providerId);
       assert.ok(config.provider[accounts.accounts[0].providerId]);
-      assert.equal(config.disabled_providers, undefined);
+      assert.deepEqual(config.disabled_providers, ["github-copilot"]);
 
       const restartedModule = await importFresh("dist/index.js");
       const restartedExports = discoverPluginExports(restartedModule);

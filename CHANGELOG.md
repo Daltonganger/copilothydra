@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.4 (2026-03-31)
+
+### What's new
+
+- **Hide built-in GitHub Copilot while Hydra is active** — config sync now disables the built-in `github-copilot` provider whenever active Hydra accounts exist, so the normal GitHub Copilot model catalog no longer appears alongside Hydra-managed account providers.
+- **Dedicated Hydra login provider** — the add-account / re-auth entrypoint now uses `github-copilot-hydra`, so Hydra setup stays discoverable in `opencode auth login` even while built-in `github-copilot` is disabled.
+- **Operator guidance updated** — recovery and re-auth docs now point to `opencode auth login -p github-copilot-hydra`.
+
+### Tests
+
+- 150 tests total.
+- Sync, login-method, and black-box coverage updated for built-in provider hiding and the renamed Hydra setup provider.
+
+---
+
 ## 0.3.3 (2026-03-31)
 
 ### What's new

@@ -1,6 +1,6 @@
 # CopilotHydra — Technical Reference
 
-**Stable — v0.3.2.** This document covers the OpenCode compatibility matrix, release gate status, and storage security posture.
+**Stable — v0.3.4.** This document covers the OpenCode compatibility matrix, release gate status, and storage security posture.
 
 ---
 
@@ -59,7 +59,7 @@ If a compatibility warning appears: confirm the OpenCode version, verify `openco
 
 ## Release gate status
 
-**Current posture: stable (v0.3.2)**  
+**Current posture: stable (v0.3.4)**  
 Tested with OpenCode 1.3.x and 1.20.x.  
 Storage: hybrid — native credential-store publishing best-effort + `copilot-secrets.json` for Hydra-local bookkeeping/fallback.
 

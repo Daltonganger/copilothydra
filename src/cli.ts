@@ -414,7 +414,7 @@ async function statusCommand(): Promise<void> {
   const configPath = resolveOpenCodeConfigPath();
 
   // ── Header ──
-  output.write("CopilotHydra v0.3.3\n");
+  output.write("CopilotHydra v0.3.4\n");
   output.write("─────────────────────────────────────────────────────────────\n");
   output.write("\n");
 

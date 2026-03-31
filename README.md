@@ -1,12 +1,12 @@
 # CopilotHydra
 
-![CopilotHydra logo](https://unpkg.com/copilothydra@0.3.2/assets/branding/copilothydra-logo-512.png)
+![CopilotHydra logo](https://unpkg.com/copilothydra@0.3.4/assets/branding/copilothydra-logo-512.png)
 
 CopilotHydra is an OpenCode plugin for using multiple GitHub Copilot accounts side by side.
 
 ## Status
 
-- **Stable — v0.3.2**
+- **Stable — v0.3.4**
 - Tested with **OpenCode 1.3.x and 1.20.x**
 - Scope: **GitHub.com Copilot**, macOS/Linux first, Windows best-effort
 
