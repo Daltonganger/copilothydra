@@ -5,12 +5,13 @@
  * Hydra providers.
  */
 
-import { createOpenAI } from "@ai-sdk/openai";
+import { createRequire } from "node:module";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { shouldUseCopilotResponsesApi } from "../config/models.js";
 import { extractErrorText } from "../error-text.js";
 
 const RESPONSES_SENTINEL_API_KEY = "copilothydra-managed";
+const require = createRequire(import.meta.url);
 
 export interface HydraCopilotProviderOptions {
   apiKey?: string;
@@ -46,6 +47,10 @@ interface ModelLike {
 }
 
 type ModelFactory = (modelId: string, settings?: Record<string, unknown>) => unknown;
+
+interface OpenAIResponsesProviderLike {
+  responses: ModelFactory;
+}
 
 function withDefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(
@@ -157,6 +162,44 @@ function wrapHydraCopilotModel(model: unknown): unknown {
   return withHydraCopilotErrorNormalization(withHydraCopilotResponsesParity(model));
 }
 
+export function sanitizeHydraCopilotSettings(
+  settings?: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  if (!settings) {
+    return undefined;
+  }
+
+  const { variant: _ignoredVariant, ...rest } = settings;
+  return rest;
+}
+
+function createResponsesProvider(options: HydraCopilotProviderOptions): OpenAIResponsesProviderLike {
+  const providerOptions = withDefined({
+    apiKey: options.apiKey ?? RESPONSES_SENTINEL_API_KEY,
+    baseURL: options.baseURL,
+    fetch: options.fetch,
+    headers: options.headers,
+    name: options.name,
+  }) as never;
+
+  try {
+    const openAI = require("@ai-sdk/openai") as {
+      createOpenAI?: (providerOptions: never) => OpenAIResponsesProviderLike;
+    };
+    if (typeof openAI.createOpenAI === "function") {
+      return openAI.createOpenAI(providerOptions);
+    }
+  } catch {
+    // Fall through to the OpenAI-compatible shim when the local @ai-sdk/openai
+    // install is incomplete. This keeps Hydra's Copilot Responses route alive
+    // for local/dev environments while still preferring the real SDK when present.
+  }
+
+  return {
+    responses: createOpenAICompatible(providerOptions) as unknown as ModelFactory,
+  };
+}
+
 export function createHydraCopilotProvider(
   options: HydraCopilotProviderOptions = {},
 ): HydraCopilotLanguageProvider {
@@ -169,21 +212,16 @@ export function createHydraCopilotProvider(
     name: options.name,
   }) as never);
 
-  const responsesProvider = createOpenAI(withDefined({
-    apiKey: options.apiKey ?? RESPONSES_SENTINEL_API_KEY,
-    baseURL: options.baseURL,
-    fetch: options.fetch,
-    headers: options.headers,
-    name: options.name,
-  }) as never);
+  const responsesProvider = createResponsesProvider(options);
 
   const chatModel = chatProvider as unknown as ModelFactory;
   const responsesModel = responsesProvider.responses as unknown as ModelFactory;
 
   const languageModel = (modelId: string, settings?: Record<string, unknown>) => {
+    const sanitizedSettings = sanitizeHydraCopilotSettings(settings);
     return shouldUseCopilotResponsesApi(modelId)
-      ? wrapHydraCopilotModel(responsesModel(modelId, settings))
-      : wrapHydraCopilotModel(chatModel(modelId, settings));
+      ? wrapHydraCopilotModel(responsesModel(modelId, sanitizedSettings))
+      : wrapHydraCopilotModel(chatModel(modelId, sanitizedSettings));
   };
 
   const provider = ((modelId: string, settings?: Record<string, unknown>) =>
@@ -191,9 +229,9 @@ export function createHydraCopilotProvider(
 
   provider.languageModel = languageModel;
   provider.chat = (modelId: string, settings?: Record<string, unknown>) =>
-    wrapHydraCopilotModel(chatModel(modelId, settings));
+    wrapHydraCopilotModel(chatModel(modelId, sanitizeHydraCopilotSettings(settings)));
   provider.responses = (modelId: string, settings?: Record<string, unknown>) =>
-    wrapHydraCopilotModel(responsesModel(modelId, settings));
+    wrapHydraCopilotModel(responsesModel(modelId, sanitizeHydraCopilotSettings(settings)));
 
   return provider;
 }

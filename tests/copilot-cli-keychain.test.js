@@ -138,23 +138,60 @@ test("bestEffortKeychainWrite never throws even on failure", async () => {
     await import(`../dist/storage/copilot-cli-keychain.js?besteffort=${Date.now()}`);
 
   // Should not throw regardless of keyring availability
+  let result;
   await assert.doesNotReject(async () => {
-    await bestEffortKeychainWrite({
+    result = await bestEffortKeychainWrite({
       githubUsername: "test",
       githubOAuthToken: "gho_test",
       accountLabel: "Test",
     });
   });
+
+  // Result should be structured { ok: true | false, ... }
+  assert.ok(result !== undefined, "bestEffortKeychainWrite should return a result");
+  assert.ok(typeof result.ok === "boolean", "bestEffortKeychainWrite should return a structured result");
+  if (!result.ok) {
+    assert.ok(typeof result.reason === "string" && result.reason.length > 0, "failure should include a reason");
+  }
 });
 
 test("bestEffortKeychainDelete never throws even on failure", async () => {
   const { bestEffortKeychainDelete } =
     await import(`../dist/storage/copilot-cli-keychain.js?bestdel=${Date.now()}`);
 
+  let result;
   await assert.doesNotReject(async () => {
-    await bestEffortKeychainDelete({
+    result = await bestEffortKeychainDelete({
       githubUsername: `nonexistent-${Date.now()}`,
       accountLabel: "Test",
     });
   });
+
+  // Result should be structured { ok: true | false, ... }
+  assert.ok(result !== undefined, "bestEffortKeychainDelete should return a result");
+  assert.ok(typeof result.ok === "boolean", "bestEffortKeychainDelete should return a structured result");
+  if (!result.ok) {
+    assert.ok(typeof result.reason === "string" && result.reason.length > 0, "failure should include a reason");
+  }
+});
+
+test("keychainActionHint returns actionable guidance for common failures", async () => {
+  const { keychainActionHint } =
+    await import(`../dist/storage/copilot-cli-keychain.js?hint=${Date.now()}`);
+
+  // "not available" → install hint
+  const hint1 = keychainActionHint("Native keyring not available");
+  assert.ok(hint1.includes("Install") || hint1.includes("keyring"), `Hint for "not available" should mention install: ${hint1}`);
+
+  // "permission denied" → permissions hint
+  const hint2 = keychainActionHint("Permission denied");
+  assert.ok(hint2.includes("permission") || hint2.includes("Permissions"), `Hint for "permission" should mention permissions: ${hint2}`);
+
+  // "user cancelled" → retry hint
+  const hint3 = keychainActionHint("User cancelled the prompt");
+  assert.ok(hint3.includes("cancelled") || hint3.includes("retry"), `Hint for "cancelled" should mention retry: ${hint3}`);
+
+  // Generic fallback
+  const hint4 = keychainActionHint("Something unexpected happened");
+  assert.ok(hint4.length > 0, `Generic hint should be non-empty: ${hint4}`);
 });

@@ -26,7 +26,7 @@ import { resolveOpenCodeConfigPath } from "./config/opencode-config.js";
 import { checkAccountRuntimeReadiness, validateAccountCount, validateCanAddAccount } from "./runtime-checks.js";
 import { fetchAccountUsageSnapshot, formatUsageSnapshotLines } from "./auth/usage-snapshot.js";
 import { loadSecrets } from "./storage/secrets.js";
-import { setCopilotCLIKeychainToken } from "./storage/copilot-cli-keychain.js";
+import { setCopilotCLIKeychainToken, keychainActionHint } from "./storage/copilot-cli-keychain.js";
 import { bestEffortPublishPrimaryCompatibility } from "./storage/primary-compat-export.js";
 
 const VALID_PLANS: PlanTier[] = ["free", "student", "pro", "pro+"];
@@ -94,7 +94,7 @@ async function backfillKeychainCommand(): Promise<void> {
 
   let backfilled = 0;
   let skipped = 0;
-  let failed = 0;
+  const failedEntries: { label: string; reason: string }[] = [];
 
   for (const account of activeAccounts) {
     const secret = secrets.find((s) => s.accountId === account.id);
@@ -111,17 +111,25 @@ async function backfillKeychainCommand(): Promise<void> {
     if (result.ok) {
       backfilled++;
     } else {
-      failed++;
+      failedEntries.push({ label: account.label, reason: result.reason });
     }
   }
 
   output.write(`Backfilled native keychain entries: ${backfilled}\n`);
   output.write(`Skipped accounts without secrets: ${skipped}\n`);
-  if (failed > 0) {
-    output.write(`Failed keychain writes: ${failed}\n`);
+  if (failedEntries.length > 0) {
+    output.write(`Failed keychain writes: ${failedEntries.length}\n`);
+    for (const entry of failedEntries) {
+      output.write(`  ✗ ${entry.label}: ${entry.reason}\n`);
+      output.write(`    Hint: ${keychainActionHint(entry.reason)}\n`);
+    }
   }
   if (skipped > 0) {
     output.write(`Run \`opencode auth login\` or re-auth to refresh missing tokens.\n`);
+  }
+
+  if (failedEntries.length > 0) {
+    process.exitCode = 1;
   }
 }
 
@@ -414,7 +422,7 @@ async function statusCommand(): Promise<void> {
   const configPath = resolveOpenCodeConfigPath();
 
   // ── Header ──
-  output.write("CopilotHydra v0.3.4\n");
+  output.write("CopilotHydra v0.3.7\n");
   output.write("─────────────────────────────────────────────────────────────\n");
   output.write("\n");
 
