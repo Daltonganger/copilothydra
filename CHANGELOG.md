@@ -10,7 +10,7 @@
 
 ### Tests
 
-- 154 tests total.
+- 158 tests total.
 - Added sync coverage to assert provider names stay aligned with the user-defined Hydra nickname.
 - Added coverage for `sanitizeHydraCopilotSettings` so variant stripping stays enforced.
 
