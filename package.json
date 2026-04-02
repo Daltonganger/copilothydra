@@ -1,6 +1,6 @@
 {
   "name": "copilothydra",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "OpenCode plugin: multiple GitHub Copilot accounts",
   "type": "module",
   "main": "dist/index.js",
