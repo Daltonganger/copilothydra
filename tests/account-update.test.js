@@ -34,6 +34,41 @@ test("renameAccount updates label and synced OpenCode model labels", async () =>
   }
 });
 
+test("renameAccount rejects duplicate labels and keeps stored metadata unchanged", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    const configPath = path.join(tempDir, "opencode.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { upsertAccount, loadAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { syncAccountsToOpenCodeConfig } = await import(`../dist/config/sync.js?${Date.now()}`);
+    const { renameAccount } = await import(`../dist/account-update.js?${Date.now()}`);
+
+    const first = createAccountMeta({ label: "Personal", githubUsername: "alice", plan: "free" });
+    const second = createAccountMeta({ label: "Work", githubUsername: "bob", plan: "pro" });
+    await upsertAccount(first, tempDir);
+    await upsertAccount(second, tempDir);
+    await syncAccountsToOpenCodeConfig(configPath, tempDir);
+
+    await assert.rejects(
+      () => renameAccount(second.id, " personal ", { configDir: tempDir, configPath }),
+      /an account with label ".*" already exists/
+    );
+
+    const accounts = await loadAccounts(tempDir);
+    assert.equal(accounts.accounts.find((account) => account.id === second.id)?.label, "Work");
+
+    const config = await readJson(configPath);
+    assert.equal(config.provider[first.providerId].name, "Personal");
+    assert.equal(config.provider[second.providerId].name, "Work");
+  } finally {
+    delete process.env.OPENCODE_CONFIG;
+    await cleanupDir(tempDir);
+  }
+});
+
 test("updateAccountPlan resets capability state and clears lastValidatedAt", async () => {
   const tempDir = await makeTempDir();
 

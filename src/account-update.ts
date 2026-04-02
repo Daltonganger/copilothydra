@@ -23,10 +23,34 @@ export async function renameAccount(
     throw new Error("[copilothydra] account label cannot be empty");
   }
 
-  const updated = await mutateAccount(accountId, (account) => {
+  let updated: CopilotAccountMeta | null = null;
+
+  await updateAccounts((file) => {
+    const duplicateLabel = file.accounts.find(
+      (candidate) => candidate.id !== accountId && candidate.label.trim().toLowerCase() === nextLabel.toLowerCase()
+    );
+    if (duplicateLabel) {
+      throw new Error(
+        `[copilothydra] an account with label "${nextLabel}" already exists ` +
+          `(existing GitHub username: ${duplicateLabel.githubUsername})`
+      );
+    }
+
+    const account = file.accounts.find((candidate) => candidate.id === accountId);
+    if (!account) {
+      throw new Error(`[copilothydra] account not found: ${accountId}`);
+    }
+
     account.label = nextLabel;
+    updated = { ...account };
   }, options?.configDir);
+
   await syncAccountsToOpenCodeConfig(options?.configPath, options?.configDir);
+
+  if (!updated) {
+    throw new Error(`[copilothydra] account not found after rename: ${accountId}`);
+  }
+
   return updated;
 }
 
