@@ -16,7 +16,7 @@
  *   - Openai-Intent: conversation-edits
  *   - User-Agent: opencode/<version>  — set by OpenCode's own headers; we leave it
  * - OpenCode's chat.headers hook handles x-initiator and Copilot-Vision-Request
- *   based on providerID.includes("github-copilot"), so our IDs (github-copilot-acct-*)
+ *   based on providerID.includes("github-copilot"), so our IDs (github-copilot-user-*)
  *   will trigger those correctly without any action from our side.
  */
 

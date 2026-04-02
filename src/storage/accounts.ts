@@ -33,6 +33,7 @@ import {
   requireString,
 } from "./validation.js";
 import { hardenWindowsFilePermissions } from "./windows-permissions.js";
+import { buildProviderId } from "../config/providers.js";
 
 const PLAN_TIERS = ["free", "student", "pro", "pro+"] as const;
 const CAPABILITY_STATES = ["user-declared", "mismatch"] as const;
@@ -77,7 +78,12 @@ export function accountsFilePath(configDir?: string): string {
 
 export async function loadAccounts(configDir?: string): Promise<AccountsFile> {
   const path = accountsFilePath(configDir);
-  return loadAccountsFromPath(path);
+  const file = await loadAccountsFromPath(path);
+  const { accountsFile, changed } = normalizeAccountsFile(file);
+  if (changed) {
+    await saveAccountsToPath(accountsFile, path);
+  }
+  return accountsFile;
 }
 
 async function loadAccountsFromPath(path: string): Promise<AccountsFile> {
@@ -218,11 +224,12 @@ export async function updateAccounts(
   const path = accountsFilePath(configDir);
 
   return await withLock(path, async () => {
-    const file = await loadAccountsFromPath(path);
-    await mutator(file);
-    validateAccountsFile(file);
-    await saveAccountsToPath(file, path);
-    return file;
+    const loaded = await loadAccountsFromPath(path);
+    const { accountsFile } = normalizeAccountsFile(loaded);
+    await mutator(accountsFile);
+    validateAccountsFile(accountsFile);
+    await saveAccountsToPath(accountsFile, path);
+    return accountsFile;
   });
 }
 
@@ -290,6 +297,27 @@ function validateAccountsFile(data: unknown): AccountsFile {
   }
 
   return data as unknown as AccountsFile;
+}
+
+function normalizeAccountsFile(data: AccountsFile): { accountsFile: AccountsFile; changed: boolean } {
+  let changed = false;
+  const accounts = data.accounts.map((account) => {
+    const expectedProviderId = buildProviderId(account.githubUsername);
+    if (account.providerId === expectedProviderId) {
+      return account;
+    }
+
+    changed = true;
+    return {
+      ...account,
+      providerId: expectedProviderId,
+    };
+  });
+
+  return {
+    accountsFile: changed ? { ...data, accounts } : data,
+    changed,
+  };
 }
 
 // ---------------------------------------------------------------------------

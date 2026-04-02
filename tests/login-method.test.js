@@ -179,7 +179,7 @@ test("login method can create a new account from OpenCode auth login inputs", as
 
     const { result: finished, output } = await captureStderr(() => started.callback());
     assert.equal(finished.type, "success");
-    assert.match(finished.provider ?? "", /^github-copilot-acct-/);
+    assert.match(finished.provider ?? "", /^github-copilot-user-/);
     assert.equal(tokenState.githubOAuthToken, "gho_test_token");
     assert.match(output, /Authorization succeeded for "Personal"/);
     assert.match(output, /reload\/restart OpenCode/i);
@@ -283,7 +283,7 @@ test("fetchAccountUsageSnapshot recovers missing local secret from OpenCode auth
     await fs.writeFile(
       path.join(tempDir, "opencode", "auth.json"),
       JSON.stringify({
-        "github-copilot-acct-acct_usage_recover": {
+        "github-copilot-user-recover-user": {
           type: "oauth",
           access: "gho_access_recovered",
           refresh: "gho_refresh_recovered",
@@ -305,7 +305,7 @@ test("fetchAccountUsageSnapshot recovers missing local secret from OpenCode auth
 
     const snapshot = await fetchAccountUsageSnapshot({
       id: "acct_usage_recover",
-      providerId: "github-copilot-acct-acct_usage_recover",
+      providerId: "github-copilot-user-recover-user",
       label: "Recovered",
       githubUsername: "recover-user",
       plan: "pro",

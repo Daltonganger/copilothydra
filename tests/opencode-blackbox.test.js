@@ -157,7 +157,7 @@ test("black-box host add-account flow persists config and survives restart into 
 
       const finished = await started.callback();
       assert.equal(finished.type, "success");
-      assert.match(finished.provider ?? "", /^github-copilot-acct-/);
+      assert.match(finished.provider ?? "", /^github-copilot-user-/);
 
       if (process.platform === "darwin") {
         const { getCopilotCLIKeychainToken } = await importFresh("dist/storage/copilot-cli-keychain.js");
