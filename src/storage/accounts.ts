@@ -216,10 +216,9 @@ export async function updateAccounts(
     const loaded = await loadAccountsFromPath(path);
     const { accountsFile } = normalizeAccountsFile(loaded);
     await mutator(accountsFile);
-    const normalized = normalizeAccountsFile(accountsFile).accountsFile;
-    validateAccountsFile(normalized);
-    await saveAccountsToPath(normalized, path);
-    return normalized;
+    validateAccountsFile(accountsFile);
+    await saveAccountsToPath(accountsFile, path);
+    return accountsFile;
   });
 }
 

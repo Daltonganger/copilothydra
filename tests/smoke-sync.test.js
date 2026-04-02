@@ -42,6 +42,16 @@ test("single-account sync writes provider config and disables built-in github-co
   }
 });
 
+test("portable provider IDs preserve valid GitHub username characters without punctuation collisions", async () => {
+  const { buildProviderId } = await import(`../dist/config/providers.js?${Date.now()}`);
+
+  assert.equal(buildProviderId(" User-Name "), "github-copilot-user-user-name");
+  assert.throws(
+    () => buildProviderId("user.name"),
+    /provider ID requires a GitHub username using only letters, numbers, or hyphens/
+  );
+});
+
 test("single-account sync keeps documented baseline stable even when override flag is enabled", async () => {
   const tempDir = await makeTempDir();
   process.env.OPENCODE_CONFIG_DIR = tempDir;

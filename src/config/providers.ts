@@ -74,7 +74,7 @@ export function buildProviderId(githubUsername: string): ProviderId {
  * Extract the portable provider key from a provider ID.
  * Returns null if the ID is not a CopilotHydra provider ID.
  */
-export function accountIdFromProviderId(providerId: ProviderId): string | null {
+export function providerKeyFromProviderId(providerId: ProviderId): string | null {
   for (const prefix of [COPILOT_HYDRA_PROVIDER_PREFIX, LEGACY_COPILOT_HYDRA_PROVIDER_PREFIX]) {
     if (providerId.startsWith(prefix)) {
       return providerId.slice(prefix.length);
@@ -95,11 +95,16 @@ export function isCopilotHydraProvider(providerId: string): boolean {
 }
 
 function normalizeProviderKey(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return "";
+  }
+  if (!/^[a-z0-9-]+$/.test(normalized)) {
+    throw new Error(
+      `[copilothydra] provider ID requires a GitHub username using only letters, numbers, or hyphens: ${value}`
+    );
+  }
+  return normalized;
 }
 
 // ---------------------------------------------------------------------------
