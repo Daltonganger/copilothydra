@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.7 (2026-04-02)
+
+### Fixes
+
+- **Provider display names now use the Hydra nickname directly** — synced OpenCode provider entries now write the account `label` as the provider name, instead of expanding it into `GitHub Copilot — <label> (<githubUsername>)`.
+- **Copilot/Hydra model calls now always strip `variant` settings** — Hydra providers sanitize all outgoing model settings so OpenCode variants never leak into `github-copilot-user-*` calls.
+- **Active OpenCode Hydra shim stays aligned immediately** — the built provider output is intended to be mirrored into the live `~/.cache/opencode/.../hydra-copilot-provider.js` copy so the running setup picks up the sanitize fix without waiting for a reinstall.
+
+### Tests
+
+- 158 tests total.
+- Added sync coverage to assert provider names stay aligned with the user-defined Hydra nickname.
+- Added coverage for `sanitizeHydraCopilotSettings` so variant stripping stays enforced.
+
 ## 0.3.6 (2026-04-02)
 
 ### What's new
@@ -12,15 +26,6 @@
 - Added coverage for username-based provider ID generation and legacy account/config migration during sync.
 
 ## 0.3.5 (2026-04-02)
-
-### Fixes
-
-- **Provider display names now use the Hydra nickname directly** — synced OpenCode provider entries now write the account `label` as the provider name, instead of expanding it into `GitHub Copilot — <label> (<githubUsername>)`.
-
-### Tests
-
-- 153 tests total.
-- Added sync coverage to assert provider names stay aligned with the user-defined Hydra nickname.
 
 ## 0.3.4 (2026-03-31)
 

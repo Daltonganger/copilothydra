@@ -77,7 +77,7 @@ export async function finalizeAccountRemoval(
   }
 
   await removeSecret(accountId, options?.configDir);
-  // Best-effort: remove from OS credential store
+  // Best-effort: remove from OS credential store (logs actionable hint on failure)
   await bestEffortKeychainDelete({
     githubUsername: removed.githubUsername,
     accountLabel: removed.label,
