@@ -154,7 +154,7 @@ function resolveHydraCopilotProviderModuleHref(): string {
  */
 export function buildProviderConfig(account: CopilotAccountMeta): ProviderConfigEntry {
   return {
-    name: `GitHub Copilot — ${account.label} (${account.githubUsername})`,
+    name: account.label,
     // Use a local Hydra provider factory so `github-copilot-acct-*` keeps
     // multi-account isolation while matching built-in Copilot routing parity.
     npm: resolveHydraCopilotProviderModuleHref(),

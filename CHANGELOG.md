@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.5 (2026-04-02)
+
+### Fixes
+
+- **Provider display names now use the Hydra nickname directly** — synced OpenCode provider entries now write the account `label` as the provider name, instead of expanding it into `GitHub Copilot — <label> (<githubUsername>)`.
+
+### Tests
+
+- 153 tests total.
+- Added sync coverage to assert provider names stay aligned with the user-defined Hydra nickname.
+
 ## 0.3.4 (2026-03-31)
 
 ### What's new
