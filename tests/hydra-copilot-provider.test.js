@@ -147,6 +147,17 @@ test("createHydraCopilotProvider accepts optional model settings for chat-path m
   });
 });
 
+test("sanitizeHydraCopilotSettings strips variant while preserving other settings", async () => {
+  const { sanitizeHydraCopilotSettings } = await import(`../dist/sdk/hydra-copilot-provider.js?sanitize=${Date.now()}`);
+
+  assert.equal(sanitizeHydraCopilotSettings(undefined), undefined);
+  assert.deepEqual(
+    sanitizeHydraCopilotSettings({ variant: "high", mode: { type: "regular" }, temperature: 0.2 }),
+    { mode: { type: "regular" }, temperature: 0.2 },
+  );
+  assert.deepEqual(sanitizeHydraCopilotSettings({ variant: "medium" }), {});
+});
+
 test("withHydraCopilotErrorNormalization normalizes object-shaped provider errors into string Errors", async () => {
   const { withHydraCopilotErrorNormalization } = await import(`../dist/sdk/hydra-copilot-provider.js?${Date.now()}`);
 

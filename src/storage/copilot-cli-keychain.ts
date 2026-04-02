@@ -19,6 +19,30 @@ import { warn, info, debug } from "../log.js";
 
 const COPILOT_CLI_SERVICE = "copilot-cli";
 
+// ---------------------------------------------------------------------------
+// Structured keychain result types
+// ---------------------------------------------------------------------------
+
+export type KeychainResult = { ok: true } | { ok: false; reason: string };
+
+/**
+ * Actionable hint appended to keychain failure messages so callers can
+ * surface remediation guidance without hard-coding platform specifics.
+ */
+export function keychainActionHint(reason: string): string {
+  const lower = reason.toLowerCase();
+  if (lower.includes("not available") || lower.includes("could not find")) {
+    return "Install the native keyring library or run on a system with an OS credential store (macOS Keychain / Linux Secret Service).";
+  }
+  if (lower.includes("permission") || lower.includes("access") || lower.includes("denied")) {
+    return "Check OS keychain/keyring permissions for the calling process.";
+  }
+  if (lower.includes("user cancelled") || lower.includes("user dismissed")) {
+    return "The user cancelled the keychain prompt — retry when ready.";
+  }
+  return "Ensure the OS credential store is accessible (keychain unlocked, Secret Service running, etc.).";
+}
+
 function buildCopilotCLIAccountName(githubUsername: string): string {
   return `https://github.com:${githubUsername}`;
 }
@@ -41,7 +65,7 @@ async function loadKeyring(): Promise<KeyringModule | null> {
 export async function setCopilotCLIKeychainToken(params: {
   githubUsername: string;
   githubOAuthToken: string;
-}): Promise<{ ok: true } | { ok: false; reason: string }> {
+}): Promise<KeychainResult> {
   const { githubUsername, githubOAuthToken } = params;
 
   if (!githubUsername || !githubOAuthToken) {
@@ -107,7 +131,7 @@ export async function getCopilotCLIKeychainToken(
 
 export async function deleteCopilotCLIKeychainToken(
   githubUsername: string,
-): Promise<{ ok: true } | { ok: false; reason: string }> {
+): Promise<KeychainResult> {
   if (!githubUsername) {
     return { ok: false, reason: "missing username" };
   }
@@ -133,14 +157,15 @@ export async function deleteCopilotCLIKeychainToken(
 }
 
 /**
- * Best-effort keychain write — logs but never throws.
+ * Best-effort keychain write — logs on failure but never throws.
  * Call this after successful device-flow auth.
+ * Returns the structured result so callers can surface actionable feedback.
  */
 export async function bestEffortKeychainWrite(params: {
   githubUsername: string;
   githubOAuthToken: string;
   accountLabel: string;
-}): Promise<void> {
+}): Promise<KeychainResult> {
   const result = await setCopilotCLIKeychainToken({
     githubUsername: params.githubUsername,
     githubOAuthToken: params.githubOAuthToken,
@@ -149,24 +174,29 @@ export async function bestEffortKeychainWrite(params: {
     warn(
       "keychain",
       `Could not save "${params.accountLabel}" to OS credential store: ${result.reason}. ` +
+        `Hint: ${keychainActionHint(result.reason)} ` +
         `Token is still available through normal OpenCode auth.`,
     );
   }
+  return result;
 }
 
 /**
- * Best-effort keychain delete — logs but never throws.
+ * Best-effort keychain delete — logs on failure but never throws.
  * Call this during account removal.
+ * Returns the structured result so callers can surface actionable feedback.
  */
 export async function bestEffortKeychainDelete(params: {
   githubUsername: string;
   accountLabel: string;
-}): Promise<void> {
+}): Promise<KeychainResult> {
   const result = await deleteCopilotCLIKeychainToken(params.githubUsername);
   if (!result.ok) {
     warn(
       "keychain",
-      `Could not remove "${params.accountLabel}" from OS credential store: ${result.reason}`,
+      `Could not remove "${params.accountLabel}" from OS credential store: ${result.reason}. ` +
+        `Hint: ${keychainActionHint(result.reason)}`,
     );
   }
+  return result;
 }
