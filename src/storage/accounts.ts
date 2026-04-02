@@ -170,6 +170,7 @@ export async function upsertAccount(
 ): Promise<void> {
   await updateAccounts((file) => {
     const normalizedUsername = normalizeGitHubUsername(account.githubUsername);
+    const normalizedLabel = normalizeAccountLabel(account.label);
     const duplicateUsername = file.accounts.find(
       (a) => a.id !== account.id && normalizeGitHubUsername(a.githubUsername) === normalizedUsername
     );
@@ -177,6 +178,16 @@ export async function upsertAccount(
       throw new Error(
         `[copilothydra] an account with GitHub username "${account.githubUsername}" already exists ` +
           `(existing label: ${duplicateUsername.label})`
+      );
+    }
+
+    const duplicateLabel = file.accounts.find(
+      (a) => a.id !== account.id && normalizeAccountLabel(a.label) === normalizedLabel
+    );
+    if (duplicateLabel) {
+      throw new Error(
+        `[copilothydra] an account with label "${account.label}" already exists ` +
+          `(existing GitHub username: ${duplicateLabel.githubUsername})`
       );
     }
 
@@ -318,6 +329,10 @@ function isNodeError(err: unknown): err is NodeJS.ErrnoException {
 }
 
 function normalizeGitHubUsername(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function normalizeAccountLabel(value: string): string {
   return value.trim().toLowerCase();
 }
 

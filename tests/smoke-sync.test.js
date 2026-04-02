@@ -30,6 +30,7 @@ test("single-account sync writes provider config and disables built-in github-co
     assert.equal(accounts.accounts[0].providerId, account.providerId);
     assert.ok(config.provider);
     assert.ok(config.provider[account.providerId]);
+    assert.equal(config.provider[account.providerId].name, "Personal");
     assert.deepEqual(config.disabled_providers, ["github-copilot"]);
     assert.deepEqual(managedState, { managedDisabledProviders: ["github-copilot"] });
     assert.equal(config.provider[account.providerId].options, undefined);
