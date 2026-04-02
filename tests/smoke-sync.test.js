@@ -26,6 +26,7 @@ test("single-account sync writes provider config and disables built-in github-co
     const managedState = await readJson(path.join(tempDir, "copilothydra-opencode-state.json"));
 
     assert.equal(accounts.accounts.length, 1);
+    assert.equal(account.providerId, "github-copilot-user-alice");
     assert.equal(accounts.accounts[0].providerId, account.providerId);
     assert.ok(config.provider);
     assert.ok(config.provider[account.providerId]);
@@ -154,6 +155,66 @@ test("sync removes only CopilotHydra-managed standalone disable state when no ac
     const managedState = await readJson(path.join(tempDir, "copilothydra-opencode-state.json"));
     assert.deepEqual(config.disabled_providers, ["opencode"]);
     assert.deepEqual(managedState, {});
+  } finally {
+    delete process.env.OPENCODE_CONFIG_DIR;
+    await cleanupDir(tempDir);
+  }
+});
+
+test("sync migrates legacy account/provider IDs to portable username-based IDs", async () => {
+  const tempDir = await makeTempDir();
+  process.env.OPENCODE_CONFIG_DIR = tempDir;
+
+  try {
+    const { syncAccountsToOpenCodeConfig } = await import(`../dist/config/sync.js?${Date.now()}`);
+    const { loadAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+
+    await import("node:fs/promises").then((fs) =>
+      fs.writeFile(
+        path.join(tempDir, "copilot-accounts.json"),
+        JSON.stringify({
+          version: 1,
+          accounts: [
+            {
+              id: "acct_legacy",
+              providerId: "github-copilot-acct-acct_legacy",
+              label: "Legacy",
+              githubUsername: "PortableUser",
+              plan: "pro",
+              capabilityState: "user-declared",
+              lifecycleState: "active",
+              addedAt: new Date().toISOString(),
+            },
+          ],
+        }, null, 2),
+        "utf8",
+      )
+    );
+
+    await import(`../dist/config/opencode-config.js?${Date.now()}`).then(({ saveOpenCodeConfig }) =>
+      saveOpenCodeConfig(
+        {
+          provider: {
+            "github-copilot-acct-acct_legacy": { name: "legacy" },
+            external: { name: "external" },
+          },
+        },
+        path.join(tempDir, "opencode.json"),
+      )
+    );
+
+    const migrated = await loadAccounts(tempDir);
+    assert.equal(migrated.accounts[0].providerId, "github-copilot-user-portableuser");
+
+    await syncAccountsToOpenCodeConfig(path.join(tempDir, "opencode.json"), tempDir);
+
+    const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
+    const config = await readJson(path.join(tempDir, "opencode.json"));
+
+    assert.equal(accounts.accounts[0].providerId, "github-copilot-user-portableuser");
+    assert.equal(config.provider["github-copilot-acct-acct_legacy"], undefined);
+    assert.ok(config.provider["github-copilot-user-portableuser"]);
+    assert.ok(config.provider.external);
   } finally {
     delete process.env.OPENCODE_CONFIG_DIR;
     await cleanupDir(tempDir);

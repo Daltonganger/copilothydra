@@ -16,7 +16,7 @@ export function createAccountMeta(input: {
   const id = createAccountId();
   return {
     id,
-    providerId: buildProviderId(id),
+    providerId: buildProviderId(input.githubUsername),
     label: input.label.trim(),
     githubUsername: input.githubUsername.trim(),
     plan: input.plan,

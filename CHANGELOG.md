@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### What's new
+
+- **Portable provider IDs** — CopilotHydra now derives OpenCode provider IDs from the GitHub username (`github-copilot-user-<username>`) instead of the local account ID, so synced model entries move cleanly between OpenCode installs.
+- **Automatic legacy migration** — loading or syncing accounts transparently rewrites old `github-copilot-acct-*` account metadata and removes stale legacy provider entries from `opencode.json` / `opencode.jsonc` during the next sync.
+
+### Tests
+
+- Added coverage for username-based provider ID generation and legacy account/config migration during sync.
+
 ## 0.3.4 (2026-03-31)
 
 ### What's new

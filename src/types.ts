@@ -18,7 +18,7 @@ export type AccountId = string;
 
 /**
  * OpenCode provider ID for this account.
- * Format: "github-copilot-acct-<accountId>", e.g. "github-copilot-acct-7f2c1d"
+ * Format: "github-copilot-user-<githubUsername>", e.g. "github-copilot-user-ruben"
  * Must contain "github-copilot" for OpenCode internal detection to work.
  */
 export type ProviderId = string;
