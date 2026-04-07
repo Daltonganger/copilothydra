@@ -177,6 +177,7 @@ export function createCopilotLoginMethods(
         if (!audit.ok) {
           if (audit.accountsWithoutSecrets.length > 0) lines.push("  → run: copilothydra backfill-keychain");
           if (audit.missingProviderIds.length > 0) lines.push("  → run: copilothydra sync-config");
+          if (audit.authDriftEntries.length > 0) lines.push("  → run: copilothydra sync-config (or re-auth in OpenCode if needed)");
         }
         const instructions = lines.join("\n");
         return {

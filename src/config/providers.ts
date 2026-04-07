@@ -8,7 +8,7 @@
  *
  * 1. SDK RESOLUTION:
  *    OpenCode resolves the SDK factory via `model.api.npm` (NOT provider ID).
- *    Our provider IDs ("github-copilot-acct-<id>") are NOT in BUNDLED_PROVIDERS
+ *    Our provider IDs ("github-copilot-user-<username>") are NOT in BUNDLED_PROVIDERS
  *    or CUSTOM_LOADERS, so we must set `npm` in the config entry.
  *    We use a Hydra-local `file://` provider factory module so account-scoped
  *    provider IDs can still mirror built-in Copilot routing.
@@ -27,7 +27,7 @@
  *
  * 4. CHAT.HEADERS HOOK:
  *    OpenCode's chat.headers hook checks providerID.includes("github-copilot").
- *    Our IDs ("github-copilot-acct-*") contain "github-copilot" → ✓ matches.
+ *    Our IDs ("github-copilot-user-*" / "github-copilot-acct-*") contain "github-copilot" → ✓ matches.
  *    This means x-initiator and Copilot-Vision-Request headers are injected
  *    automatically by OpenCode without any action on our part.
  *
@@ -36,7 +36,7 @@
  *    We write explicit model entries per account to ensure they appear in OpenCode's UI.
  */
 
-import type { AccountId, ProviderId, CopilotAccountMeta } from "../types.js";
+import type { CopilotAccountMeta, ProviderId } from "../types.js";
 import { getCopilotCatalogModel, modelsForPlan } from "./models.js";
 
 // ---------------------------------------------------------------------------
@@ -50,35 +50,71 @@ import { getCopilotCatalogModel, modelsForPlan } from "./models.js";
  */
 export const COPILOT_HYDRA_SETUP_PROVIDER_ID = "github-copilot-hydra" as const;
 
+/**
+ * Primary provider ID prefix (v0.3.7+).
+ * Format: "github-copilot-user-<normalized-github-username>"
+ */
+export const COPILOT_HYDRA_USER_PREFIX = "github-copilot-user-" as const;
+
+/**
+ * Legacy provider ID prefix (pre-v0.3.7).
+ * Format: "github-copilot-acct-<accountId>"
+ * Still accepted for backward compatibility with existing configs.
+ */
+export const COPILOT_HYDRA_ACCT_PREFIX = "github-copilot-acct-" as const;
+
 // ---------------------------------------------------------------------------
 // ID helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Build a stable OpenCode provider ID from an internal account ID.
- *
- * Format: "github-copilot-acct-<accountId>"
- * Contains "github-copilot" for OpenCode's providerID.includes() checks.
+ * Normalize a GitHub username for use in provider IDs.
+ * Lowercases (GitHub usernames are case-insensitive) and replaces
+ * non-alphanumeric characters with hyphens to form a safe identifier segment.
  */
-export function buildProviderId(accountId: AccountId): ProviderId {
-  return `github-copilot-acct-${accountId}`;
+function normalizeGithubUsername(username: string): string {
+	return username
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9-]/g, "-")
+		.replace(/-+/g, "-")
+		.replace(/^-|-$/g, "");
 }
 
 /**
- * Extract the account ID from a provider ID.
+ * Build a stable OpenCode provider ID from a GitHub username.
+ *
+ * Format: "github-copilot-user-<normalizedUsername>"
+ * Contains "github-copilot" for OpenCode's providerID.includes() checks.
+ */
+export function buildProviderId(githubUsername: string): ProviderId {
+	return `${COPILOT_HYDRA_USER_PREFIX}${normalizeGithubUsername(githubUsername)}`;
+}
+
+/**
+ * Extract the key segment (username or account ID) from a provider ID.
+ * Handles both the primary user-prefix and the legacy acct-prefix.
  * Returns null if the ID is not a CopilotHydra provider ID.
  */
-export function accountIdFromProviderId(providerId: ProviderId): AccountId | null {
-  const prefix = "github-copilot-acct-";
-  if (!providerId.startsWith(prefix)) return null;
-  return providerId.slice(prefix.length);
+export function accountIdFromProviderId(providerId: ProviderId): string | null {
+	if (providerId.startsWith(COPILOT_HYDRA_USER_PREFIX)) {
+		return providerId.slice(COPILOT_HYDRA_USER_PREFIX.length);
+	}
+	if (providerId.startsWith(COPILOT_HYDRA_ACCT_PREFIX)) {
+		return providerId.slice(COPILOT_HYDRA_ACCT_PREFIX.length);
+	}
+	return null;
 }
 
 /**
  * Returns true if the given provider ID is a CopilotHydra-managed provider.
+ * Accepts both the primary user-prefix and the legacy acct-prefix.
  */
 export function isCopilotHydraProvider(providerId: string): boolean {
-  return providerId.startsWith("github-copilot-acct-");
+	return (
+		providerId.startsWith(COPILOT_HYDRA_USER_PREFIX) ||
+		providerId.startsWith(COPILOT_HYDRA_ACCT_PREFIX)
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -89,10 +125,10 @@ export function isCopilotHydraProvider(providerId: string): boolean {
  * Per-model npm/api override — mirrors ModelsDev.Model.provider shape.
  */
 export interface ModelProviderOverride {
-  /** npm package for SDK factory (overrides provider-level npm) */
-  npm?: string;
-  /** API base URL for this model */
-  api?: string;
+	/** npm package for SDK factory (overrides provider-level npm) */
+	npm?: string;
+	/** API base URL for this model */
+	api?: string;
 }
 
 /**
@@ -100,9 +136,9 @@ export interface ModelProviderOverride {
  * Mirrors ModelsDev.Model.partial() shape.
  */
 export interface ModelConfigEntry {
-  name?: string;
-  /** Per-model SDK/API override */
-  provider?: ModelProviderOverride;
+	name?: string;
+	/** Per-model SDK/API override */
+	provider?: ModelProviderOverride;
 }
 
 /**
@@ -117,26 +153,26 @@ export interface ModelConfigEntry {
  *   - options: passed to SDK factory (apiKey, baseURL, etc.)
  */
 export interface ProviderConfigEntry {
-  name: string;
-  /** npm package name used to look up the SDK factory (via BUNDLED_PROVIDERS) */
-  npm?: string;
-  /** API base URL for all models under this provider */
-  api?: string;
-  /** Env vars expected by this provider (informational for our oauth providers) */
-  env?: string[];
-  /** Model entries keyed by modelID */
-  models?: Record<string, ModelConfigEntry>;
-  /** Options passed to SDK factory (baseURL, apiKey, etc.) */
-  options?: {
-    apiKey?: string;
-    baseURL?: string;
-    enterpriseUrl?: string;
-    [key: string]: unknown;
-  };
+	name: string;
+	/** npm package name used to look up the SDK factory (via BUNDLED_PROVIDERS) */
+	npm?: string;
+	/** API base URL for all models under this provider */
+	api?: string;
+	/** Env vars expected by this provider (informational for our oauth providers) */
+	env?: string[];
+	/** Model entries keyed by modelID */
+	models?: Record<string, ModelConfigEntry>;
+	/** Options passed to SDK factory (baseURL, apiKey, etc.) */
+	options?: {
+		apiKey?: string;
+		baseURL?: string;
+		enterpriseUrl?: string;
+		[key: string]: unknown;
+	};
 }
 
 function resolveHydraCopilotProviderModuleHref(): string {
-  return new URL("../sdk/hydra-copilot-provider.js", import.meta.url).href;
+	return new URL("../sdk/hydra-copilot-provider.js", import.meta.url).href;
 }
 
 // ---------------------------------------------------------------------------
@@ -152,16 +188,25 @@ function resolveHydraCopilotProviderModuleHref(): string {
  * Note: auth (Bearer token) is NOT set here — it is injected per-request
  * by the auth hook loader in src/auth/loader.ts.
  */
-export function buildProviderConfig(account: CopilotAccountMeta): ProviderConfigEntry {
-  return {
-    name: account.label,
-    // Use a local Hydra provider factory so `github-copilot-acct-*` keeps
-    // multi-account isolation while matching built-in Copilot routing parity.
-    npm: resolveHydraCopilotProviderModuleHref(),
-    api: "https://api.githubcopilot.com",
-    env: [], // OAuth — no env var required; auth is handled by our loader hook
-    models: buildModelEntries(account),
-  };
+export function buildProviderConfig(
+	account: CopilotAccountMeta,
+): ProviderConfigEntry {
+	return {
+		name: account.label,
+		// Use a local Hydra provider factory so `github-copilot-user-*` (and
+		// legacy `github-copilot-acct-*`) keeps multi-account isolation while
+		// matching built-in Copilot routing parity.
+		npm: resolveHydraCopilotProviderModuleHref(),
+		api: "https://api.githubcopilot.com",
+		env: [], // OAuth — no env var required; auth is handled by our loader hook
+		models: buildModelEntries(account),
+		options: {
+			// Pass the Hydra providerId so the file:// SDK factory can resolve
+			// the matching account/token from Hydra storage for self-auth when
+			// OpenCode does not pass through fetch/apiKey from the auth loader.
+			providerId: account.providerId,
+		},
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -174,22 +219,28 @@ export function buildProviderConfig(account: CopilotAccountMeta): ProviderConfig
  * NOTE: Stub for Phase 0 — returns empty object.
  * Phase 4 will populate based on account.plan and account.capabilityState.
  */
-function buildModelEntries(_account: CopilotAccountMeta): Record<string, ModelConfigEntry> {
-  const includeUnverified =
-    _account.capabilityState === "user-declared" && _account.allowUnverifiedModels === true;
-  const modelIds = modelsForPlan(_account.plan, { includeUnverified });
+function buildModelEntries(
+	_account: CopilotAccountMeta,
+): Record<string, ModelConfigEntry> {
+	const includeUnverified =
+		_account.capabilityState === "user-declared" &&
+		_account.allowUnverifiedModels === true;
+	const modelIds = modelsForPlan(_account.plan, { includeUnverified });
 
-  return Object.fromEntries(
-    modelIds.map((modelId) => [
-      modelId,
-      {
-        name: buildModelDisplayName(_account, modelId),
-      } satisfies ModelConfigEntry,
-    ])
-  );
+	return Object.fromEntries(
+		modelIds.map((modelId) => [
+			modelId,
+			{
+				name: buildModelDisplayName(_account, modelId),
+			} satisfies ModelConfigEntry,
+		]),
+	);
 }
 
-export function buildModelDisplayName(_account: CopilotAccountMeta, modelId: string): string {
-  const catalogName = getCopilotCatalogModel(modelId)?.name;
-  return catalogName ?? modelId;
+export function buildModelDisplayName(
+	_account: CopilotAccountMeta,
+	modelId: string,
+): string {
+	const catalogName = getCopilotCatalogModel(modelId)?.name;
+	return catalogName ?? modelId;
 }
