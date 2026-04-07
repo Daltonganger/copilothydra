@@ -33,6 +33,7 @@ import {
   requireString,
 } from "./validation.js";
 import { hardenWindowsFilePermissions } from "./windows-permissions.js";
+import { buildProviderId } from "../config/providers.js";
 
 const PLAN_TIERS = ["free", "student", "pro", "pro+"] as const;
 const CAPABILITY_STATES = ["user-declared", "mismatch"] as const;
@@ -77,7 +78,12 @@ export function accountsFilePath(configDir?: string): string {
 
 export async function loadAccounts(configDir?: string): Promise<AccountsFile> {
   const path = accountsFilePath(configDir);
-  return loadAccountsFromPath(path);
+  const file = await loadAccountsFromPath(path);
+  const { accountsFile, changed } = normalizeAccountsFile(file);
+  if (changed) {
+    await saveAccountsToPath(accountsFile, path);
+  }
+  return accountsFile;
 }
 
 async function loadAccountsFromPath(path: string): Promise<AccountsFile> {
@@ -164,6 +170,7 @@ export async function upsertAccount(
 ): Promise<void> {
   await updateAccounts((file) => {
     const normalizedUsername = normalizeGitHubUsername(account.githubUsername);
+    const normalizedLabel = normalizeAccountLabel(account.label);
     const duplicateUsername = file.accounts.find(
       (a) => a.id !== account.id && normalizeGitHubUsername(a.githubUsername) === normalizedUsername
     );
@@ -171,6 +178,16 @@ export async function upsertAccount(
       throw new Error(
         `[copilothydra] an account with GitHub username "${account.githubUsername}" already exists ` +
           `(existing label: ${duplicateUsername.label})`
+      );
+    }
+
+    const duplicateLabel = file.accounts.find(
+      (a) => a.id !== account.id && normalizeAccountLabel(a.label) === normalizedLabel
+    );
+    if (duplicateLabel) {
+      throw new Error(
+        `[copilothydra] an account with label "${account.label}" already exists ` +
+          `(existing GitHub username: ${duplicateLabel.githubUsername})`
       );
     }
 
@@ -207,11 +224,12 @@ export async function updateAccounts(
   const path = accountsFilePath(configDir);
 
   return await withLock(path, async () => {
-    const file = await loadAccountsFromPath(path);
-    await mutator(file);
-    validateAccountsFile(file);
-    await saveAccountsToPath(file, path);
-    return file;
+    const loaded = await loadAccountsFromPath(path);
+    const { accountsFile } = normalizeAccountsFile(loaded);
+    await mutator(accountsFile);
+    validateAccountsFile(accountsFile);
+    await saveAccountsToPath(accountsFile, path);
+    return accountsFile;
   });
 }
 
@@ -281,6 +299,27 @@ function validateAccountsFile(data: unknown): AccountsFile {
   return data as unknown as AccountsFile;
 }
 
+function normalizeAccountsFile(data: AccountsFile): { accountsFile: AccountsFile; changed: boolean } {
+  let changed = false;
+  const accounts = data.accounts.map((account) => {
+    const expectedProviderId = buildProviderId(account.githubUsername);
+    if (account.providerId === expectedProviderId) {
+      return account;
+    }
+
+    changed = true;
+    return {
+      ...account,
+      providerId: expectedProviderId,
+    };
+  });
+
+  return {
+    accountsFile: changed ? { ...data, accounts } : data,
+    changed,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -290,6 +329,10 @@ function isNodeError(err: unknown): err is NodeJS.ErrnoException {
 }
 
 function normalizeGitHubUsername(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function normalizeAccountLabel(value: string): string {
   return value.trim().toLowerCase();
 }
 

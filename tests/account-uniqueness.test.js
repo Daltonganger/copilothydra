@@ -33,6 +33,35 @@ test("upsertAccount rejects duplicate GitHub usernames case-insensitively", asyn
   }
 });
 
+test("upsertAccount rejects duplicate account labels case-insensitively", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { upsertAccount } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+
+    await upsertAccount(
+      createAccountMeta({ label: "Work", githubUsername: "alice", plan: "free" }),
+      tempDir
+    );
+
+    await assert.rejects(
+      () =>
+        upsertAccount(
+          createAccountMeta({ label: " work ", githubUsername: "bob", plan: "pro" }),
+          tempDir
+        ),
+      /an account with label ".*" already exists/
+    );
+
+    const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
+    assert.equal(accounts.accounts.length, 1);
+    assert.equal(accounts.accounts[0].label, "Work");
+  } finally {
+    await cleanupDir(tempDir);
+  }
+});
+
 test("duplicate GitHub usernames in accounts file trigger quarantine and recovery", async () => {
   const tempDir = await makeTempDir();
 

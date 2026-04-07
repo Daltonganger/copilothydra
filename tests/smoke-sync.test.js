@@ -36,6 +36,7 @@ test("single-account sync writes provider config and disables built-in github-co
 		);
 
 		assert.equal(accounts.accounts.length, 1);
+		assert.equal(account.providerId, "github-copilot-user-alice");
 		assert.equal(accounts.accounts[0].providerId, account.providerId);
 		assert.ok(config.provider);
 		assert.ok(config.provider[account.providerId]);
@@ -63,6 +64,16 @@ test("single-account sync writes provider config and disables built-in github-co
 		delete process.env.OPENCODE_CONFIG_DIR;
 		await cleanupDir(tempDir);
 	}
+});
+
+test("portable provider IDs preserve valid GitHub username characters without punctuation collisions", async () => {
+  const { buildProviderId } = await import(`../dist/config/providers.js?${Date.now()}`);
+
+  assert.equal(buildProviderId(" User-Name "), "github-copilot-user-user-name");
+  assert.throws(
+    () => buildProviderId("user.name"),
+    /provider ID requires a GitHub username using only letters, numbers, or hyphens/
+  );
 });
 
 test("single-account sync keeps documented baseline stable even when override flag is enabled", async () => {
@@ -215,4 +226,64 @@ test("sync removes only CopilotHydra-managed standalone disable state when no ac
 		delete process.env.OPENCODE_CONFIG_DIR;
 		await cleanupDir(tempDir);
 	}
+});
+
+test("sync migrates legacy account/provider IDs to portable username-based IDs", async () => {
+  const tempDir = await makeTempDir();
+  process.env.OPENCODE_CONFIG_DIR = tempDir;
+
+  try {
+    const { syncAccountsToOpenCodeConfig } = await import(`../dist/config/sync.js?${Date.now()}`);
+    const { loadAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+
+    await import("node:fs/promises").then((fs) =>
+      fs.writeFile(
+        path.join(tempDir, "copilot-accounts.json"),
+        JSON.stringify({
+          version: 1,
+          accounts: [
+            {
+              id: "acct_legacy",
+              providerId: "github-copilot-acct-acct_legacy",
+              label: "Legacy",
+              githubUsername: "PortableUser",
+              plan: "pro",
+              capabilityState: "user-declared",
+              lifecycleState: "active",
+              addedAt: new Date().toISOString(),
+            },
+          ],
+        }, null, 2),
+        "utf8",
+      )
+    );
+
+    await import(`../dist/config/opencode-config.js?${Date.now()}`).then(({ saveOpenCodeConfig }) =>
+      saveOpenCodeConfig(
+        {
+          provider: {
+            "github-copilot-acct-acct_legacy": { name: "legacy" },
+            external: { name: "external" },
+          },
+        },
+        path.join(tempDir, "opencode.json"),
+      )
+    );
+
+    const migrated = await loadAccounts(tempDir);
+    assert.equal(migrated.accounts[0].providerId, "github-copilot-user-portableuser");
+
+    await syncAccountsToOpenCodeConfig(path.join(tempDir, "opencode.json"), tempDir);
+
+    const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
+    const config = await readJson(path.join(tempDir, "opencode.json"));
+
+    assert.equal(accounts.accounts[0].providerId, "github-copilot-user-portableuser");
+    assert.equal(config.provider["github-copilot-acct-acct_legacy"], undefined);
+    assert.ok(config.provider["github-copilot-user-portableuser"]);
+    assert.ok(config.provider.external);
+  } finally {
+    delete process.env.OPENCODE_CONFIG_DIR;
+    await cleanupDir(tempDir);
+  }
 });

@@ -10,9 +10,22 @@
 
 ### Tests
 
-- 154 tests total.
+- 158 tests total.
 - Added sync coverage to assert provider names stay aligned with the user-defined Hydra nickname.
 - Added coverage for `sanitizeHydraCopilotSettings` so variant stripping stays enforced.
+
+## 0.3.6 (2026-04-02)
+
+### What's new
+
+- **Portable provider IDs** — CopilotHydra now derives OpenCode provider IDs from the GitHub username (`github-copilot-user-<username>`) instead of the local account ID, so synced model entries move cleanly between OpenCode installs.
+- **Automatic legacy migration** — loading or syncing accounts transparently rewrites old `github-copilot-acct-*` account metadata and removes stale legacy provider entries from `opencode.json` / `opencode.jsonc` during the next sync.
+
+### Tests
+
+- Added coverage for username-based provider ID generation and legacy account/config migration during sync.
+
+## 0.3.5 (2026-04-02)
 
 ## 0.3.4 (2026-03-31)
 
