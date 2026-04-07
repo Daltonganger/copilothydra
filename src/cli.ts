@@ -517,7 +517,6 @@ async function auditStorageCommand(): Promise<void> {
     }
   }
 
-  output.write(`Model catalog consistent: ${result.modelCatalogConsistent ? "yes" : "no"}\n`);
   if (result.modelCatalogDrift.unknownCopilotModelIds.length > 0) {
     output.write(`Unknown Copilot model ids in config: ${result.modelCatalogDrift.unknownCopilotModelIds.join(", ")}\n`);
   }
