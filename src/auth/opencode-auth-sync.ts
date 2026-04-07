@@ -15,31 +15,14 @@
  */
 
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
+import { resolveOpenCodeAuthPath } from "./auth-path.js";
+export { resolveOpenCodeAuthPath } from "./auth-path.js";
 import { COPILOT_HYDRA_ACCT_PREFIX } from "../config/providers.js";
 import { debugStorage, info, warn } from "../log.js";
 import { findSecret } from "../storage/secrets.js";
+import { withLock } from "../storage/locking.js";
 import type { AccountId, CopilotAccountMeta } from "../types.js";
-
-// ---------------------------------------------------------------------------
-// Path resolution
-// ---------------------------------------------------------------------------
-
-/**
- * Resolve the path to OpenCode's auth.json in the data directory.
- * Mirrors the logic in primary-compat-export.ts.
- */
-export function resolveOpenCodeAuthPath(): string {
-	const home =
-		process.env["OPENCODE_TEST_HOME"] ??
-		process.env["HOME"] ??
-		process.env["USERPROFILE"] ??
-		"~";
-	if (process.env["XDG_DATA_HOME"]) {
-		return join(process.env["XDG_DATA_HOME"], "opencode", "auth.json");
-	}
-	return join(home, ".local", "share", "opencode", "auth.json");
-}
 
 // ---------------------------------------------------------------------------
 // Auth.json read/write
@@ -66,49 +49,122 @@ function isOAuthEntry(value: unknown): value is OAuthEntry {
 	);
 }
 
+/**
+ * Result of loading auth.json — distinguishes missing from corrupt.
+ * Consumers can decide how to handle each state instead of silently
+ * treating all errors as "empty".
+ */
+export interface LoadAuthJsonResult {
+	/** auth.json was read and parsed successfully */
+	ok: true;
+	data: Record<string, unknown>;
+	/** True when auth.json did not exist (ENOENT). The file was absent, not broken. */
+	wasMissing?: undefined;
+	/** Human-readable diagnostic when ok is false */
+	error?: undefined;
+}
+
+export interface LoadAuthJsonError {
+	ok: false;
+	data: Record<string, unknown>;
+	/** True when auth.json did not exist (ENOENT). The file was absent, not broken. */
+	wasMissing: boolean;
+	/** Human-readable diagnostic when ok is false */
+	error: string;
+}
+
+type LoadAuthResult = LoadAuthJsonResult | LoadAuthJsonError;
+
 async function loadAuthJson(
 	authPath?: string,
-): Promise<Record<string, unknown>> {
+): Promise<LoadAuthResult> {
 	const path = authPath ?? resolveOpenCodeAuthPath();
 	try {
 		const raw = await readFile(path, "utf-8");
 		const parsed = JSON.parse(raw) as unknown;
-		if (isRecord(parsed)) return parsed;
+		if (isRecord(parsed)) {
+			return { ok: true, data: parsed };
+		}
+		// Valid JSON but not an object — treat as corrupt
+		return {
+			ok: false,
+			data: {},
+			wasMissing: false,
+			error: `auth.json root is not a JSON object (got ${typeof parsed})`,
+		};
 	} catch (err) {
 		if (isNodeError(err) && err.code === "ENOENT") {
-			return {};
+			// File simply doesn't exist — benign, return empty with wasMissing flag
+			return { ok: false, data: {}, wasMissing: true, error: "auth.json not found (ENOENT)" };
 		}
-		warn("auth-sync", `Failed to read auth.json: ${String(err)}`);
+		const message = isNodeError(err)
+			? `auth.json read error: ${err.code ?? "UNKNOWN"} — ${err.message}`
+			: `auth.json parse error: ${String(err)}`;
+		warn("auth-sync", message);
+		return { ok: false, data: {}, wasMissing: false, error: message };
 	}
-	return {};
 }
 
-async function saveAuthJson(
+async function saveAuthJsonLocked(
 	data: Record<string, unknown>,
 	authPath?: string,
 ): Promise<void> {
 	const path = authPath ?? resolveOpenCodeAuthPath();
-	const tmpPath = path + ".tmp";
+
+	// Ensure parent directory exists before acquiring lock
+	await mkdir(dirname(path), { recursive: true });
+
+	// Acquire lock around the entire read-modify-write cycle
+	await withLock(path, async () => {
+		// Re-read under lock to avoid clobbering concurrent writes
+		let merged = data;
+		try {
+			const raw = await readFile(path, "utf-8");
+			const parsed = JSON.parse(raw) as unknown;
+			if (isRecord(parsed)) {
+				// Merge: our data overwrites any existing keys
+				merged = { ...parsed, ...data };
+			}
+		} catch (err) {
+			if (!(isNodeError(err) && err.code === "ENOENT")) {
+				// Corrupt or unreadable — overwrite with our data
+				warn("auth-sync", `Overwriting unreadable auth.json under lock: ${String(err)}`);
+			}
+		}
+
+		await saveAuthJsonUnlocked(merged, path);
+	});
+}
+
+/**
+ * Low-level atomic write without locking. Prefer saveAuthJsonLocked().
+ * Exported for use in test helpers where locking is unnecessary.
+ */
+export async function saveAuthJsonUnlocked(
+	data: Record<string, unknown>,
+	authPath: string,
+): Promise<void> {
+	const tmpPath = authPath + ".tmp";
 	const json = JSON.stringify(data, null, 2) + "\n";
 
-	await mkdir(dirname(path), { recursive: true });
+	await mkdir(dirname(authPath), { recursive: true });
 	await writeFile(tmpPath, json, { encoding: "utf-8", mode: 0o600 });
 
 	if (process.platform === "win32") {
 		try {
 			try {
-				await unlink(path);
+				await unlink(authPath);
 			} catch {
 				// ignore
 			}
-			await rename(tmpPath, path);
+			await rename(tmpPath, authPath);
 		} catch {
-			await writeFile(path, json, { encoding: "utf-8", mode: 0o600 });
+			await writeFile(authPath, json, { encoding: "utf-8", mode: 0o600 });
 		}
 		return;
 	}
 
-	await rename(tmpPath, path);
+	await rename(tmpPath, authPath);
 }
 
 // ---------------------------------------------------------------------------
@@ -149,8 +205,13 @@ export async function backfillProviderAuthEntries(
 
 	if (accounts.length === 0) return result;
 
-	const authData = await loadAuthJson(authPath);
+	const loadResult = await loadAuthJson(authPath);
+	const authData: Record<string, unknown> = { ...loadResult.data };
 	let modified = false;
+
+	if (!loadResult.ok && !loadResult.wasMissing) {
+		warn("auth-sync", `auth.json load issue: ${loadResult.error ?? "unknown"}. Proceeding with backfill — any write will overwrite the corrupt file.`);
+	}
 
 	for (const account of accounts) {
 		if (account.lifecycleState !== "active") continue;
@@ -209,7 +270,7 @@ export async function backfillProviderAuthEntries(
 	}
 
 	if (modified) {
-		await saveAuthJson(authData, authPath);
+		await saveAuthJsonLocked(authData, authPath);
 		info(
 			"auth-sync",
 			`Backfilled ${result.backfilledFromLegacy.length + result.backfilledFromSecrets.length} ` +

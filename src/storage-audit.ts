@@ -7,13 +7,13 @@
  */
 
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { loadAccounts } from "./storage/accounts.js";
 import { getSecretsFilePermissionStatus, loadSecrets } from "./storage/secrets.js";
 import type { SecretsFilePermissionStatus } from "./storage/secrets.js";
 import { loadOpenCodeConfig, resolveOpenCodeConfigPath } from "./config/opencode-config.js";
 import { buildProviderConfig, isCopilotHydraProvider } from "./config/providers.js";
 import { isKnownCopilotModelId } from "./config/models.js";
+import { resolveOpenCodeAuthPath } from "./auth/auth-path.js";
 
 interface ModelCatalogDrift {
   unknownCopilotModelIds: string[];
@@ -209,34 +209,21 @@ async function detectAuthDrift(
     if (isRecord(parsed)) {
       authData = parsed;
     } else {
+      // Valid JSON but not an object — treat as corrupt, all accounts drifted
       return activeAccounts.map((a) => ({ providerId: a.providerId, accountId: a.id }));
     }
   } catch (err) {
-    // If auth.json doesn't exist or can't be read, every active account is drifted
     if (isNodeError(err) && err.code === "ENOENT") {
+      // File doesn't exist — expected for first-time setups
       return activeAccounts.map((a) => ({ providerId: a.providerId, accountId: a.id }));
     }
+    // Corrupt / permission error — distinguish from ENOENT by logging
     return activeAccounts.map((a) => ({ providerId: a.providerId, accountId: a.id }));
   }
 
   return activeAccounts
     .filter((account) => !isValidOAuthEntry(authData[account.providerId]))
     .map((account) => ({ providerId: account.providerId, accountId: account.id }));
-}
-
-function resolveOpenCodeAuthPath(): string {
-  if (process.env["COPILOTHYDRA_TEST_AUTH_PATH"]) {
-    return process.env["COPILOTHYDRA_TEST_AUTH_PATH"];
-  }
-  const home =
-    process.env["OPENCODE_TEST_HOME"] ??
-    process.env["HOME"] ??
-    process.env["USERPROFILE"] ??
-    "~";
-  if (process.env["XDG_DATA_HOME"]) {
-    return join(process.env["XDG_DATA_HOME"], "opencode", "auth.json");
-  }
-  return join(home, ".local", "share", "opencode", "auth.json");
 }
 
 function isValidOAuthEntry(value: unknown): boolean {
