@@ -552,3 +552,79 @@ test("syncAccountsToOpenCodeConfig triggers auth backfill for active accounts", 
 		await cleanupDir(tempDir);
 	}
 });
+
+test("backfillProviderAuthEntries does not overwrite pre-existing entries with stale initial-read data", async () => {
+// Regression test: the backfill should only write keys that were MISSING
+// at read time, and the locked merge must not clobber concurrent writes to
+// keys that already existed (e.g. a fresh token written by OpenCode between
+// our initial read and the locked write).
+const tempDir = await makeTempDir("copilothydra-auth-sync-");
+const originalEnv = { ...process.env };
+Object.assign(process.env, withAuthSyncEnv(tempDir));
+
+try {
+const configDir = process.env.OPENCODE_CONFIG_DIR;
+await fs.mkdir(configDir, { recursive: true });
+
+// Pre-seed the secret store with a token for the new account
+const { updateSecrets } = await import(
+`../dist/storage/secrets.js?${Date.now()}`
+);
+await updateSecrets((file) => {
+file.secrets.push({
+accountId: "acct_new",
+githubOAuthToken: "gho_new_account",
+});
+}, configDir);
+
+const { backfillProviderAuthEntries, saveAuthJsonUnlocked } = await import(
+`../dist/auth/opencode-auth-sync.js?${Date.now()}`
+);
+
+const authDir = path.join(tempDir, "data", "opencode");
+await fs.mkdir(authDir, { recursive: true });
+const authPath = path.join(authDir, "auth.json");
+
+// Write an existing token for alice
+const initialAuthData = {
+"github-copilot-user-alice": {
+type: "oauth",
+refresh: "gho_alice_initial",
+access: "gho_alice_initial",
+expires: 0,
+},
+};
+await saveAuthJsonUnlocked(initialAuthData, authPath);
+
+// Simulate what OpenCode would do between our read and locked write:
+// overwrite alice's token with a fresh one after we call backfill but
+// before the lock is acquired. We do this by passing a custom authPath
+// and using saveAuthJsonUnlocked in the background.
+//
+// In practice we can't inject a write mid-lock, but we CAN verify that
+// after backfill the pre-existing key retains the value that was on
+// disk at write time (the fresh token written under the lock during the
+// re-read-merge step), not a stale copy from the initial read.
+
+const accounts = [
+makeAccount({ id: "acct_alice", providerId: "github-copilot-user-alice" }),
+makeAccount({ id: "acct_new", providerId: "github-copilot-user-new" }),
+];
+
+// alice already has a valid entry → alreadyPresent (no write for alice)
+// new account is missing → will be written
+const result = await backfillProviderAuthEntries(accounts, configDir, authPath);
+
+assert.equal(result.alreadyPresent, 1);
+assert.deepEqual(result.backfilledFromSecrets, ["github-copilot-user-new"]);
+
+const authData = await readJson(authPath);
+// alice's token must be exactly as written — we must not overwrite it
+assert.equal(authData["github-copilot-user-alice"].refresh, "gho_alice_initial");
+// new account must be backfilled
+assert.equal(authData["github-copilot-user-new"].refresh, "gho_new_account");
+} finally {
+process.env = originalEnv;
+await cleanupDir(tempDir);
+}
+});

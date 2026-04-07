@@ -22,6 +22,8 @@
  */
 
 import { appendFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import {
 	handlePlanMismatch,
 	isCapabilityMismatchError,
@@ -246,7 +248,7 @@ async function maybeLogCopilotRequestDebug(input: {
 					: "[unknown-request-url]";
 
 	await appendFile(
-		"/tmp/copilothydra-debug.log",
+		join(tmpdir(), "copilothydra-debug.log"),
 		`${JSON.stringify({
 			providerId: input.providerId,
 			requestedModelId: input.requestedModelId,

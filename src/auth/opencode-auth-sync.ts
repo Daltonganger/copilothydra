@@ -207,7 +207,11 @@ export async function backfillProviderAuthEntries(
 
 	const loadResult = await loadAuthJson(authPath);
 	const authData: Record<string, unknown> = { ...loadResult.data };
-	let modified = false;
+	// Collect only the new entries so that saveAuthJsonLocked merges just these
+	// keys under the lock. Passing the entire authData would cause stale values
+	// from the initial read to overwrite tokens that OpenCode (or another process)
+	// wrote between our read and the locked write.
+	const newEntries: Record<string, unknown> = {};
 
 	if (!loadResult.ok && !loadResult.wasMissing) {
 		warn("auth-sync", `auth.json load issue: ${loadResult.error ?? "unknown"}. Proceeding with backfill — any write will overwrite the corrupt file.`);
@@ -227,12 +231,11 @@ export async function backfillProviderAuthEntries(
 		const legacyKey = `${COPILOT_HYDRA_ACCT_PREFIX}${account.id}`;
 		const legacyEntry = authData[legacyKey];
 		if (isOAuthEntry(legacyEntry)) {
-			authData[account.providerId] = {
+			newEntries[account.providerId] = {
 				...legacyEntry,
 				accountId: account.id,
 			};
 			result.backfilledFromLegacy.push(account.providerId);
-			modified = true;
 			debugStorage(
 				`backfilled auth.json entry for "${account.providerId}" from legacy key "${legacyKey}"`,
 			);
@@ -242,7 +245,7 @@ export async function backfillProviderAuthEntries(
 		// Attempt backfill source 2: Hydra secret store
 		const secret = await findSecret(account.id, configDir);
 		if (secret?.githubOAuthToken) {
-			authData[account.providerId] = {
+			newEntries[account.providerId] = {
 				type: "oauth",
 				refresh: secret.githubOAuthToken,
 				access: secret.githubOAuthToken,
@@ -250,7 +253,6 @@ export async function backfillProviderAuthEntries(
 				accountId: account.id,
 			};
 			result.backfilledFromSecrets.push(account.providerId);
-			modified = true;
 			debugStorage(
 				`backfilled auth.json entry for "${account.providerId}" from Hydra secret store`,
 			);
@@ -269,8 +271,12 @@ export async function backfillProviderAuthEntries(
 		);
 	}
 
+	const modified =
+		result.backfilledFromLegacy.length > 0 ||
+		result.backfilledFromSecrets.length > 0;
+
 	if (modified) {
-		await saveAuthJsonLocked(authData, authPath);
+		await saveAuthJsonLocked(newEntries, authPath);
 		info(
 			"auth-sync",
 			`Backfilled ${result.backfilledFromLegacy.length + result.backfilledFromSecrets.length} ` +
