@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.8 (2026-04-07)
+
+### Fixes
+
+- **OpenCode auth drift is now visible before requests fail** — `copilothydra status` and `audit-storage` now detect providers that exist in Hydra config but are missing matching oauth entries in OpenCode `auth.json`, with direct remediation hints.
+- **Startup now self-heals missing OpenCode auth entries** — plugin startup/reload explicitly re-syncs Hydra provider config and backfills missing OpenCode auth entries so Opus/Sonnet requests recover before they hit unauthenticated `Bad Request` failures.
+- **OpenCode auth handling is now more robust across platforms and concurrent writes** — auth path resolution is centralized, Windows `%APPDATA%` is supported consistently, `auth.json` writes are lock-protected, and backfill preserves concurrent updates instead of overwriting newer entries.
+- **Runtime diagnostics are safer** — debug logging now uses the OS temp directory instead of a hard-coded `/tmp` path.
+
+### Tests
+
+- 179 tests total.
+- Added coverage for auth drift detection in `status` / `audit-storage`, startup self-heal, and concurrent `auth.json` backfill preservation.
+
 ## 0.3.7 (2026-04-02)
 
 ### Fixes

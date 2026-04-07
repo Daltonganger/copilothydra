@@ -1,10 +1,10 @@
 # CopilotHydra — Operator Guide
 
-**Stable — v0.3.7.** This document covers auth/recovery, mismatch review, storage repair, and support boundaries for CopilotHydra.
+**Stable — v0.3.8.** This document covers auth/recovery, mismatch review, storage repair, and support boundaries for CopilotHydra.
 
 ---
 
-## Native integrations (0.3.7)
+## Native integrations (0.3.8)
 
 CopilotHydra publishes `copilot-cli`-compatible native credential-store entries after successful auth:
 
