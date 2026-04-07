@@ -1,6 +1,6 @@
 # CopilotHydra — Technical Reference
 
-**Stable — v0.3.7.** This document covers the OpenCode compatibility matrix, release gate status, and storage security posture.
+**Stable — v0.3.8.** This document covers the OpenCode compatibility matrix, release gate status, and storage security posture.
 
 ---
 
@@ -59,7 +59,7 @@ If a compatibility warning appears: confirm the OpenCode version, verify `openco
 
 ## Release gate status
 
-**Current posture: stable (v0.3.7)**  
+**Current posture: stable (v0.3.8)**  
 Tested with OpenCode 1.3.x and 1.20.x.  
 Storage: hybrid — native credential-store publishing best-effort + `copilot-secrets.json` for Hydra-local bookkeeping/fallback.
 
@@ -69,7 +69,7 @@ Storage: hybrid — native credential-store publishing best-effort + `copilot-se
 
 **2. Auth recovery** — ✅ Device flow covered (10 tests). Restart instruction in `instructions` field for new-account flows. Multi-account routing and callback-failure black-box tests added.
 
-**3. Regression coverage** — ✅ 150 tests. `npm run build`, `npm run typecheck`, `npm test` all pass. Black-box tests use a stubbed host (no real OpenCode process exercised — accepted gap).
+**3. Regression coverage** — ✅ 179 tests. `npm run build`, `npm run typecheck`, `npm test` all pass. Black-box tests use a stubbed host (no real OpenCode process exercised — accepted gap).
 
 **4. Storage safety** — ✅ Atomic writes, lockfiles, quarantine/recovery well-tested. Permission hardening (create `0600`, normalize insecure files) tested. Plaintext storage formally accepted (see below).
 
