@@ -27,7 +27,8 @@
  *
  * 4. CHAT.HEADERS HOOK:
  *    OpenCode's chat.headers hook checks providerID.includes("github-copilot").
- *    Our IDs ("github-copilot-user-*") contain "github-copilot" → ✓ matches.
+ *    Our IDs ("github-copilot-user-*") and legacy ("github-copilot-acct-*")
+ *    contain "github-copilot" → ✓ matches.
  *    This means x-initiator and Copilot-Vision-Request headers are injected
  *    automatically by OpenCode without any action on our part.
  *
@@ -51,6 +52,19 @@ import { getCopilotCatalogModel, modelsForPlan } from "./models.js";
 export const COPILOT_HYDRA_SETUP_PROVIDER_ID = "github-copilot-hydra" as const;
 export const COPILOT_HYDRA_PROVIDER_PREFIX = "github-copilot-user-" as const;
 export const LEGACY_COPILOT_HYDRA_PROVIDER_PREFIX = "github-copilot-acct-" as const;
+
+/**
+ * Primary provider ID prefix (v0.3.7+).
+ * Format: "github-copilot-user-<normalized-github-username>"
+ */
+export const COPILOT_HYDRA_USER_PREFIX = COPILOT_HYDRA_PROVIDER_PREFIX;
+
+/**
+ * Legacy provider ID prefix (pre-v0.3.7).
+ * Format: "github-copilot-acct-<accountId>"
+ * Still accepted for backward compatibility with existing configs.
+ */
+export const COPILOT_HYDRA_ACCT_PREFIX = LEGACY_COPILOT_HYDRA_PROVIDER_PREFIX;
 
 // ---------------------------------------------------------------------------
 // ID helpers
@@ -88,7 +102,16 @@ export function isLegacyCopilotHydraProvider(providerId: string): boolean {
 }
 
 /**
+ * Extract the current provider key (username) or legacy account-id segment.
+ * Returns null if the ID is not a CopilotHydra provider ID.
+ */
+export function accountIdFromProviderId(providerId: ProviderId): string | null {
+  return providerKeyFromProviderId(providerId);
+}
+
+/**
  * Returns true if the given provider ID is a CopilotHydra-managed provider.
+ * Accepts both the primary user-prefix and the legacy acct-prefix.
  */
 export function isCopilotHydraProvider(providerId: string): boolean {
   return providerId.startsWith(COPILOT_HYDRA_PROVIDER_PREFIX) || isLegacyCopilotHydraProvider(providerId);
@@ -115,10 +138,10 @@ function normalizeProviderKey(value: string): string {
  * Per-model npm/api override — mirrors ModelsDev.Model.provider shape.
  */
 export interface ModelProviderOverride {
-  /** npm package for SDK factory (overrides provider-level npm) */
-  npm?: string;
-  /** API base URL for this model */
-  api?: string;
+	/** npm package for SDK factory (overrides provider-level npm) */
+	npm?: string;
+	/** API base URL for this model */
+	api?: string;
 }
 
 /**
@@ -126,9 +149,9 @@ export interface ModelProviderOverride {
  * Mirrors ModelsDev.Model.partial() shape.
  */
 export interface ModelConfigEntry {
-  name?: string;
-  /** Per-model SDK/API override */
-  provider?: ModelProviderOverride;
+	name?: string;
+	/** Per-model SDK/API override */
+	provider?: ModelProviderOverride;
 }
 
 /**
@@ -143,26 +166,26 @@ export interface ModelConfigEntry {
  *   - options: passed to SDK factory (apiKey, baseURL, etc.)
  */
 export interface ProviderConfigEntry {
-  name: string;
-  /** npm package name used to look up the SDK factory (via BUNDLED_PROVIDERS) */
-  npm?: string;
-  /** API base URL for all models under this provider */
-  api?: string;
-  /** Env vars expected by this provider (informational for our oauth providers) */
-  env?: string[];
-  /** Model entries keyed by modelID */
-  models?: Record<string, ModelConfigEntry>;
-  /** Options passed to SDK factory (baseURL, apiKey, etc.) */
-  options?: {
-    apiKey?: string;
-    baseURL?: string;
-    enterpriseUrl?: string;
-    [key: string]: unknown;
-  };
+	name: string;
+	/** npm package name used to look up the SDK factory (via BUNDLED_PROVIDERS) */
+	npm?: string;
+	/** API base URL for all models under this provider */
+	api?: string;
+	/** Env vars expected by this provider (informational for our oauth providers) */
+	env?: string[];
+	/** Model entries keyed by modelID */
+	models?: Record<string, ModelConfigEntry>;
+	/** Options passed to SDK factory (baseURL, apiKey, etc.) */
+	options?: {
+		apiKey?: string;
+		baseURL?: string;
+		enterpriseUrl?: string;
+		[key: string]: unknown;
+	};
 }
 
 function resolveHydraCopilotProviderModuleHref(): string {
-  return new URL("../sdk/hydra-copilot-provider.js", import.meta.url).href;
+	return new URL("../sdk/hydra-copilot-provider.js", import.meta.url).href;
 }
 
 // ---------------------------------------------------------------------------
@@ -181,12 +204,16 @@ function resolveHydraCopilotProviderModuleHref(): string {
 export function buildProviderConfig(account: CopilotAccountMeta): ProviderConfigEntry {
   return {
     name: account.label,
-    // Use a local Hydra provider factory so `github-copilot-user-*` keeps
-    // multi-account isolation while matching built-in Copilot routing parity.
+    // Use a local Hydra provider factory so `github-copilot-user-*` (and
+    // legacy `github-copilot-acct-*`) keeps multi-account isolation while
+    // matching built-in Copilot routing parity.
     npm: resolveHydraCopilotProviderModuleHref(),
     api: "https://api.githubcopilot.com",
     env: [], // OAuth — no env var required; auth is handled by our loader hook
     models: buildModelEntries(account),
+    options: {
+      providerId: account.providerId,
+    },
   };
 }
 
@@ -200,22 +227,28 @@ export function buildProviderConfig(account: CopilotAccountMeta): ProviderConfig
  * NOTE: Stub for Phase 0 — returns empty object.
  * Phase 4 will populate based on account.plan and account.capabilityState.
  */
-function buildModelEntries(_account: CopilotAccountMeta): Record<string, ModelConfigEntry> {
-  const includeUnverified =
-    _account.capabilityState === "user-declared" && _account.allowUnverifiedModels === true;
-  const modelIds = modelsForPlan(_account.plan, { includeUnverified });
+function buildModelEntries(
+	_account: CopilotAccountMeta,
+): Record<string, ModelConfigEntry> {
+	const includeUnverified =
+		_account.capabilityState === "user-declared" &&
+		_account.allowUnverifiedModels === true;
+	const modelIds = modelsForPlan(_account.plan, { includeUnverified });
 
-  return Object.fromEntries(
-    modelIds.map((modelId) => [
-      modelId,
-      {
-        name: buildModelDisplayName(_account, modelId),
-      } satisfies ModelConfigEntry,
-    ])
-  );
+	return Object.fromEntries(
+		modelIds.map((modelId) => [
+			modelId,
+			{
+				name: buildModelDisplayName(_account, modelId),
+			} satisfies ModelConfigEntry,
+		]),
+	);
 }
 
-export function buildModelDisplayName(_account: CopilotAccountMeta, modelId: string): string {
-  const catalogName = getCopilotCatalogModel(modelId)?.name;
-  return catalogName ?? modelId;
+export function buildModelDisplayName(
+	_account: CopilotAccountMeta,
+	modelId: string,
+): string {
+	const catalogName = getCopilotCatalogModel(modelId)?.name;
+	return catalogName ?? modelId;
 }

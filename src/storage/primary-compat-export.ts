@@ -6,6 +6,7 @@ import {
   resolveCopilotHydraOpenCodeStatePath,
   saveCopilotHydraOpenCodeState,
 } from "../config/opencode-config.js";
+import { resolveOpenCodeAuthPath } from "../auth/auth-path.js";
 import { loadAccounts } from "./accounts.js";
 import { info, warn } from "../log.js";
 
@@ -232,21 +233,6 @@ async function removeManagedGitHubCliHostsEntry(githubUsername: string): Promise
       throw err;
     }
   }
-}
-
-function resolveOpenCodeAuthPath(): string {
-  const home = process.env["OPENCODE_TEST_HOME"] ?? process.env["HOME"] ?? process.env["USERPROFILE"] ?? "~";
-  if (process.env["XDG_DATA_HOME"]) {
-    return join(process.env["XDG_DATA_HOME"], "opencode", "auth.json");
-  }
-  if (process.platform === "darwin") {
-    return join(home, ".local", "share", "opencode", "auth.json");
-  }
-  if (process.platform === "win32") {
-    const appData = process.env["APPDATA"] ?? join(home, "AppData", "Roaming");
-    return join(appData, "opencode", "auth.json");
-  }
-  return join(home, ".local", "share", "opencode", "auth.json");
 }
 
 function resolveGitHubCliHostsPath(): string {

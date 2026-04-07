@@ -6,12 +6,14 @@
  * and OpenCode config.
  */
 
+import { readFile } from "node:fs/promises";
 import { loadAccounts } from "./storage/accounts.js";
 import { getSecretsFilePermissionStatus, loadSecrets } from "./storage/secrets.js";
 import type { SecretsFilePermissionStatus } from "./storage/secrets.js";
 import { loadOpenCodeConfig, resolveOpenCodeConfigPath } from "./config/opencode-config.js";
 import { buildProviderConfig, isCopilotHydraProvider } from "./config/providers.js";
 import { isKnownCopilotModelId } from "./config/models.js";
+import { resolveOpenCodeAuthPath } from "./auth/auth-path.js";
 
 interface ModelCatalogDrift {
   unknownCopilotModelIds: string[];
@@ -24,6 +26,11 @@ export interface ModelsDevDriftSignal {
   newCopilotModelIds: string[];
 }
 
+export interface AuthDriftEntry {
+  providerId: string;
+  accountId: string;
+}
+
 export interface AuditStorageResult {
   accountCount: number;
   secretCount: number;
@@ -31,6 +38,7 @@ export interface AuditStorageResult {
   orphanSecretAccountIds: string[];
   missingProviderIds: string[];
   staleProviderIds: string[];
+  authDriftEntries: AuthDriftEntry[];
   modelCatalogConsistent: boolean;
   modelCatalogDrift: ModelCatalogDrift;
   modelsDevDriftSignal: ModelsDevDriftSignal;
@@ -42,6 +50,7 @@ export interface AuditStorageResult {
 export async function auditStorage(options?: {
   configDir?: string;
   configPath?: string;
+  authPath?: string;
 }): Promise<AuditStorageResult> {
   const configPath = options?.configPath ?? resolveOpenCodeConfigPath(options?.configDir);
   const [accountsFile, secretsFile, config, secretsFilePermissionStatus] = await Promise.all([
@@ -76,13 +85,17 @@ export async function auditStorage(options?: {
 
   const insecureSecretsFilePermissions = secretsFilePermissionStatus === "insecure";
 
+  // ── Auth drift detection ──
+  const authDriftEntries = await detectAuthDrift(activeAccounts, options?.authPath);
+
   const ok =
     accountsWithoutSecrets.length === 0 &&
     orphanSecretAccountIds.length === 0 &&
     missingProviderIds.length === 0 &&
     staleProviderIds.length === 0 &&
     !insecureSecretsFilePermissions &&
-    modelCatalogConsistent;
+    modelCatalogConsistent &&
+    authDriftEntries.length === 0;
 
   return {
     accountCount: accountsFile.accounts.length,
@@ -91,6 +104,7 @@ export async function auditStorage(options?: {
     orphanSecretAccountIds,
     missingProviderIds,
     staleProviderIds,
+    authDriftEntries,
     modelCatalogConsistent,
     modelCatalogDrift,
     modelsDevDriftSignal,
@@ -172,6 +186,63 @@ function detectModelCatalogDrift(
     unknownCopilotModelIds: [...unknownCopilotModelIds].sort(),
     driftedProviderIds: [...driftedProviderIds].sort(),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Auth drift detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Detect active Hydra accounts whose `providerId` lacks a valid oauth entry
+ * in OpenCode's auth.json. These accounts will produce unauthenticated
+ * requests (400 Bad Request) when routed through OpenCode.
+ */
+async function detectAuthDrift(
+  activeAccounts: Awaited<ReturnType<typeof loadAccounts>>["accounts"],
+  authPath?: string,
+): Promise<AuthDriftEntry[]> {
+  const path = authPath ?? resolveOpenCodeAuthPath();
+  let authData: Record<string, unknown>;
+  try {
+    const raw = await readFile(path, "utf-8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (isRecord(parsed)) {
+      authData = parsed;
+    } else {
+      // Valid JSON but not an object — treat as corrupt, all accounts drifted
+      return activeAccounts.map((a) => ({ providerId: a.providerId, accountId: a.id }));
+    }
+  } catch (err) {
+    if (isNodeError(err) && err.code === "ENOENT") {
+      // File doesn't exist — expected for first-time setups
+      return activeAccounts.map((a) => ({ providerId: a.providerId, accountId: a.id }));
+    }
+    // Corrupt / permission error — distinguish from ENOENT by logging
+    return activeAccounts.map((a) => ({ providerId: a.providerId, accountId: a.id }));
+  }
+
+  return activeAccounts
+    .filter((account) => !isValidOAuthEntry(authData[account.providerId]))
+    .map((account) => ({ providerId: account.providerId, accountId: account.id }));
+}
+
+function isValidOAuthEntry(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const rec = value as Record<string, unknown>;
+  return (
+    rec["type"] === "oauth" &&
+    typeof rec["refresh"] === "string" &&
+    typeof rec["access"] === "string" &&
+    typeof rec["expires"] === "number"
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return typeof err === "object" && err !== null && "code" in err;
 }
 
 function sameStringArray(left: string[], right: string[]): boolean {

@@ -1,7 +1,7 @@
 import type { AccountId, CopilotAccountMeta } from "../types.js";
 import { findSecret, upsertSecret } from "../storage/secrets.js";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { candidateOpenCodeAuthPaths } from "./auth-path.js";
 
 export const COPILOT_USAGE_SNAPSHOT_URL = "https://api.github.com/copilot_internal/user";
 export const COPILOT_USAGE_API_VERSION = "2025-04-01";
@@ -85,21 +85,11 @@ async function recoverOAuthTokenFromOpenCodeAuth(
       if (isNodeError(err) && err.code === "ENOENT") {
         continue;
       }
+      // Non-ENOENT error (corrupt/permission) — skip this path, try next
     }
   }
 
   return null;
-}
-
-function candidateOpenCodeAuthPaths(): string[] {
-  const home = process.env["OPENCODE_TEST_HOME"] ?? process.env["HOME"] ?? process.env["USERPROFILE"] ?? "~";
-  const paths = [
-    process.env["XDG_DATA_HOME"] ? join(process.env["XDG_DATA_HOME"], "opencode", "auth.json") : null,
-    join(home, ".local", "share", "opencode", "auth.json"),
-    join(home, "Library", "Application Support", "opencode", "auth.json"),
-  ].filter((value): value is string => Boolean(value));
-
-  return [...new Set(paths)];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -396,3 +396,298 @@ test("cli audit-storage reports model catalog drift details and manual remediati
     await cleanupDir(tempDir);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Auth drift tests
+// ---------------------------------------------------------------------------
+
+test("auditStorage reports auth drift when active accounts lack oauth entries in auth.json", async () => {
+  const tempDir = await makeTempDir();
+  const originalFetch = globalThis.fetch;
+
+  try {
+    const configPath = path.join(tempDir, "opencode.json");
+    const authPath = path.join(tempDir, "auth.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { updateAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { updateSecrets } = await import(`../dist/storage/secrets.js?${Date.now()}`);
+    const { saveOpenCodeConfig } = await import(`../dist/config/opencode-config.js?${Date.now()}`);
+    const { buildProviderConfig } = await import(`../dist/config/providers.js?${Date.now()}`);
+    const { auditStorage } = await import(`../dist/storage-audit.js?${Date.now()}`);
+
+    const accountWithAuth = createAccountMeta({ label: "HasAuth", githubUsername: "hasauth", plan: "free" });
+    const accountWithoutAuth = createAccountMeta({ label: "NoAuth", githubUsername: "noauth", plan: "free" });
+
+    await updateAccounts((file) => {
+      file.accounts.push(accountWithAuth, accountWithoutAuth);
+    }, tempDir);
+
+    await updateSecrets((file) => {
+      file.secrets.push({ accountId: accountWithAuth.id, githubOAuthToken: "token-a" });
+      file.secrets.push({ accountId: accountWithoutAuth.id, githubOAuthToken: "token-b" });
+    }, tempDir);
+
+    await saveOpenCodeConfig(
+      {
+        provider: {
+          [accountWithAuth.providerId]: buildProviderConfig(accountWithAuth),
+          [accountWithoutAuth.providerId]: buildProviderConfig(accountWithoutAuth),
+        },
+      },
+      configPath,
+    );
+
+    // Write auth.json with entry only for accountWithAuth
+    await fs.writeFile(authPath, JSON.stringify({
+      [accountWithAuth.providerId]: {
+        type: "oauth",
+        refresh: "refresh-token",
+        access: "access-token",
+        expires: 0,
+      },
+    }, null, 2));
+
+    globalThis.fetch = async () => new Response(JSON.stringify({ models: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const result = await auditStorage({ configDir: tempDir, configPath, authPath });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.authDriftEntries.length, 1);
+    assert.equal(result.authDriftEntries[0].providerId, accountWithoutAuth.providerId);
+    assert.equal(result.authDriftEntries[0].accountId, accountWithoutAuth.id);
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.OPENCODE_CONFIG;
+    await cleanupDir(tempDir);
+  }
+});
+
+test("auditStorage reports all active accounts as auth drift when auth.json is missing", async () => {
+  const tempDir = await makeTempDir();
+  const originalFetch = globalThis.fetch;
+
+  try {
+    const configPath = path.join(tempDir, "opencode.json");
+    const authPath = path.join(tempDir, "nonexistent-auth.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { updateAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { updateSecrets } = await import(`../dist/storage/secrets.js?${Date.now()}`);
+    const { saveOpenCodeConfig } = await import(`../dist/config/opencode-config.js?${Date.now()}`);
+    const { buildProviderConfig } = await import(`../dist/config/providers.js?${Date.now()}`);
+    const { auditStorage } = await import(`../dist/storage-audit.js?${Date.now()}`);
+
+    const account = createAccountMeta({ label: "NoFile", githubUsername: "nofile", plan: "free" });
+
+    await updateAccounts((file) => {
+      file.accounts.push(account);
+    }, tempDir);
+
+    await updateSecrets((file) => {
+      file.secrets.push({ accountId: account.id, githubOAuthToken: "token" });
+    }, tempDir);
+
+    await saveOpenCodeConfig(
+      {
+        provider: {
+          [account.providerId]: buildProviderConfig(account),
+        },
+      },
+      configPath,
+    );
+
+    globalThis.fetch = async () => new Response(JSON.stringify({ models: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const result = await auditStorage({ configDir: tempDir, configPath, authPath });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.authDriftEntries.length, 1);
+    assert.equal(result.authDriftEntries[0].providerId, account.providerId);
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.OPENCODE_CONFIG;
+    await cleanupDir(tempDir);
+  }
+});
+
+test("auditStorage reports no auth drift when all active accounts have valid oauth entries", async () => {
+  const tempDir = await makeTempDir();
+  const originalFetch = globalThis.fetch;
+
+  try {
+    const configPath = path.join(tempDir, "opencode.json");
+    const authPath = path.join(tempDir, "auth.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { updateAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { updateSecrets } = await import(`../dist/storage/secrets.js?${Date.now()}`);
+    const { saveOpenCodeConfig } = await import(`../dist/config/opencode-config.js?${Date.now()}`);
+    const { buildProviderConfig } = await import(`../dist/config/providers.js?${Date.now()}`);
+    const { auditStorage } = await import(`../dist/storage-audit.js?${Date.now()}`);
+
+    const account = createAccountMeta({ label: "AuthOk", githubUsername: "authok", plan: "free" });
+
+    await updateAccounts((file) => {
+      file.accounts.push(account);
+    }, tempDir);
+
+    await updateSecrets((file) => {
+      file.secrets.push({ accountId: account.id, githubOAuthToken: "token" });
+    }, tempDir);
+
+    await saveOpenCodeConfig(
+      {
+        provider: {
+          [account.providerId]: buildProviderConfig(account),
+        },
+      },
+      configPath,
+    );
+
+    await fs.writeFile(authPath, JSON.stringify({
+      [account.providerId]: {
+        type: "oauth",
+        refresh: "refresh-token",
+        access: "access-token",
+        expires: 0,
+      },
+    }, null, 2));
+
+    globalThis.fetch = async () => new Response(JSON.stringify({ models: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+    const result = await auditStorage({ configDir: tempDir, configPath, authPath });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.authDriftEntries.length, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.OPENCODE_CONFIG;
+    await cleanupDir(tempDir);
+  }
+});
+
+test("cli audit-storage reports auth drift entries and remediation hint", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    const configPath = path.join(tempDir, "opencode.json");
+    const authPath = path.join(tempDir, "auth.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { updateAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { updateSecrets } = await import(`../dist/storage/secrets.js?${Date.now()}`);
+    const { saveOpenCodeConfig } = await import(`../dist/config/opencode-config.js?${Date.now()}`);
+    const { buildProviderConfig } = await import(`../dist/config/providers.js?${Date.now()}`);
+
+    const account = createAccountMeta({ label: "AuthDriftCli", githubUsername: "authdriftcli", plan: "free" });
+
+    await updateAccounts((file) => {
+      file.accounts.push(account);
+    }, tempDir);
+
+    await updateSecrets((file) => {
+      file.secrets.push({ accountId: account.id, githubOAuthToken: "token" });
+    }, tempDir);
+
+    await saveOpenCodeConfig(
+      {
+        provider: {
+          [account.providerId]: buildProviderConfig(account),
+        },
+      },
+      configPath,
+    );
+
+    // auth.json is empty — no entry for the account's providerId
+    await fs.writeFile(authPath, JSON.stringify({}, null, 2));
+
+    const result = spawnSync(process.execPath, ["dist/cli.js", "audit-storage"], {
+      cwd: path.resolve("."),
+      env: {
+        ...process.env,
+        OPENCODE_CONFIG_DIR: tempDir,
+        OPENCODE_CONFIG: configPath,
+        COPILOTHYDRA_TEST_AUTH_PATH: authPath,
+      },
+      encoding: "utf8",
+    });
+
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /Auth drift \(providers missing oauth\): 1/);
+    assert.match(result.stdout, /Auth drift detected/);
+    assert.match(result.stdout, /copilothydra sync-config/);
+  } finally {
+    delete process.env.OPENCODE_CONFIG;
+    await cleanupDir(tempDir);
+  }
+});
+
+test("cli status reports auth drift in a dedicated section", async () => {
+  const tempDir = await makeTempDir();
+
+  try {
+    const configPath = path.join(tempDir, "opencode.json");
+    const authPath = path.join(tempDir, "auth.json");
+    process.env.OPENCODE_CONFIG = configPath;
+
+    const { createAccountMeta } = await import(`../dist/account.js?${Date.now()}`);
+    const { updateAccounts } = await import(`../dist/storage/accounts.js?${Date.now()}`);
+    const { updateSecrets } = await import(`../dist/storage/secrets.js?${Date.now()}`);
+    const { saveOpenCodeConfig } = await import(`../dist/config/opencode-config.js?${Date.now()}`);
+    const { buildProviderConfig } = await import(`../dist/config/providers.js?${Date.now()}`);
+
+    const account = createAccountMeta({ label: "StatusAuthDrift", githubUsername: "statusauthdrift", plan: "free" });
+
+    await updateAccounts((file) => {
+      file.accounts.push(account);
+    }, tempDir);
+
+    await updateSecrets((file) => {
+      file.secrets.push({ accountId: account.id, githubOAuthToken: "token" });
+    }, tempDir);
+
+    await saveOpenCodeConfig(
+      {
+        provider: {
+          [account.providerId]: buildProviderConfig(account),
+        },
+      },
+      configPath,
+    );
+
+    await fs.writeFile(authPath, JSON.stringify({}, null, 2));
+
+    const result = spawnSync(process.execPath, ["dist/cli.js", "status"], {
+      cwd: path.resolve("."),
+      env: {
+        ...process.env,
+        OPENCODE_CONFIG_DIR: tempDir,
+        OPENCODE_CONFIG: configPath,
+        COPILOTHYDRA_TEST_AUTH_PATH: authPath,
+      },
+      encoding: "utf8",
+    });
+
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /Auth/);
+    assert.match(result.stdout, /1 provider\(s\) missing oauth entry/);
+    assert.match(result.stdout, /copilothydra sync-config/);
+  } finally {
+    delete process.env.OPENCODE_CONFIG;
+    await cleanupDir(tempDir);
+  }
+});

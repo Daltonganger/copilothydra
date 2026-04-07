@@ -18,7 +18,8 @@ export type AccountId = string;
 
 /**
  * OpenCode provider ID for this account.
- * Format: "github-copilot-user-<githubUsername>", e.g. "github-copilot-user-ruben"
+ * Primary format: "github-copilot-user-<normalizedUsername>", e.g. "github-copilot-user-alice"
+ * Legacy format:  "github-copilot-acct-<accountId>", e.g. "github-copilot-acct-7f2c1d"
  * Must contain "github-copilot" for OpenCode internal detection to work.
  */
 export type ProviderId = string;
@@ -50,32 +51,32 @@ export type AccountLifecycleState = "active" | "pending-removal";
 // ---------------------------------------------------------------------------
 
 export interface CopilotAccountMeta {
-  /** Stable internal ID */
-  id: AccountId;
-  /** OpenCode provider ID */
-  providerId: ProviderId;
-  /** User-facing label, e.g. "Personal" */
-  label: string;
-  /** GitHub username, for display only */
-  githubUsername: string;
-  /** User-declared or verified plan tier */
-  plan: PlanTier;
-  /** Whether plan has been verified or is only user-declared */
-  capabilityState: CapabilityState;
-  /** Explicit user acknowledgement to expose plan-table models that remain unverified */
-  allowUnverifiedModels?: boolean;
-  /** ISO timestamp of the last capability mismatch detection */
-  mismatchDetectedAt?: string;
-  /** Model id that most recently triggered a capability mismatch */
-  mismatchModelId?: string;
-  /** Suggested stricter plan that would stop exposing the mismatched model */
-  mismatchSuggestedPlan?: PlanTier;
-  /** Active or in drain-on-removal state */
-  lifecycleState: AccountLifecycleState;
-  /** ISO 8601 timestamp */
-  addedAt: string;
-  /** ISO 8601 timestamp of last successful validation, if any */
-  lastValidatedAt?: string;
+	/** Stable internal ID */
+	id: AccountId;
+	/** OpenCode provider ID */
+	providerId: ProviderId;
+	/** User-facing label, e.g. "Personal" */
+	label: string;
+	/** GitHub username, for display only */
+	githubUsername: string;
+	/** User-declared or verified plan tier */
+	plan: PlanTier;
+	/** Whether plan has been verified or is only user-declared */
+	capabilityState: CapabilityState;
+	/** Explicit user acknowledgement to expose plan-table models that remain unverified */
+	allowUnverifiedModels?: boolean;
+	/** ISO timestamp of the last capability mismatch detection */
+	mismatchDetectedAt?: string;
+	/** Model id that most recently triggered a capability mismatch */
+	mismatchModelId?: string;
+	/** Suggested stricter plan that would stop exposing the mismatched model */
+	mismatchSuggestedPlan?: PlanTier;
+	/** Active or in drain-on-removal state */
+	lifecycleState: AccountLifecycleState;
+	/** ISO 8601 timestamp */
+	addedAt: string;
+	/** ISO 8601 timestamp of last successful validation, if any */
+	lastValidatedAt?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,13 +93,13 @@ export interface CopilotAccountMeta {
  * if that finding turns out to be incomplete.
  */
 export interface CopilotSecretRecord {
-  accountId: AccountId;
-  /** GitHub OAuth device-flow token (used as Bearer on Copilot requests) */
-  githubOAuthToken: string;
-  /** Reserved: Copilot-specific access token if exchange is required */
-  copilotAccessToken?: string;
-  /** ISO 8601, reserved for future expiry tracking */
-  copilotAccessTokenExpiresAt?: string;
+	accountId: AccountId;
+	/** GitHub OAuth device-flow token (used as Bearer on Copilot requests) */
+	githubOAuthToken: string;
+	/** Reserved: Copilot-specific access token if exchange is required */
+	copilotAccessToken?: string;
+	/** ISO 8601, reserved for future expiry tracking */
+	copilotAccessTokenExpiresAt?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,13 +107,13 @@ export interface CopilotSecretRecord {
 // ---------------------------------------------------------------------------
 
 export interface AccountsFile {
-  version: 1;
-  accounts: CopilotAccountMeta[];
+	version: 1;
+	accounts: CopilotAccountMeta[];
 }
 
 export interface SecretsFile {
-  version: 1;
-  secrets: CopilotSecretRecord[];
+	version: 1;
+	secrets: CopilotSecretRecord[];
 }
 
 // ---------------------------------------------------------------------------
@@ -122,13 +123,13 @@ export interface SecretsFile {
 // ---------------------------------------------------------------------------
 
 export interface PluginInput {
-  /** opencode SDK client (type unknown here to avoid hard dep) */
-  client: unknown;
-  project: unknown;
-  worktree: unknown;
-  directory: string;
-  serverUrl: string | URL;
-  $: unknown;
+	/** opencode SDK client (type unknown here to avoid hard dep) */
+	client: unknown;
+	project: unknown;
+	worktree: unknown;
+	directory: string;
+	serverUrl: string | URL;
+	$: unknown;
 }
 
 /**
@@ -139,11 +140,14 @@ export interface PluginInput {
  * with `Record<string, any>`.
  */
 export interface AuthLoader {
-  baseURL?: string;
-  apiKey?: string;
-  /** Custom fetch function that injects auth headers per-request */
-  fetch?: (request: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) => Promise<Response>;
-  [key: string]: unknown;
+	baseURL?: string;
+	apiKey?: string;
+	/** Custom fetch function that injects auth headers per-request */
+	fetch?: (
+		request: Parameters<typeof globalThis.fetch>[0],
+		init?: RequestInit,
+	) => Promise<Response>;
+	[key: string]: unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -152,16 +156,16 @@ export interface AuthLoader {
 // ---------------------------------------------------------------------------
 
 export type StoredAuthInfo =
-  | {
-      type: "oauth";
-      refresh: string;
-      access: string;
-      expires: number;
-      accountId?: string;
-      enterpriseUrl?: string;
-    }
-  | { type: "api"; key: string }
-  | { type: "wellknown"; key: string; token: string };
+	| {
+			type: "oauth";
+			refresh: string;
+			access: string;
+			expires: number;
+			accountId?: string;
+			enterpriseUrl?: string;
+	  }
+	| { type: "api"; key: string }
+	| { type: "wellknown"; key: string; token: string };
 
 // ---------------------------------------------------------------------------
 // Auth OAuth result (mirrors @opencode-ai/plugin AuthOuathResult)
@@ -170,62 +174,62 @@ export type StoredAuthInfo =
 // ---------------------------------------------------------------------------
 
 export type AuthOAuthResult =
-  | {
-      url: string;
-      instructions: string;
-      method: "auto";
-      callback(): Promise<
-        | {
-            type: "success";
-            provider?: string;
-            refresh: string;
-            access: string;
-            expires: number;
-            accountId?: string;
-          }
-        | { type: "failed" }
-      >;
-    }
-  | {
-      url: string;
-      instructions: string;
-      method: "code";
-      callback(code: string): Promise<
-        | {
-            type: "success";
-            provider?: string;
-            refresh: string;
-            access: string;
-            expires: number;
-            accountId?: string;
-          }
-        | { type: "failed" }
-      >;
-    };
+	| {
+			url: string;
+			instructions: string;
+			method: "auto";
+			callback(): Promise<
+				| {
+						type: "success";
+						provider?: string;
+						refresh: string;
+						access: string;
+						expires: number;
+						accountId?: string;
+				  }
+				| { type: "failed" }
+			>;
+	  }
+	| {
+			url: string;
+			instructions: string;
+			method: "code";
+			callback(code: string): Promise<
+				| {
+						type: "success";
+						provider?: string;
+						refresh: string;
+						access: string;
+						expires: number;
+						accountId?: string;
+				  }
+				| { type: "failed" }
+			>;
+	  };
 
 export interface AuthMethod {
-  type: "oauth";
-  label: string;
-  /** prompts the user for any required input fields */
-  prompts?: Array<{
-    type: "text";
-    key: string;
-    message: string;
-    placeholder?: string;
-  }>;
-  /** kicks off the auth flow; returns URL + instructions + callback for the device flow */
-  authorize: (inputs?: Record<string, string>) => Promise<AuthOAuthResult>;
+	type: "oauth";
+	label: string;
+	/** prompts the user for any required input fields */
+	prompts?: Array<{
+		type: "text";
+		key: string;
+		message: string;
+		placeholder?: string;
+	}>;
+	/** kicks off the auth flow; returns URL + instructions + callback for the device flow */
+	authorize: (inputs?: Record<string, string>) => Promise<AuthOAuthResult>;
 }
 
 export interface AuthHook {
-  provider: ProviderId;
-  loader?: (
-    getAuth: () => Promise<StoredAuthInfo | undefined>,
-    provider: { id: ProviderId }
-  ) => Promise<AuthLoader>;
-  methods: AuthMethod[];
+	provider: ProviderId;
+	loader?: (
+		getAuth: () => Promise<StoredAuthInfo | undefined>,
+		provider: { id: ProviderId },
+	) => Promise<AuthLoader>;
+	methods: AuthMethod[];
 }
 
 export interface Hooks {
-  auth?: AuthHook;
+	auth?: AuthHook;
 }

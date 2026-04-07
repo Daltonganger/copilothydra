@@ -480,6 +480,20 @@ async function statusCommand(): Promise<void> {
   }
   output.write("\n");
 
+  // ── Auth ──
+  const authDriftCount = auditResult.authDriftEntries.length;
+  const authIcon = authDriftCount === 0 ? "✓" : "⚠";
+  output.write("Auth\n");
+  output.write(`  ${authIcon}  OpenCode auth      ${authDriftCount === 0 ? "ok" : `${authDriftCount} provider(s) missing oauth entry`}\n`);
+  if (authDriftCount > 0) {
+    for (const entry of auditResult.authDriftEntries) {
+      output.write(`     - ${entry.providerId} (account ${entry.accountId})\n`);
+    }
+    output.write("\n");
+    output.write("  Run `copilothydra sync-config`; if drift remains, re-authenticate the provider in OpenCode.\n");
+  }
+  output.write("\n");
+
   // ── Overall ──
   const overallIcon = auditResult.ok ? "✓" : "⚠";
   const overallLabel = auditResult.ok ? "ok" : "action needed";
@@ -496,8 +510,13 @@ async function auditStorageCommand(): Promise<void> {
   output.write(`Stale provider entries: ${result.staleProviderIds.length}\n`);
   output.write(`Model catalog consistent: ${result.modelCatalogConsistent ? "yes" : "no"}\n`);
   output.write(`Secrets file permissions: ${result.secretsFilePermissionStatus}\n`);
+  output.write(`Auth drift (providers missing oauth): ${result.authDriftEntries.length}\n`);
+  if (result.authDriftEntries.length > 0) {
+    for (const entry of result.authDriftEntries) {
+      output.write(`  - ${entry.providerId} (account ${entry.accountId})\n`);
+    }
+  }
 
-  output.write(`Model catalog consistent: ${result.modelCatalogConsistent ? "yes" : "no"}\n`);
   if (result.modelCatalogDrift.unknownCopilotModelIds.length > 0) {
     output.write(`Unknown Copilot model ids in config: ${result.modelCatalogDrift.unknownCopilotModelIds.join(", ")}\n`);
   }
@@ -528,6 +547,10 @@ async function auditStorageCommand(): Promise<void> {
 
   if (hasStorageIssues) {
     output.write("Storage audit detected storage inconsistencies. Run `copilothydra repair-storage` to reconcile storage issues.\n");
+  }
+
+  if (result.authDriftEntries.length > 0) {
+    output.write("Auth drift detected: active provider(s) have no matching oauth entry in OpenCode auth.json. Run `copilothydra sync-config`; if drift remains, re-authenticate the provider(s) in OpenCode.\n");
   }
 
   if (!result.modelCatalogConsistent) {

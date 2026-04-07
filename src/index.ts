@@ -28,6 +28,7 @@ import { validateAccountCount } from "./runtime-checks.js";
 import { registerAccounts } from "./routing/provider-account-map.js";
 import { setTokenState } from "./auth/token-state.js";
 import { createCopilotLoginMethods } from "./auth/login-method.js";
+import { selfHealAuthDrift } from "./startup-self-heal.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
 import {
   loadCopilotHydraOpenCodeState,
@@ -56,6 +57,16 @@ try {
   validateAccountCount(_accounts);
   registerAccounts(_accounts);
   debug("plugin", `Loaded ${_accounts.length} active account(s)`);
+
+  // ── Startup self-heal: repair auth drift before first request ──
+  // OpenCode's getAuth() reads auth.json keyed by providerId. If an active
+  // Hydra account has no matching oauth entry there, requests go out
+  // unauthenticated and produce "Bad Request". Running sync here ensures
+  // provider entries AND auth.json backfill are reconciled on every startup
+  // (including reloads), so the user never hits auth drift at runtime.
+  if (_accounts.length > 0) {
+    await selfHealAuthDrift();
+  }
 } catch (err_) {
   _loadError = String(err_);
   error("plugin", `Failed to load accounts at module init: ${_loadError}`);
