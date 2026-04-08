@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "summary",
+    "comments"
+  ],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "Markdown summary for the PR review timeline."
+    },
+    "comments": {
+      "type": "array",
+      "description": "High-signal inline review comments anchored to changed lines.",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "line",
+          "body"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Repository-relative path for the changed file."
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Changed line number on the RIGHT side of the PR diff."
+          },
+          "body": {
+            "type": "string",
+            "description": "Markdown inline review comment body."
+          }
+        }
+      }
+    }
+  }
+}

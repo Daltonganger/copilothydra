@@ -33,8 +33,10 @@ jobs:
           openai-api-key: ${{ secrets.CODEX_API_KEY }}
           responses-api-endpoint: https://codex.2631.eu/v1/responses
           model: gpt-5.4
+          effort: high
           prompt-file: .github/codex/prompts/review.md
           output-file: codex-output.md
+          output-schema-file: .github/codex/schemas/pr-review.json
           safety-strategy: drop-sudo
           sandbox: read-only
 
@@ -50,9 +52,81 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
-            await github.rest.issues.createComment({
+            const raw = (process.env.CODEX_FINAL_MESSAGE || '').trim();
+
+            if (!raw) {
+              core.setFailed('Missing Codex review output.');
+              return;
+            }
+
+            let review;
+            try {
+              review = JSON.parse(raw);
+            } catch (error) {
+              review = { summary: raw, comments: [] };
+            }
+
+            const summary = typeof review.summary === 'string' && review.summary.trim()
+              ? review.summary.trim()
+              : 'Codex completed, but returned no summary.';
+
+            const seen = new Set();
+            const comments = Array.isArray(review.comments)
+              ? review.comments
+                  .filter(comment =>
+                    comment
+                    && typeof comment.path === 'string'
+                    && comment.path.trim()
+                    && Number.isInteger(comment.line)
+                    && comment.line > 0
+                    && typeof comment.body === 'string'
+                    && comment.body.trim(),
+                  )
+                  .filter(comment => {
+                    const key = `${comment.path}:${comment.line}:${comment.body.trim()}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                  })
+                  .slice(0, 8)
+              : [];
+
+            await github.rest.pulls.createReview({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              body: process.env.CODEX_FINAL_MESSAGE,
+              pull_number: context.payload.pull_request.number,
+              commit_id: context.payload.pull_request.head.sha,
+              event: 'COMMENT',
+              body: summary,
             });
+
+            const failedComments = [];
+
+            for (const comment of comments) {
+              try {
+                await github.rest.pulls.createReviewComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.payload.pull_request.number,
+                  commit_id: context.payload.pull_request.head.sha,
+                  path: comment.path.trim(),
+                  line: comment.line,
+                  side: 'RIGHT',
+                  body: comment.body.trim(),
+                });
+              } catch (error) {
+                failedComments.push(`- ${comment.path}:${comment.line} — ${error.message}`);
+              }
+            }
+
+            if (failedComments.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: [
+                  'Codex review posted, but some inline comments could not be anchored:',
+                  ...failedComments,
+                ].join('\n'),
+              });
+            }
