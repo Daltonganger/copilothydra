@@ -1,0 +1,110 @@
+name: Publish package to npm
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Verify release tag matches package version
+        if: github.event_name == 'release'
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          RELEASE_TAG="${{ github.event.release.tag_name }}"
+          RELEASE_VERSION="${RELEASE_TAG#v}"
+
+          if [ "$PACKAGE_VERSION" != "$RELEASE_VERSION" ]; then
+            echo "package.json version ($PACKAGE_VERSION) does not match release tag ($RELEASE_TAG)"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Check npm package contents
+        run: |
+          npm pack --dry-run --json > npm-pack.json
+          node - <<'EOF'
+          const { readFileSync } = require('node:fs');
+
+          const packResult = JSON.parse(readFileSync('npm-pack.json', 'utf8'));
+          const files = (packResult[0]?.files ?? []).map(file => file.path);
+          const fileSet = new Set(files);
+          const requiredFiles = [
+            'README.md',
+            'CHANGELOG.md',
+            'package.json',
+            'dist/index.js',
+            'dist/index.d.ts',
+            'dist/cli.js',
+            'assets/branding/copilothydra-logo-512.png',
+          ];
+          const forbiddenPrefixes = ['src/', 'tests/', '.github/', 'node_modules/'];
+          const forbiddenExact = ['package-lock.json', '.npmignore', 'tsconfig.json'];
+
+          const missingFiles = requiredFiles.filter(file => !fileSet.has(file));
+          const unexpectedFiles = files.filter(file =>
+            forbiddenPrefixes.some(prefix => file.startsWith(prefix)) || forbiddenExact.includes(file),
+          );
+
+          if (missingFiles.length || unexpectedFiles.length) {
+            console.error('Unexpected npm package contents detected.');
+            if (missingFiles.length) console.error('Missing:', missingFiles.join(', '));
+            if (unexpectedFiles.length) console.error('Unexpected:', unexpectedFiles.join(', '));
+            process.exit(1);
+          }
+
+          console.log('npm package contents passed required/forbidden checks.');
+          EOF
+
+      - name: Dry-run npm publish
+        run: npm publish --dry-run
+
+  publish-npm:
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js for npm publishing
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org/
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish package to npm
+        run: npm publish --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
