@@ -3,10 +3,19 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "event",
     "summary",
     "comments"
   ],
   "properties": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "COMMENT",
+        "REQUEST_CHANGES"
+      ],
+      "description": "Overall GitHub PR review event to submit."
+    },
     "summary": {
       "type": "string",
       "description": "Markdown summary for the PR review timeline."
@@ -21,6 +30,7 @@
         "required": [
           "path",
           "line",
+          "side",
           "body"
         ],
         "properties": {
@@ -31,7 +41,15 @@
           "line": {
             "type": "integer",
             "minimum": 1,
-            "description": "Changed line number on the RIGHT side of the PR diff."
+            "description": "Changed line number on the selected side of the PR diff."
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "LEFT",
+              "RIGHT"
+            ],
+            "description": "Diff side for the anchored review comment."
           },
           "body": {
             "type": "string",

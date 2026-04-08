@@ -80,12 +80,16 @@ jobs:
             try {
               review = JSON.parse(raw);
             } catch (error) {
-              review = { summary: raw, comments: [] };
+              review = { event: 'REQUEST_CHANGES', summary: raw, comments: [] };
             }
 
             const summary = typeof review.summary === 'string' && review.summary.trim()
               ? review.summary.trim()
               : 'Codex completed, but returned no summary.';
+
+            const requestedEvent = review.event === 'COMMENT' || review.event === 'REQUEST_CHANGES'
+              ? review.event
+              : (summary === 'No blocking issues found.' ? 'COMMENT' : 'REQUEST_CHANGES');
 
             const seen = new Set();
             const comments = Array.isArray(review.comments)
@@ -96,54 +100,59 @@ jobs:
                     && comment.path.trim()
                     && Number.isInteger(comment.line)
                     && comment.line > 0
+                    && (comment.side === 'LEFT' || comment.side === 'RIGHT')
                     && typeof comment.body === 'string'
                     && comment.body.trim(),
                   )
                   .filter(comment => {
-                    const key = `${comment.path}:${comment.line}:${comment.body.trim()}`;
+                    const key = `${comment.path}:${comment.line}:${comment.side}:${comment.body.trim()}`;
                     if (seen.has(key)) return false;
                     seen.add(key);
                     return true;
                   })
+                  .map(comment => ({
+                    path: comment.path.trim(),
+                    line: comment.line,
+                    side: comment.side,
+                    body: comment.body.trim(),
+                  }))
                   .slice(0, 8)
               : [];
 
-            await github.rest.pulls.createReview({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.pull_request.number,
-              commit_id: context.payload.pull_request.head.sha,
-              event: 'COMMENT',
-              body: summary,
-            });
-
-            const failedComments = [];
-
-            for (const comment of comments) {
-              try {
-                await github.rest.pulls.createReviewComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: context.payload.pull_request.number,
-                  commit_id: context.payload.pull_request.head.sha,
-                  path: comment.path.trim(),
-                  line: comment.line,
-                  side: 'RIGHT',
-                  body: comment.body.trim(),
-                });
-              } catch (error) {
-                failedComments.push(`- ${comment.path}:${comment.line} — ${error.message}`);
+            try {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                commit_id: context.payload.pull_request.head.sha,
+                event: requestedEvent,
+                body: summary,
+                comments,
+              });
+            } catch (error) {
+              if (comments.length === 0) {
+                throw error;
               }
-            }
 
-            if (failedComments.length > 0) {
+              core.warning(`Falling back to summary-only review because inline anchors failed: ${error.message}`);
+
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                commit_id: context.payload.pull_request.head.sha,
+                event: requestedEvent,
+                body: summary,
+              });
+
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.payload.pull_request.number,
                 body: [
-                  'Codex review posted, but some inline comments could not be anchored:',
-                  ...failedComments,
+                  'Codex review posted, but GitHub rejected the inline anchors for this run.',
+                  'Requested inline comments:',
+                  ...comments.map(comment => `- ${comment.path}:${comment.line} [${comment.side}] — ${comment.body}`),
                 ].join('\n'),
               });
             }
@@ -155,12 +164,16 @@ jobs:
     steps:
       - name: Update status comment
         uses: actions/github-script@v7
+        env:
+          STATUS_COMMENT_ID: ${{ needs.codex.outputs.status_comment_id }}
+          CODEX_RESULT: ${{ needs.codex.result }}
+          POST_FEEDBACK_RESULT: ${{ needs.post_feedback.result }}
         with:
           github-token: ${{ github.token }}
           script: |
-            const commentId = Number('${{ needs.codex.outputs.status_comment_id }}');
-            const codexSucceeded = '${{ needs.codex.result }}' === 'success';
-            const feedbackSucceeded = '${{ needs.post_feedback.result }}' === 'success' || '${{ needs.post_feedback.result }}' === 'skipped';
+            const commentId = Number(process.env.STATUS_COMMENT_ID);
+            const codexSucceeded = process.env.CODEX_RESULT === 'success';
+            const feedbackSucceeded = process.env.POST_FEEDBACK_RESULT === 'success' || process.env.POST_FEEDBACK_RESULT === 'skipped';
             const succeeded = codexSucceeded && feedbackSucceeded;
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const body = succeeded
