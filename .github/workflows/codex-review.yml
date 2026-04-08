@@ -14,11 +14,28 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       final_message: ${{ steps.run_codex.outputs.final-message }}
+      status_comment_id: ${{ steps.status_start.outputs.result }}
     steps:
       - name: Check out pull request merge ref
         uses: actions/checkout@v5
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
+
+      - name: Post start status comment
+        id: status_start
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          result-encoding: string
+          script: |
+            const response = await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '👀 Codex review gestart.',
+            });
+
+            return String(response.data.id);
 
       - name: Pre-fetch base and head refs
         run: |
@@ -130,3 +147,29 @@ jobs:
                 ].join('\n'),
               });
             }
+
+  finalize_status:
+    runs-on: ubuntu-latest
+    needs: [codex, post_feedback]
+    if: always() && needs.codex.outputs.status_comment_id != ''
+    steps:
+      - name: Update status comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const commentId = Number('${{ needs.codex.outputs.status_comment_id }}');
+            const codexSucceeded = '${{ needs.codex.result }}' === 'success';
+            const feedbackSucceeded = '${{ needs.post_feedback.result }}' === 'success' || '${{ needs.post_feedback.result }}' === 'skipped';
+            const succeeded = codexSucceeded && feedbackSucceeded;
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = succeeded
+              ? `🎉 Codex review klaar. [Workflow run](${runUrl})`
+              : `⚠️ Codex review afgerond met problemen. [Workflow run](${runUrl})`;
+
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: commentId,
+              body,
+            });
