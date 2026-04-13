@@ -49,14 +49,24 @@ function buildCopilotCLIAccountName(githubUsername: string): string {
 
 type KeyringModule = typeof import("@napi-rs/keyring");
 let _keyringCache: KeyringModule | null | undefined;
+let _keyringLoadErrorReason: string | null = null;
+
+function getKeyringUnavailableReason(): string {
+  return _keyringLoadErrorReason
+    ? `native keyring not available: ${_keyringLoadErrorReason}`
+    : "native keyring not available";
+}
 
 async function loadKeyring(): Promise<KeyringModule | null> {
   if (_keyringCache !== undefined) return _keyringCache;
   try {
     _keyringCache = await import("@napi-rs/keyring");
+    _keyringLoadErrorReason = null;
     return _keyringCache;
-  } catch {
+  } catch (err) {
     _keyringCache = null;
+    _keyringLoadErrorReason = err instanceof Error ? err.message : String(err);
+    warn("keychain", `Native keyring import failed: ${_keyringLoadErrorReason}`);
     debug("keychain", "Native keyring not available — keychain integration disabled");
     return null;
   }
@@ -74,7 +84,7 @@ export async function setCopilotCLIKeychainToken(params: {
 
   const keyring = await loadKeyring();
   if (!keyring) {
-    return { ok: false, reason: "native keyring not available" };
+    return { ok: false, reason: getKeyringUnavailableReason() };
   }
 
   const accountName = buildCopilotCLIAccountName(githubUsername);
@@ -138,7 +148,7 @@ export async function deleteCopilotCLIKeychainToken(
 
   const keyring = await loadKeyring();
   if (!keyring) {
-    return { ok: false, reason: "native keyring not available" };
+    return { ok: false, reason: getKeyringUnavailableReason() };
   }
 
   try {
