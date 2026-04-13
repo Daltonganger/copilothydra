@@ -1,6 +1,6 @@
 {
   "name": "copilothydra",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "description": "OpenCode plugin: multiple GitHub Copilot accounts",
   "type": "module",
   "main": "dist/index.js",
@@ -13,6 +13,7 @@
     "dist",
     "README.md",
     "CHANGELOG.md",
+    "scripts/postinstall-keyring-check.mjs",
     "assets/branding/copilothydra-logo-512.png"
   ],
   "bin": {
@@ -23,6 +24,7 @@
     "build": "tsc",
     "cli": "node dist/cli.js",
     "dev": "tsc --watch",
+    "postinstall": "node scripts/postinstall-keyring-check.mjs",
     "test": "npm run build && node --test tests/**/*.test.js",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit"
@@ -53,5 +55,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "optionalDependencies": {
+    "@napi-rs/keyring-darwin-arm64": "^1.2.0",
+    "@napi-rs/keyring-darwin-x64": "^1.2.0"
   }
 }

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.9 (2026-04-13)
+
+### Fixes
+
+- **macOS keychain binaries now install automatically** — darwin `@napi-rs/keyring` native packages are published as top-level optional dependencies so npm can resolve the right addon during install.
+- **macOS installs now fail louder when native keychain support is skipped** — postinstall validates `@napi-rs/keyring` on macOS and prints a direct recovery hint when optional dependencies are missing.
+- **Keychain warnings now surface the real native import error** — runtime logging preserves the original `@napi-rs/keyring` load failure instead of collapsing everything into a generic "not available" message.
+
+### Tests
+
+- 179 tests passing.
+- Verified `scripts/postinstall-keyring-check.mjs` and a macOS keychain write/delete smoke test locally.
+
 ## 0.3.8 (2026-04-07)
 
 ### Fixes
