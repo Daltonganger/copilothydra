@@ -18,11 +18,6 @@ async function readAll(stream) {
 test("shouldUseCopilotResponsesApi covers the current GPT-5 family routing boundary", async () => {
   const { shouldUseCopilotResponsesApi } = await import(`../dist/config/models.js?${Date.now()}`);
 
-  assert.equal(shouldUseCopilotResponsesApi("gpt-5"), true);
-  assert.equal(shouldUseCopilotResponsesApi("gpt-5.1"), true);
-  assert.equal(shouldUseCopilotResponsesApi("gpt-5.1-codex"), true);
-  assert.equal(shouldUseCopilotResponsesApi("gpt-5.1-codex-mini"), true);
-  assert.equal(shouldUseCopilotResponsesApi("gpt-5.1-codex-max"), true);
   assert.equal(shouldUseCopilotResponsesApi("gpt-5.2"), true);
   assert.equal(shouldUseCopilotResponsesApi("gpt-5.2-codex"), true);
   assert.equal(shouldUseCopilotResponsesApi("gpt-5.3-codex"), true);
@@ -250,7 +245,7 @@ test("withHydraCopilotErrorNormalization preserves instance-bound generate and s
   ]);
 });
 
-test("createHydraCopilotProvider routes gpt-5 models to responses path and chat models to chat path", async () => {
+test("createHydraCopilotProvider routes current GPT-5 responses models to the responses path and chat models to chat path", async () => {
   const { createHydraCopilotProvider } = await import(`../dist/sdk/hydra-copilot-provider.js?routing=${Date.now()}`);
 
   const provider = createHydraCopilotProvider({
@@ -258,16 +253,16 @@ test("createHydraCopilotProvider routes gpt-5 models to responses path and chat 
     baseURL: "https://api.githubcopilot.com",
   });
 
-  // gpt-5 → responses path: responses models expose doStream (stream-only)
-  const gpt5Model = provider.languageModel("gpt-5");
-  assert.ok(typeof gpt5Model.doStream === "function", "gpt-5 model should have doStream");
+  // gpt-5.4 → responses path: responses models expose doStream (stream-only)
+  const gpt54Model = provider.languageModel("gpt-5.4");
+  assert.ok(typeof gpt54Model.doStream === "function", "gpt-5.4 model should have doStream");
 
   // claude → chat path: wrapped models expose doStream (wrapper preserves it via own-property)
   const claudeModel = provider.languageModel("claude-sonnet-4.6");
   assert.ok(typeof claudeModel.doStream === "function", "claude model should have doStream");
 
   // Both paths are accessible via provider.responses / provider.chat directly
-  assert.doesNotThrow(() => provider.responses("gpt-5"), "provider.responses('gpt-5') should not throw");
+  assert.doesNotThrow(() => provider.responses("gpt-5.4"), "provider.responses('gpt-5.4') should not throw");
   assert.doesNotThrow(() => provider.chat("claude-sonnet-4.6"), "provider.chat('claude-sonnet-4.6') should not throw");
 });
 
@@ -305,15 +300,15 @@ test("createHydraCopilotProvider custom fetch overrides sentinel Authorization h
       headers.set("Authorization", "Bearer gho_real_token_injected_by_loader");
       capturedAuth = headers.get("Authorization");
       return new Response(
-        JSON.stringify({ id: "resp-test", object: "response", output: [], usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, model: "gpt-5" }),
+        JSON.stringify({ id: "resp-test", object: "response", output: [], usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, model: "gpt-5.4" }),
         { status: 200, headers: { "content-type": "application/json" } }
       );
     },
   });
 
   // Use doStream (the only method the wrapper reliably preserves as an own property)
-  // and a responses-path model (gpt-5) to exercise the full routing + fetch chain
-  const model = provider.languageModel("gpt-5");
+  // and a responses-path model (gpt-5.4) to exercise the full routing + fetch chain
+  const model = provider.languageModel("gpt-5.4");
   try {
     const result = await model.doStream({
       inputFormat: "messages",

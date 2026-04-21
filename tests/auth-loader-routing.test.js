@@ -394,7 +394,6 @@ test("auth loader marks account mismatch on 403 entitlement rejection", async ()
       label: "Mismatch",
       githubUsername: "mismatch",
       plan: "pro",
-      allowUnverifiedModels: true,
     });
     await upsertAccount(account, tempDir);
 
@@ -426,7 +425,6 @@ test("auth loader marks account mismatch on 403 entitlement rejection", async ()
 
     const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
     assert.equal(accounts.accounts[0].capabilityState, "mismatch");
-    assert.equal(accounts.accounts[0].allowUnverifiedModels, false);
     assert.equal(accounts.accounts[0].mismatchModelId, "o1");
     assert.equal(accounts.accounts[0].mismatchSuggestedPlan, undefined);
   } finally {
@@ -481,7 +479,6 @@ test("auth loader marks account mismatch on 400 unsupported-model rejection", as
 
     const accounts = await readJson(path.join(tempDir, "copilot-accounts.json"));
     assert.equal(accounts.accounts[0].capabilityState, "mismatch");
-    assert.equal(accounts.accounts[0].allowUnverifiedModels, false);
     assert.equal(accounts.accounts[0].mismatchModelId, "gemini-3.1-pro");
     assert.equal(accounts.accounts[0].mismatchSuggestedPlan, undefined);
   } finally {

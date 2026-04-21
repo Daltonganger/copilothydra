@@ -14,7 +14,6 @@ import type { CopilotAccountMeta, PlanTier } from "../types.js";
 import { createAccountMeta } from "../account.js";
 import { findAccountByGitHubUsername, loadAccounts, upsertAccount } from "../storage/accounts.js";
 import { capabilityStateLabel, planLabel } from "../config/capabilities.js";
-import { getOverrideRequiredModelsForPlan } from "../config/models.js";
 import { syncAccountsToOpenCodeConfig } from "../config/sync.js";
 import { resolveOpenCodeConfigPath } from "../config/opencode-config.js";
 import {
@@ -56,16 +55,14 @@ interface MenuDependencies {
     label: string;
     githubUsername: string;
     plan: PlanTier;
-    allowUnverifiedModels?: boolean;
   }): CopilotAccountMeta;
   upsertAccount(account: CopilotAccountMeta): Promise<void>;
-  getOverrideRequiredModelsForPlan(plan: PlanTier): string[];
   renameAccount(accountId: string, label: string): Promise<CopilotAccountMeta>;
   revalidateAccount(accountId: string): Promise<CopilotAccountMeta>;
   beginAccountRemoval(accountId: string): Promise<{ account: CopilotAccountMeta | null; alreadyPending: boolean }>;
   finalizeAccountRemoval(accountId: string): Promise<{ removed: CopilotAccountMeta | null }>;
   canAccountDrainComplete(accountId: string): boolean;
-  updateAccountPlan(accountId: string, plan: PlanTier, options?: { allowUnverifiedModels?: boolean }): Promise<CopilotAccountMeta>;
+  updateAccountPlan(accountId: string, plan: PlanTier): Promise<CopilotAccountMeta>;
   syncAccountsToOpenCodeConfig(): Promise<void>;
   resolveOpenCodeConfigPath(): string;
   checkAccountRuntimeReadiness(account: CopilotAccountMeta): void;
@@ -83,7 +80,6 @@ const DEFAULT_DEPS: MenuDependencies = {
   promptText,
   createAccountMeta,
   upsertAccount,
-  getOverrideRequiredModelsForPlan,
   renameAccount,
   revalidateAccount,
   beginAccountRemoval,
@@ -158,18 +154,10 @@ export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Pro
           break;
         }
 
-        const hiddenModels = deps.getOverrideRequiredModelsForPlan(planOption.key);
-        const allowUnverifiedModels = hiddenModels.length > 0
-          ? await deps.confirm(
-            `Enable unsupported models (${hiddenModels.join(", ")})?`,
-          )
-          : false;
-
         const account = deps.createAccountMeta({
           label,
           githubUsername,
           plan: planOption.key,
-          allowUnverifiedModels,
         });
         deps.checkAccountRuntimeReadiness(account);
 
@@ -178,9 +166,6 @@ export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Pro
         restartRequired = true;
         deps.write(`Added account: ${account.label} (${account.githubUsername})\n`);
         deps.write(`Provider ID: ${account.providerId}\n`);
-        if (!account.allowUnverifiedModels && hiddenModels.length > 0) {
-          deps.write(`Hidden unsupported models until explicit override: ${hiddenModels.join(", ")}\n`);
-        }
         deps.write(`OpenCode config updated: ${deps.resolveOpenCodeConfigPath()}\n`);
         deps.write("Reload/restart OpenCode to pick up the new provider and model entries.\n");
         deps.write("Then authenticate that provider through OpenCode's auth flow.\n");
@@ -314,9 +299,7 @@ export async function launchMenu(overrides: Partial<MenuDependencies> = {}): Pro
           break;
         }
 
-        const updated = await deps.updateAccountPlan(selected.id, selected.mismatchSuggestedPlan, {
-          allowUnverifiedModels: false,
-        });
+        const updated = await deps.updateAccountPlan(selected.id, selected.mismatchSuggestedPlan);
         restartRequired = true;
         deps.write(
           `Updated stored plan for ${updated.label} (${updated.githubUsername}): ` +

@@ -57,12 +57,11 @@ export async function renameAccount(
 export async function updateAccountPlan(
   accountId: AccountId,
   plan: PlanTier,
-  options?: UpdateOptions & { allowUnverifiedModels?: boolean },
+  options?: UpdateOptions,
 ): Promise<CopilotAccountMeta> {
   const updated = await mutateAccount(accountId, (account) => {
     account.plan = plan;
     account.capabilityState = "user-declared";
-    account.allowUnverifiedModels = options?.allowUnverifiedModels ?? false;
     delete account.lastValidatedAt;
     delete account.mismatchDetectedAt;
     delete account.mismatchModelId;
@@ -104,7 +103,6 @@ export async function markAccountCapabilityMismatch(
 
   const updated = await mutateAccount(accountId, (account) => {
     account.capabilityState = "mismatch";
-    account.allowUnverifiedModels = false;
     account.lastValidatedAt = detectedAt;
     account.mismatchDetectedAt = detectedAt;
 

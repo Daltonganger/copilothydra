@@ -11,7 +11,6 @@ export function createAccountMeta(input: {
 	githubUsername: string;
 	plan: PlanTier;
 	capabilityState?: CapabilityState;
-	allowUnverifiedModels?: boolean;
 }): CopilotAccountMeta {
 	const id = createAccountId();
 	return {
@@ -21,7 +20,6 @@ export function createAccountMeta(input: {
 		githubUsername: input.githubUsername.trim(),
 		plan: input.plan,
 		capabilityState: input.capabilityState ?? "user-declared",
-		allowUnverifiedModels: input.allowUnverifiedModels ?? false,
 		lifecycleState: "active",
 		addedAt: new Date().toISOString(),
 	};

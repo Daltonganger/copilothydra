@@ -93,11 +93,7 @@ test("CopilotHydraSetup exposes a GitHub Copilot auth method for OpenCode auth l
 			hooks.auth?.methods.map(
 				(method) => method.prompts?.map((prompt) => prompt.key) ?? [],
 			),
-			[["githubUsername", "label", "plan", "allowUnverifiedModels"]],
-		);
-		assert.equal(
-			hooks.auth?.methods[0]?.prompts?.[3]?.message,
-			"For Student plans only: enable unsupported Claude Sonnet 4.5 and Claude Opus 4.5? (yes/no)",
+			[["githubUsername", "label", "plan"]],
 		);
 	} finally {
 		delete process.env.OPENCODE_CONFIG_DIR;
@@ -186,7 +182,6 @@ test("login method can create a new account from OpenCode auth login inputs", as
 			githubUsername: "alice",
 			label: "Personal",
 			plan: "pro",
-			allowUnverifiedModels: "no",
 		});
 
 		assert.equal(started.url, "https://github.com/login/device");
@@ -453,7 +448,6 @@ test("new-account method rejects duplicate usernames so re-auth stays separate",
 				githubUsername: "alice",
 				label: "Duplicate",
 				plan: "pro",
-				allowUnverifiedModels: "no",
 			}),
 			/already exists; use the re-auth method instead/,
 		);
@@ -587,7 +581,6 @@ test("new-account authorize fails when another active account was added after me
 				githubUsername: "user9",
 				label: "Account 9",
 				plan: "free",
-				allowUnverifiedModels: "no",
 			}),
 			/Cannot add another active account: 8 active accounts already configured/,
 		);

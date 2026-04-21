@@ -63,8 +63,6 @@ export interface CopilotAccountMeta {
 	plan: PlanTier;
 	/** Whether plan has been verified or is only user-declared */
 	capabilityState: CapabilityState;
-	/** Explicit user acknowledgement to expose plan-table models that remain unverified */
-	allowUnverifiedModels?: boolean;
 	/** ISO timestamp of the last capability mismatch detection */
 	mismatchDetectedAt?: string;
 	/** Model id that most recently triggered a capability mismatch */

@@ -20,7 +20,6 @@ import { revalidateAccount, renameAccount, updateAccountPlan } from "./account-u
 import { auditStorage } from "./storage-audit.js";
 import { isTTY, launchMenu } from "./ui/menu.js";
 import { syncAccountsToOpenCodeConfig } from "./config/sync.js";
-import { getOverrideRequiredModelsForPlan } from "./config/models.js";
 import { buildMismatchMessage, capabilityStateLabel, planLabel } from "./config/capabilities.js";
 import { resolveOpenCodeConfigPath } from "./config/opencode-config.js";
 import { checkAccountRuntimeReadiness, validateAccountCount, validateCanAddAccount } from "./runtime-checks.js";
@@ -168,7 +167,6 @@ async function addAccountInteractive(): Promise<void> {
     const label = await promptRequired(rl, "Account label", "Personal");
     const githubUsername = await promptRequired(rl, "GitHub username", "alice");
     const plan = await promptPlan(rl);
-    const allowUnverifiedModels = await promptAllowUnverifiedModels(rl, plan);
 
     const existingForUsername = await findAccountByGitHubUsername(githubUsername);
     if (existingForUsername) {
@@ -178,7 +176,7 @@ async function addAccountInteractive(): Promise<void> {
       );
     }
 
-    const account = createAccountMeta({ label, githubUsername, plan, allowUnverifiedModels });
+    const account = createAccountMeta({ label, githubUsername, plan });
     checkAccountRuntimeReadiness(account);
 
     await upsertAccount(account);
@@ -190,12 +188,6 @@ async function addAccountInteractive(): Promise<void> {
 
     output.write(`\nAdded account: ${account.label} (${account.githubUsername})\n`);
     output.write(`Provider ID: ${account.providerId}\n`);
-    if (!account.allowUnverifiedModels) {
-      const hiddenModels = getOverrideRequiredModelsForPlan(account.plan);
-      if (hiddenModels.length > 0) {
-        output.write(`Hidden unsupported models until explicit override: ${hiddenModels.join(", ")}\n`);
-      }
-    }
     output.write(`OpenCode config updated: ${resolveOpenCodeConfigPath()}\n`);
     output.write("Reload/restart OpenCode to pick up the new provider and model entries.\n");
     output.write("Then authenticate that provider through OpenCode's auth flow.\n");
@@ -312,20 +304,10 @@ async function setPlanCommand(identifier?: string, planValue?: string): Promise<
   }
 
   const account = await resolveAccountByIdentifier(identifier);
-  const allowUnverifiedModels = hasFlag("--allow-unverified-models");
-  const updated = await updateAccountPlan(account.id, planValue as PlanTier, {
-    allowUnverifiedModels,
-  });
+  const updated = await updateAccountPlan(account.id, planValue as PlanTier);
   checkAccountRuntimeReadiness(updated);
   output.write(`Updated plan for ${updated.label}: ${account.plan} -> ${updated.plan}\n`);
   output.write(`Capability state reset to: ${updated.capabilityState}\n`);
-  output.write(`Allow unverified models: ${updated.allowUnverifiedModels === true ? "yes" : "no"}\n`);
-  if (!updated.allowUnverifiedModels) {
-    const hiddenModels = getOverrideRequiredModelsForPlan(updated.plan);
-    if (hiddenModels.length > 0) {
-      output.write(`Hidden unsupported models until explicit override: ${hiddenModels.join(", ")}\n`);
-    }
-  }
   output.write("Reload/restart OpenCode to apply provider model changes.\n");
 }
 
@@ -394,7 +376,7 @@ async function reviewMismatchCommand(identifier?: string, args: string[] = []): 
     return;
   }
 
-  const updated = await updateAccountPlan(account.id, nextPlan, { allowUnverifiedModels: false });
+  const updated = await updateAccountPlan(account.id, nextPlan);
   output.write(`Updated stored plan for ${updated.label}: ${account.plan} -> ${updated.plan}\n`);
   output.write(`Capability state reset to: ${updated.capabilityState}\n`);
   output.write("Reload/restart OpenCode to apply provider model changes.\n");
@@ -591,29 +573,6 @@ async function promptPlan(rl: ReturnType<typeof createInterface>): Promise<PlanT
       return value as PlanTier;
     }
   }
-}
-
-async function promptAllowUnverifiedModels(
-  rl: ReturnType<typeof createInterface>,
-  plan: PlanTier,
-): Promise<boolean> {
-  const uncertainModels = getOverrideRequiredModelsForPlan(plan);
-  if (uncertainModels.length === 0) {
-    return false;
-  }
-
-  while (true) {
-    const value = (await rl.question(
-      `Enable unsupported models (${uncertainModels.join(", ")})? [y/N]: `,
-    )).trim().toLowerCase();
-
-    if (value === "" || value === "n" || value === "no") return false;
-    if (value === "y" || value === "yes") return true;
-  }
-}
-
-function hasFlag(flag: string): boolean {
-  return process.argv.includes(flag);
 }
 
 function padRight(value: string, length: number): string {

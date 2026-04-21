@@ -58,13 +58,13 @@ CopilotHydra will **not** overwrite an existing entry in either destination.
 - Primary `opencode auth login` add-account and re-auth flow
 - Warn-first host compatibility for tested and untested OpenCode versions (see [REFERENCE.md](./REFERENCE.md))
 - Account-scoped provider generation, manual model routing, mismatch detection, and review flows for personal plan tiers: `free`, `student`, `pro`, `pro+`
-- GPT-5+/Responses/Codex within the documented support boundary in [REFERENCE.md](./REFERENCE.md)
+- Current documented personal-plan model baseline in [REFERENCE.md](./REFERENCE.md): GPT-4.1, GPT-5 variants, Claude Haiku/Sonnet/Opus 4.7, Gemini 2.5/3.x, Grok Code Fast 1, Raptor mini, Goldeneye
 
 ### Best-effort / compatibility-sensitive
 
 - OpenCode host internals around `github-copilot` (compatibility-sensitive, partially documented)
 - Windows support (not a fully validated primary platform)
-- GPT-5+/Responses/Codex parity outside specifically documented and tested surfaces
+- Model parity outside the specifically documented and tested baseline, including future GitHub model churn and business/enterprise-only surfaces
 - Capability truth beyond user-declared plan + runtime mismatch detection
 - Native credential-store publishing via `@napi-rs/keyring` (best-effort; `copilot-secrets.json` retained for local bookkeeping/fallback)
 
@@ -83,7 +83,7 @@ CopilotHydra will **not** overwrite an existing entry in either destination.
 - **User-declared plans** — plan is declared on add-account; mismatches detected at runtime and flagged.
 - **macOS/Linux primary, Windows best-effort** — file permission hardening (`chmod 0600`) not supported on Windows.
 - **No enterprise or GHES support.**
-- **GPT-5+/Responses/Codex parity is best-effort** outside documented and tested surfaces.
+- **Model parity outside the documented personal-plan baseline is best-effort.**
 - **Native consumer compatibility is limited** — OpenCode Bar is confirmed on macOS; AIUsageTracker and opencode-quota read different auth sources and do not auto-discover Hydra accounts.
 
 ---
@@ -170,7 +170,7 @@ The account stays active. Other models remain available. The problem-model is bl
 Account: my-github-user (pro)
   capabilityState: mismatch
   mismatchDetail:
-    model: gpt-4.5
+    model: gpt-5.4
     httpStatus: 403
     message: entitlement rejected
     detectedAt: 2026-03-30T14:22:01Z
@@ -180,7 +180,7 @@ Account: my-github-user (pro)
 Log output during active session:
 ```
 [hydra:capability] mismatch detected for account "my-github-user"
-  model "gpt-4.5" returned 403 (entitlement rejected)
+  model "gpt-5.4" returned 403 (entitlement rejected)
   run: copilothydra review-mismatch my-github-user
 ```
 

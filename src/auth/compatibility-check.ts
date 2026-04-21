@@ -106,7 +106,7 @@ export function checkCompatibility(pluginInput: unknown): CompatibilityResult {
   ) {
     warnings.push(
       `OpenCode version "${version}" is not in the tested-version matrix for CopilotHydra. ` +
-      "Proceed with caution. See docs/compatibility-matrix.md."
+      "Proceed with caution. See docs/REFERENCE.md."
     );
     warn("compat", `Untested OpenCode version: ${version}`);
   } else {
@@ -160,7 +160,7 @@ function detectVersion(pluginInput: unknown): string | null {
 function detectHostSignalWarnings(pluginInput: unknown): string[] {
   if (!isRecord(pluginInput)) {
     return [
-      "OpenCode plugin input is not an object; host compatibility signals are unavailable. See docs/compatibility-matrix.md.",
+      "OpenCode plugin input is not an object; host compatibility signals are unavailable. See docs/REFERENCE.md.",
     ];
   }
 
@@ -168,13 +168,13 @@ function detectHostSignalWarnings(pluginInput: unknown): string[] {
 
   if (typeof pluginInput.directory !== "string" || pluginInput.directory.length === 0) {
     warnings.push(
-      "OpenCode plugin input is missing a usable directory string; host hook shape may have changed. See docs/compatibility-matrix.md."
+      "OpenCode plugin input is missing a usable directory string; host hook shape may have changed. See docs/REFERENCE.md."
     );
   }
 
   if (!hasUsableServerUrl(pluginInput.serverUrl)) {
     warnings.push(
-      "OpenCode plugin input is missing a usable serverUrl string/URL; host hook shape may have changed. See docs/compatibility-matrix.md."
+      "OpenCode plugin input is missing a usable serverUrl string/URL; host hook shape may have changed. See docs/REFERENCE.md."
     );
   }
 

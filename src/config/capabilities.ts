@@ -112,10 +112,7 @@ function resolveMismatchSuggestedPlan(
     return undefined;
   }
 
-  const includeUnverified =
-    account.capabilityState === "user-declared" && account.allowUnverifiedModels === true;
-
-  if (!modelsForPlan(account.plan, { includeUnverified }).includes(rejectedModelId)) {
+  if (!modelsForPlan(account.plan).includes(rejectedModelId)) {
     return undefined;
   }
 
