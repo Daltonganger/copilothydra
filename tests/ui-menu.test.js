@@ -168,13 +168,12 @@ test("launchMenu can add a new account through the TUI action flow", async () =>
     assert.equal(accounts.accounts[0].githubUsername, "alice");
     assert.equal(accounts.accounts[0].plan, "pro");
     assert.match(writes.join(""), /Added account: Personal \(alice\)/);
-    assert.doesNotMatch(writes.join(""), /Hidden uncertain models until explicit override/);
   } finally {
     await cleanupDir(tempDir);
   }
 });
 
-test("launchMenu skips override prompt when the documented plan baseline has no hidden models", async () => {
+test("launchMenu add-account for pro plan does not prompt for overrides", async () => {
   const tempDir = await makeTempDir();
 
   try {
@@ -209,8 +208,8 @@ test("launchMenu skips override prompt when the documented plan baseline has no 
       },
       promptText: async () => {
         promptCalls += 1;
-        if (promptCalls === 1) return "Override";
-        if (promptCalls === 2) return "override-user";
+        if (promptCalls === 1) return "ProAccount";
+        if (promptCalls === 2) return "pro-user";
         return null;
       },
       confirm: async () => {
@@ -224,10 +223,8 @@ test("launchMenu skips override prompt when the documented plan baseline has no 
 
     const accounts = await loadAccounts(tempDir);
     assert.equal(accounts.accounts.length, 1);
-    assert.equal(accounts.accounts[0].allowUnverifiedModels, false);
     assert.equal(confirmCalls, 0);
-    assert.match(writes.join(""), /Added account: Override \(override-user\)/);
-    assert.doesNotMatch(writes.join(""), /Hidden uncertain models until explicit override/);
+    assert.match(writes.join(""), /Added account: ProAccount \(pro-user\)/);
   } finally {
     await cleanupDir(tempDir);
   }
@@ -659,123 +656,4 @@ test("launchMenu can review mismatch and preserve current plan", async () => {
 
   assert.equal(updateCalled, false);
   assert.match(writes.join(""), /Stored plan preserved at PRO/);
-});
-
-test("launchMenu add-account for student plan shows override prompt and persists exposure", async () => {
-  const tempDir = await makeTempDir();
-
-  try {
-    const stamp = Date.now();
-    const { loadAccounts } = await import(`../dist/storage/accounts.js?${stamp}`);
-    const { launchMenu } = await import(`../dist/ui/menu.js?${stamp}`);
-
-    const writes = [];
-    let mainMenuCalls = 0;
-    let promptCalls = 0;
-    let confirmPrompt = "";
-
-    await launchMenu({
-      isTTY: () => true,
-      loadAccounts: () => loadAccounts(tempDir),
-      findAccountByGitHubUsername: (githubUsername) => import(`../dist/storage/accounts.js?${Date.now()}`).then((mod) => mod.findAccountByGitHubUsername(githubUsername, tempDir)),
-      upsertAccount: (account) => import(`../dist/storage/accounts.js?${Date.now()}`).then((mod) => mod.upsertAccount(account, tempDir)),
-      syncAccountsToOpenCodeConfig: () => import(`../dist/config/sync.js?${Date.now()}`).then((mod) => mod.syncAccountsToOpenCodeConfig(path.join(tempDir, "opencode.json"), tempDir)),
-      resolveOpenCodeConfigPath: () => path.join(tempDir, "opencode.json"),
-      selectOne: async (prompt, options) => {
-        if (prompt === "Main menu") {
-          mainMenuCalls += 1;
-          if (mainMenuCalls === 1) {
-            return options.find((option) => option.key === "add-account") ?? null;
-          }
-          return options.find((option) => option.key === "exit") ?? null;
-        }
-        if (prompt === "Plan tier") {
-          return options.find((option) => option.key === "student") ?? null;
-        }
-        return null;
-      },
-      promptText: async () => {
-        promptCalls += 1;
-        if (promptCalls === 1) return "Student Account";
-        if (promptCalls === 2) return "student-user";
-        return null;
-      },
-      confirm: async (prompt) => {
-        confirmPrompt = prompt;
-        return true;
-      },
-      write: (message) => {
-        writes.push(message);
-      },
-    });
-
-    const accounts = await loadAccounts(tempDir);
-    assert.equal(accounts.accounts.length, 1);
-    assert.equal(accounts.accounts[0].plan, "student");
-    assert.equal(accounts.accounts[0].allowUnverifiedModels, true);
-
-    // Confirm prompt mentions the two Claude models
-    assert.match(confirmPrompt, /claude-opus-4\.5/);
-    assert.match(confirmPrompt, /claude-sonnet-4\.5/);
-    assert.match(confirmPrompt, /unsupported models/);
-
-    assert.match(writes.join(""), /Added account: Student Account \(student-user\)/);
-    assert.doesNotMatch(writes.join(""), /Hidden unsupported models until explicit override/);
-  } finally {
-    await cleanupDir(tempDir);
-  }
-});
-
-test("launchMenu add-account for student plan hides unsupported models when override is declined", async () => {
-  const tempDir = await makeTempDir();
-
-  try {
-    const stamp = Date.now();
-    const { loadAccounts } = await import(`../dist/storage/accounts.js?${stamp}`);
-    const { launchMenu } = await import(`../dist/ui/menu.js?${stamp}`);
-
-    const writes = [];
-    let mainMenuCalls = 0;
-    let promptCalls = 0;
-
-    await launchMenu({
-      isTTY: () => true,
-      loadAccounts: () => loadAccounts(tempDir),
-      findAccountByGitHubUsername: (githubUsername) => import(`../dist/storage/accounts.js?${Date.now()}`).then((mod) => mod.findAccountByGitHubUsername(githubUsername, tempDir)),
-      upsertAccount: (account) => import(`../dist/storage/accounts.js?${Date.now()}`).then((mod) => mod.upsertAccount(account, tempDir)),
-      syncAccountsToOpenCodeConfig: () => import(`../dist/config/sync.js?${Date.now()}`).then((mod) => mod.syncAccountsToOpenCodeConfig(path.join(tempDir, "opencode.json"), tempDir)),
-      resolveOpenCodeConfigPath: () => path.join(tempDir, "opencode.json"),
-      selectOne: async (prompt, options) => {
-        if (prompt === "Main menu") {
-          mainMenuCalls += 1;
-          if (mainMenuCalls === 1) {
-            return options.find((option) => option.key === "add-account") ?? null;
-          }
-          return options.find((option) => option.key === "exit") ?? null;
-        }
-        if (prompt === "Plan tier") {
-          return options.find((option) => option.key === "student") ?? null;
-        }
-        return null;
-      },
-      promptText: async () => {
-        promptCalls += 1;
-        if (promptCalls === 1) return "Student Account";
-        if (promptCalls === 2) return "student-user";
-        return null;
-      },
-      confirm: async () => false,
-      write: (message) => {
-        writes.push(message);
-      },
-    });
-
-    const accounts = await loadAccounts(tempDir);
-    assert.equal(accounts.accounts.length, 1);
-    assert.equal(accounts.accounts[0].plan, "student");
-    assert.equal(accounts.accounts[0].allowUnverifiedModels, false);
-    assert.match(writes.join(""), /Hidden unsupported models until explicit override.*claude-opus-4\.5.*claude-sonnet-4\.5/);
-  } finally {
-    await cleanupDir(tempDir);
-  }
 });

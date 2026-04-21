@@ -18,7 +18,7 @@
  *
  * References:
  * - Spike D: capability truth research
- * - docs/compatibility-matrix.md
+ * - docs/REFERENCE.md
  */
 
 import type { PlanTier } from "../types.js";
@@ -33,22 +33,16 @@ export const COPILOT_MODEL_CATALOG: Record<string, CopilotCatalogModelEntry> = {
   "claude-opus-4.5": { id: "claude-opus-4.5", name: "Claude Opus 4.5" },
   "claude-opus-4.6": { id: "claude-opus-4.6", name: "Claude Opus 4.6" },
   "claude-opus-4.6-fast": { id: "claude-opus-4.6-fast", name: "Claude Opus 4.6 Fast" },
-  "claude-opus-41": { id: "claude-opus-41", name: "Claude Opus 4.1" },
+  "claude-opus-4.7": { id: "claude-opus-4.7", name: "Claude Opus 4.7" },
   "claude-sonnet-4": { id: "claude-sonnet-4", name: "Claude Sonnet 4" },
   "claude-sonnet-4.5": { id: "claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
   "claude-sonnet-4.6": { id: "claude-sonnet-4.6", name: "Claude Sonnet 4.6" },
   "gemini-2.5-pro": { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
   "gemini-3-flash-preview": { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview" },
-  "gemini-3-pro-preview": { id: "gemini-3-pro-preview", name: "Gemini 3 Pro Preview" },
   "gemini-3.1-pro-preview": { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview" },
   "gpt-4.1": { id: "gpt-4.1", name: "GPT-4.1" },
   "gpt-4o": { id: "gpt-4o", name: "GPT-4o" },
-  "gpt-5": { id: "gpt-5", name: "GPT-5" },
   "gpt-5-mini": { id: "gpt-5-mini", name: "GPT-5-mini" },
-  "gpt-5.1": { id: "gpt-5.1", name: "GPT-5.1" },
-  "gpt-5.1-codex": { id: "gpt-5.1-codex", name: "GPT-5.1-Codex" },
-  "gpt-5.1-codex-max": { id: "gpt-5.1-codex-max", name: "GPT-5.1-Codex-max" },
-  "gpt-5.1-codex-mini": { id: "gpt-5.1-codex-mini", name: "GPT-5.1-Codex-mini" },
   "gpt-5.2": { id: "gpt-5.2", name: "GPT-5.2" },
   "gpt-5.2-codex": { id: "gpt-5.2-codex", name: "GPT-5.2-Codex" },
   "gpt-5.3-codex": { id: "gpt-5.3-codex", name: "GPT-5.3-Codex" },
@@ -63,7 +57,6 @@ export const PLAN_TIER_ORDER: PlanTier[] = ["free", "student", "pro", "pro+"];
 
 export interface PlanModelEntry {
   id: string;
-  requiresExplicitOverride?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,41 +89,30 @@ export const MODEL_TIER_TABLE: Record<PlanTier, PlanModelEntry[]> = {
   ],
   student: [
     { id: "claude-haiku-4.5" },
-    { id: "claude-opus-4.5", requiresExplicitOverride: true },
-    { id: "claude-sonnet-4.5", requiresExplicitOverride: true },
+    { id: "claude-opus-4.5" },
+    { id: "claude-sonnet-4.5" },
     { id: "gemini-2.5-pro" },
     { id: "gemini-3-flash-preview" },
-    { id: "gemini-3-pro-preview" },
     { id: "gemini-3.1-pro-preview" },
     { id: "gpt-4.1" },
     { id: "gpt-5-mini" },
-    { id: "gpt-5.1" },
-    { id: "gpt-5.1-codex" },
-    { id: "gpt-5.1-codex-mini" },
-    { id: "gpt-5.1-codex-max" },
     { id: "gpt-5.2" },
     { id: "gpt-5.2-codex" },
     { id: "gpt-5.3-codex" },
+    { id: "gpt-5.4-mini" },
     { id: "grok-code-fast-1" },
     { id: "raptor-mini" },
   ],
   pro: [
     { id: "claude-haiku-4.5" },
-    { id: "claude-opus-4.5" },
-    { id: "claude-opus-4.6" },
     { id: "claude-sonnet-4" },
     { id: "claude-sonnet-4.5" },
     { id: "claude-sonnet-4.6" },
     { id: "gemini-2.5-pro" },
     { id: "gemini-3-flash-preview" },
-    { id: "gemini-3-pro-preview" },
     { id: "gemini-3.1-pro-preview" },
     { id: "gpt-4.1" },
     { id: "gpt-5-mini" },
-    { id: "gpt-5.1" },
-    { id: "gpt-5.1-codex" },
-    { id: "gpt-5.1-codex-mini" },
-    { id: "gpt-5.1-codex-max" },
     { id: "gpt-5.2" },
     { id: "gpt-5.2-codex" },
     { id: "gpt-5.3-codex" },
@@ -141,22 +123,15 @@ export const MODEL_TIER_TABLE: Record<PlanTier, PlanModelEntry[]> = {
   ],
   "pro+": [
     { id: "claude-haiku-4.5" },
-    { id: "claude-opus-4.5" },
-    { id: "claude-opus-4.6" },
-    { id: "claude-opus-4.6-fast" },
+    { id: "claude-opus-4.7" },
     { id: "claude-sonnet-4" },
     { id: "claude-sonnet-4.5" },
     { id: "claude-sonnet-4.6" },
     { id: "gemini-2.5-pro" },
     { id: "gemini-3-flash-preview" },
-    { id: "gemini-3-pro-preview" },
     { id: "gemini-3.1-pro-preview" },
     { id: "gpt-4.1" },
     { id: "gpt-5-mini" },
-    { id: "gpt-5.1" },
-    { id: "gpt-5.1-codex" },
-    { id: "gpt-5.1-codex-mini" },
-    { id: "gpt-5.1-codex-max" },
     { id: "gpt-5.2" },
     { id: "gpt-5.2-codex" },
     { id: "gpt-5.3-codex" },
@@ -171,33 +146,16 @@ export const MODEL_TIER_TABLE: Record<PlanTier, PlanModelEntry[]> = {
  * Returns the model IDs available for a given plan tier.
  *
  * Important: the caller is responsible for checking account.capabilityState.
- * Today the documented plan baseline is exposed directly. If future model rows
- * become uncertain again, callers can still use includeUnverified=false together
- * with requiresExplicitOverride entries.
+ * Today the documented plan baseline is exposed directly.
  *
  * This function intentionally does NOT attempt runtime entitlement detection.
  */
 export function modelsForPlan(
   plan: PlanTier,
-  options?: { includeUnverified?: boolean }
 ): string[] {
-  const includeUnverified = options?.includeUnverified ?? true;
   return (MODEL_TIER_TABLE[plan] ?? [])
-    .filter((entry) => includeUnverified || !entry.requiresExplicitOverride)
     .filter((entry) => isKnownCopilotModelId(entry.id))
     .map((entry) => entry.id);
-}
-
-export function getOverrideRequiredModelsForPlan(plan: PlanTier): string[] {
-  return (MODEL_TIER_TABLE[plan] ?? [])
-    .filter((entry) => entry.requiresExplicitOverride)
-    .map((entry) => entry.id);
-}
-
-export function modelRequiresExplicitOverride(plan: PlanTier, modelId: string): boolean {
-  return (MODEL_TIER_TABLE[plan] ?? []).some(
-    (entry) => entry.id === modelId && entry.requiresExplicitOverride,
-  );
 }
 
 export function suggestDowngradePlanForModel(currentPlan: PlanTier, modelId: string): PlanTier | undefined {
@@ -209,7 +167,7 @@ export function suggestDowngradePlanForModel(currentPlan: PlanTier, modelId: str
     if (!candidate) {
       continue;
     }
-    if (!modelsForPlan(candidate, { includeUnverified: true }).includes(modelId)) {
+    if (!modelsForPlan(candidate).includes(modelId)) {
       return candidate;
     }
   }

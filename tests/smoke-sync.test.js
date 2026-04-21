@@ -57,7 +57,7 @@ test("single-account sync writes provider config and disables built-in github-co
 			"GPT-5-mini",
 		);
 		assert.equal(
-			config.provider[account.providerId].models["claude-opus-4.6-fast"],
+			config.provider[account.providerId].models["claude-opus-4.7"],
 			undefined,
 		);
 	} finally {
@@ -76,27 +76,26 @@ test("portable provider IDs preserve valid GitHub username characters without pu
   );
 });
 
-test("single-account sync keeps documented baseline stable even when override flag is enabled", async () => {
-	const tempDir = await makeTempDir();
-	process.env.OPENCODE_CONFIG_DIR = tempDir;
+	test("single-account sync keeps documented baseline stable", async () => {
+		const tempDir = await makeTempDir();
+		process.env.OPENCODE_CONFIG_DIR = tempDir;
 
-	try {
-		const { createAccountMeta } = await import(
-			`../dist/account.js?${Date.now()}`
-		);
-		const { upsertAccount } = await import(
-			`../dist/storage/accounts.js?${Date.now()}`
-		);
-		const { syncAccountsToOpenCodeConfig } = await import(
-			`../dist/config/sync.js?${Date.now()}`
-		);
+		try {
+			const { createAccountMeta } = await import(
+				`../dist/account.js?${Date.now()}`
+			);
+			const { upsertAccount } = await import(
+				`../dist/storage/accounts.js?${Date.now()}`
+			);
+			const { syncAccountsToOpenCodeConfig } = await import(
+				`../dist/config/sync.js?${Date.now()}`
+			);
 
-		const account = createAccountMeta({
-			label: "Personal",
-			githubUsername: "alice",
-			plan: "pro",
-			allowUnverifiedModels: true,
-		});
+			const account = createAccountMeta({
+				label: "Personal",
+				githubUsername: "alice",
+				plan: "pro",
+			});
 
 		await upsertAccount(account, tempDir);
 		await syncAccountsToOpenCodeConfig(path.join(tempDir, "opencode.json"));
@@ -114,7 +113,7 @@ test("single-account sync keeps documented baseline stable even when override fl
 			"GPT-5-mini",
 		);
 		assert.equal(
-			config.provider[account.providerId].models["claude-opus-4.6-fast"],
+			config.provider[account.providerId].models["claude-opus-4.7"],
 			undefined,
 		);
 		assert.equal(

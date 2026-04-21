@@ -36,15 +36,18 @@ CopilotHydra warns when:
 
 Implementation references: `src/auth/compatibility-check.ts`, `src/config/sync.ts`, `src/index.ts`
 
-### GPT-5+/Responses/Codex support boundary
+### Current model baseline and Responses boundary
 
 **Supported today:**
+- Current personal-plan baseline aligned to GitHub's published Copilot model matrix: GPT-4.1, GPT-5 mini / 5.2 / 5.2-Codex / 5.3-Codex / 5.4 / 5.4 mini, Claude Haiku 4.5, Claude Sonnet 4 / 4.5 / 4.6, Claude Opus 4.7 (`pro+`), Gemini 2.5 Pro / 3 Flash / 3.1 Pro, Grok Code Fast 1, Raptor mini, and Goldeneye (Free)
 - GPT-5-family routing through Hydra's local provider wrapper
-- Routing selection for the current GPT-5 boundary (`gpt-5*` except `gpt-5-mini`)
+- Routing selection for the current Responses boundary (`gpt-5*` except `gpt-5-mini`)
 - Text-generation flows covered by current Responses parity tests
 - Tool-only stream passthrough without synthetic text boundaries
 - Mixed text/non-text chunk preservation with normalized single-text-part output
 - Account-scoped request routing with Hydra-managed bearer-token injection
+
+**Retired from the current documented baseline:** `gpt-5`, `gpt-5.1`, `gpt-5.1-codex`, `gpt-5.1-codex-max`, `gpt-5.1-codex-mini`, `claude-opus-41`, and `gemini-3-pro-preview`.
 
 **Forward-matching note:** `shouldUseCopilotResponsesApi` returns `true` for any model ID starting with `gpt-5` except `gpt-5-mini`. Unknown future `gpt-5.x` variants automatically route to Responses API — best-effort until explicitly tested.
 
@@ -75,13 +78,13 @@ Storage: hybrid — native credential-store publishing best-effort + `copilot-se
 
 **5. Capability truth** — ✅ Declared-plan exposure and mismatch handling consistent. `capabilityState: "verified"` dead code removed. Mismatch message wording: "A lower plan tier may match your actual entitlement". Operator runbook available.
 
-**6. GPT-5+/Responses/Codex boundary** — ✅ Boundary documented. `RESPONSES_SENTINEL_API_KEY` override tested. Forward-matching documented and tested. (Gap: no true end-to-end live-host GPT-5+ validation — accepted.)
+**6. Current model baseline / Responses boundary** — ✅ Current personal-plan baseline documented. `RESPONSES_SENTINEL_API_KEY` override tested. Forward-matching documented and tested. (Gap: no true end-to-end live-host GPT-5+ validation — accepted.)
 
 **7. Operator readiness** — ✅ Stable status in docs. Known limitations list canonical. Operator guide at `docs/OPERATORS.md`. Support boundaries documented.
 
 ### Remaining accepted gaps
 
-1. **No GPT-5+ integration test** via real `createHydraCopilotProvider()` factory — mostly unit-level coverage.
+1. **No live-host GPT-5 Responses integration test** via real `createHydraCopilotProvider()` factory — mostly unit-level coverage.
 2. **Black-box tests use stubbed host** — no real OpenCode process exercised.
 3. **Non-TTY mismatch guidance** remains limited.
 

@@ -3,16 +3,10 @@ import assert from "node:assert/strict";
 
 test("plan model table matches current documented plan baselines", async () => {
   const {
-    getOverrideRequiredModelsForPlan,
     modelsForPlan,
   } = await import(`../dist/config/models.js?${Date.now()}`);
 
-  assert.deepEqual(getOverrideRequiredModelsForPlan("free"), []);
-  assert.deepEqual(getOverrideRequiredModelsForPlan("student"), ["claude-opus-4.5", "claude-sonnet-4.5"]);
-  assert.deepEqual(getOverrideRequiredModelsForPlan("pro"), []);
-  assert.deepEqual(getOverrideRequiredModelsForPlan("pro+"), []);
-
-  assert.deepEqual(modelsForPlan("free", { includeUnverified: false }), [
+  assert.deepEqual(modelsForPlan("free"), [
     "claude-haiku-4.5",
     "goldeneye",
     "gpt-4.1",
@@ -21,42 +15,33 @@ test("plan model table matches current documented plan baselines", async () => {
     "raptor-mini",
   ]);
 
-  assert.deepEqual(modelsForPlan("student", { includeUnverified: false }), [
+  assert.deepEqual(modelsForPlan("student"), [
     "claude-haiku-4.5",
+    "claude-opus-4.5",
+    "claude-sonnet-4.5",
     "gemini-2.5-pro",
     "gemini-3-flash-preview",
-    "gemini-3-pro-preview",
     "gemini-3.1-pro-preview",
     "gpt-4.1",
     "gpt-5-mini",
-    "gpt-5.1",
-    "gpt-5.1-codex",
-    "gpt-5.1-codex-mini",
-    "gpt-5.1-codex-max",
     "gpt-5.2",
     "gpt-5.2-codex",
     "gpt-5.3-codex",
+    "gpt-5.4-mini",
     "grok-code-fast-1",
     "raptor-mini",
   ]);
 
-  assert.deepEqual(modelsForPlan("pro", { includeUnverified: false }), [
+  assert.deepEqual(modelsForPlan("pro"), [
     "claude-haiku-4.5",
-    "claude-opus-4.5",
-    "claude-opus-4.6",
     "claude-sonnet-4",
     "claude-sonnet-4.5",
     "claude-sonnet-4.6",
     "gemini-2.5-pro",
     "gemini-3-flash-preview",
-    "gemini-3-pro-preview",
     "gemini-3.1-pro-preview",
     "gpt-4.1",
     "gpt-5-mini",
-    "gpt-5.1",
-    "gpt-5.1-codex",
-    "gpt-5.1-codex-mini",
-    "gpt-5.1-codex-max",
     "gpt-5.2",
     "gpt-5.2-codex",
     "gpt-5.3-codex",
@@ -66,24 +51,17 @@ test("plan model table matches current documented plan baselines", async () => {
     "raptor-mini",
   ]);
 
-  assert.deepEqual(modelsForPlan("pro+", { includeUnverified: false }), [
+  assert.deepEqual(modelsForPlan("pro+"), [
     "claude-haiku-4.5",
-    "claude-opus-4.5",
-    "claude-opus-4.6",
-    "claude-opus-4.6-fast",
+    "claude-opus-4.7",
     "claude-sonnet-4",
     "claude-sonnet-4.5",
     "claude-sonnet-4.6",
     "gemini-2.5-pro",
     "gemini-3-flash-preview",
-    "gemini-3-pro-preview",
     "gemini-3.1-pro-preview",
     "gpt-4.1",
     "gpt-5-mini",
-    "gpt-5.1",
-    "gpt-5.1-codex",
-    "gpt-5.1-codex-mini",
-    "gpt-5.1-codex-max",
     "gpt-5.2",
     "gpt-5.2-codex",
     "gpt-5.3-codex",
@@ -92,17 +70,6 @@ test("plan model table matches current documented plan baselines", async () => {
     "grok-code-fast-1",
     "raptor-mini",
   ]);
-
-  assert.deepEqual(modelsForPlan("pro+", { includeUnverified: true }), modelsForPlan("pro+", { includeUnverified: false }));
-
-  // Student plan: includeUnverified=true exposes the two override-required Claude models
-  const studentBase = modelsForPlan("student", { includeUnverified: false });
-  const studentWithOverrides = modelsForPlan("student", { includeUnverified: true });
-  assert.ok(!studentBase.includes("claude-opus-4.5"));
-  assert.ok(!studentBase.includes("claude-sonnet-4.5"));
-  assert.ok(studentWithOverrides.includes("claude-opus-4.5"));
-  assert.ok(studentWithOverrides.includes("claude-sonnet-4.5"));
-  assert.ok(studentWithOverrides.length === studentBase.length + 2);
 });
 
 test("capability mismatch helpers detect entitlement failures and suggest stricter plans", async () => {

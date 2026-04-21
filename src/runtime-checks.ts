@@ -6,7 +6,6 @@
 
 import type { CopilotAccountMeta } from "./types.js";
 import { warn } from "./log.js";
-import { getOverrideRequiredModelsForPlan } from "./config/models.js";
 
 export const MAX_ACTIVE_ACCOUNTS = 8;
 
@@ -30,17 +29,6 @@ export function checkAccountRuntimeReadiness(account: CopilotAccountMeta): Runti
   if (account.capabilityState === "mismatch") {
     warnings.push(
       `Account "${account.label}" is marked as mismatch; review the stored plan before continuing.`
-    );
-  }
-
-  const includeUnverified =
-    account.capabilityState === "user-declared" && account.allowUnverifiedModels === true;
-  const hiddenUnverifiedModels = includeUnverified ? [] : getOverrideRequiredModelsForPlan(account.plan);
-
-  if (hiddenUnverifiedModels.length > 0) {
-    warnings.push(
-      `Account "${account.label}" is hiding unsupported models until explicitly overridden: ` +
-        hiddenUnverifiedModels.join(", ")
     );
   }
 

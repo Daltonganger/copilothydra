@@ -162,7 +162,6 @@ test("black-box host add-account flow persists config and survives restart into 
 				githubUsername: "blackbox-user",
 				label: "Blackbox",
 				plan: "pro",
-				allowUnverifiedModels: "no",
 			});
 
 			assert.equal(started.url, "https://github.com/login/device");
@@ -342,7 +341,6 @@ test("black-box host: two accounts route independently after restart", async () 
 				githubUsername: "alice",
 				label: "Alice",
 				plan: "pro",
-				allowUnverifiedModels: "no",
 			});
 			assert.equal(startedAlice.url, "https://github.com/login/device");
 			assert.match(startedAlice.instructions, /AAAA-AAAA/);
@@ -393,7 +391,6 @@ test("black-box host: two accounts route independently after restart", async () 
 				githubUsername: "bob",
 				label: "Bob",
 				plan: "free",
-				allowUnverifiedModels: "no",
 			});
 			assert.equal(startedBob.url, "https://github.com/login/device");
 			assert.match(startedBob.instructions, /BBBB-BBBB/);
@@ -546,7 +543,6 @@ test("black-box host: add-account callback returns failed when device flow is de
 				githubUsername: "denied-user",
 				label: "Denied",
 				plan: "pro",
-				allowUnverifiedModels: "no",
 			});
 			assert.equal(started.url, "https://github.com/login/device");
 			assert.match(started.instructions, /CCCC-CCCC/);

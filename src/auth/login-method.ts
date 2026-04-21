@@ -101,12 +101,6 @@ export function createCopilotLoginMethods(
           message: "Plan: free/student/pro/pro+",
           placeholder: "pro",
         },
-        {
-          type: "text",
-          key: "allowUnverifiedModels",
-          message: "For Student plans only: enable unsupported Claude Sonnet 4.5 and Claude Opus 4.5? (yes/no)",
-          placeholder: "no",
-        },
       ],
       authorize: async (inputs) => {
         validateCanAddAccount(existingAccounts);
@@ -269,13 +263,11 @@ async function createNewAccount(
 
   const label = requireTextInput(inputs, "label", "Account label");
   const plan = parsePlanTier(inputs?.plan);
-  const allowUnverifiedModels = parseBooleanInput(inputs?.allowUnverifiedModels);
 
   const account = deps.createAccountMeta({
     label,
     githubUsername,
     plan,
-    allowUnverifiedModels,
   });
 
   deps.checkAccountRuntimeReadiness(account);
@@ -381,12 +373,4 @@ function parsePlanTier(raw: string | undefined): PlanTier {
     throw new Error("[copilothydra] plan must be one of: free, student, pro, pro+");
   }
   return value;
-}
-
-function parseBooleanInput(raw: string | undefined): boolean {
-  const value = raw?.trim().toLowerCase();
-  if (!value) return false;
-  if (["y", "yes", "true", "1"].includes(value)) return true;
-  if (["n", "no", "false", "0"].includes(value)) return false;
-  throw new Error("[copilothydra] allowUnverifiedModels must be yes/no");
 }

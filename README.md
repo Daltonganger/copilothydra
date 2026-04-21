@@ -15,6 +15,7 @@ CopilotHydra is an OpenCode plugin for using multiple GitHub Copilot accounts si
 - adds and re-authenticates Copilot accounts through `opencode auth login`
 - keeps accounts separated through account-scoped providers
 - supports explicit manual routing per account/model
+- tracks the current documented personal-plan Copilot model baseline across GPT-4.1, GPT-5 variants, Claude, Gemini, Grok, Raptor mini, and Goldeneye
 - provides CLI maintenance commands for sync, audit, repair, mismatch review, and usage snapshots
 
 ## Quick start
@@ -55,6 +56,8 @@ copilothydra usage
 - Enterprise-managed GitHub.com and GHES are **not supported**.
 
 See [Operator guide](docs/OPERATORS.md) for native integrations, backfill instructions, and support boundaries.
+
+For the live upstream model list, see GitHub's official [Supported AI models in GitHub Copilot](https://docs.github.com/en/copilot/reference/ai-models/supported-models).
 
 ## Docs
 

@@ -183,7 +183,7 @@ First stable release. All hard blockers from the beta/hardening phase resolved.
 - **Restart notice in OpenCode UI** — the `instructions` field shown during `opencode auth login` now includes a reload/restart reminder for new-account flows.
 - **Operator runbooks** — `docs/operator-mismatch-review-runbook.md` and `docs/operator-storage-repair-runbook.md` added.
 - **Canonical known-limitations list** in `docs/support-boundaries.md`.
-- **Forward-match documented** — `shouldUseCopilotResponsesApi` forward-matches all `gpt-5.x` variants except `gpt-5-mini`; documented in `docs/compatibility-matrix.md`.
+- **Forward-match documented** — `shouldUseCopilotResponsesApi` forward-matches all `gpt-5.x` variants except `gpt-5-mini`; documented in `docs/REFERENCE.md`.
 
 ### Fixes
 
